@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="siteHeader" class="header-wrap">
+
+    <!-- top header -->
+    <div class="top-header">
+        <div class="brand-area">
+            <div class="brand-logo">◩</div>
+            <div class="brand-text">OWN LIFE</div>
+        </div>
+
+        <div class="auth-menu">
+            <a th:href="@{/login}">로그인</a>
+            <a th:href="@{/signup}">회원가입</a>
+        </div>
+    </div>
+
+    <!-- nav -->
+    <div class="nav-bar">
+        <div class="nav-inner">
+            <a class="nav-item active" th:href="@{/diet}">식단 관리</a>
+            <a class="nav-item" th:href="@{/exercise}">운동 일지</a>
+            <a class="nav-item" th:href="@{/community}">자유게시판</a>
+            <a class="nav-item" th:href="@{/mypage}">마이페이지</a>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

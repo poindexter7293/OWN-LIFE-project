@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">OWN LIFE</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="page-bg">
+    <div class="main-shell">
+
+        <!-- header + nav 통합 -->
+        <header th:replace="~{fragments/header :: siteHeader}"></header>
+
+        <!-- center -->
+        <main class="content-wrap">
+            <section th:replace="~{fragments/center-dashboard :: centerDashboard}"></section>
+        </main>
+    </div>
+</div>
+
+<script th:src="@{/js/main.js}"></script>
+<script th:inline="javascript">
+    window.dashboardData = {
+        weight: [[${weight}]],
+        weightDiff: [[${weightDiff}]],
+        burnedCalories: [[${burnedCalories}]],
+        burnedDiff: [[${burnedDiff}]],
+        intakeCalories: [[${intakeCalories}]],
+        targetCalories: [[${targetCalories}]],
+        carbPercent: [[${carbPercent}]],
+        fatPercent: [[${fatPercent}]],
+        proteinPercent: [[${proteinPercent}]],
+        weightLabels: [[${weightLabels}]],
+        weightData: [[${weightData}]]
+    };
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="centerDashboard" class="dashboard-container">
+
+    <!-- 상단 큰 카드 -->
+    <section class="hero-card card">
+        <div class="hero-summary">
+            <span class="hero-label">체중</span>
+            <span class="hero-value" th:text="${weight} + 'kg'">74.3kg</span>
+            <span class="hero-diff positive" th:text="'▲ ' + ${weightDiff} + 'kg'">▲ 0.3kg</span>
+        </div>
+        <div class="hero-chart-wrap">
+            <canvas id="weightChart"></canvas>
+        </div>
+    </section>
+
+    <!-- 하단 3개 카드 -->
+    <section class="dashboard-grid">
+        <article class="mini-card card">
+            <div class="mini-chip">✓ 소모칼로리</div>
+            <div class="mini-topline">
+                <strong th:text="${burnedCalories}">540</strong><span> kcal</span>
+            </div>
+            <div class="mini-sub negative" th:text="'▲ ' + ${burnedDiff}">▲ 325</div>
+            <div class="mini-chart-wrap">
+                <canvas id="burnChart"></canvas>
+            </div>
+        </article>
+
+        <article class="mini-card card">
+            <div class="mini-chip">✓ 섭취칼로리</div>
+            <div class="mini-topline">
+                <strong th:text="${intakeCalories}">2244</strong><span> kcal</span>
+            </div>
+            <div class="mini-sub success" th:text="'목표 - ' + ${targetCalories} + 'kcal'">목표 - 2200kcal</div>
+            <div class="mini-chart-wrap">
+                <canvas id="intakeChart"></canvas>
+            </div>
+        </article>
+
+        <article class="mini-card card nutrition-card">
+            <div class="mini-chip">✓ 영양소 비율</div>
+            <div class="donut-wrap">
+                <canvas id="macroChart"></canvas>
+                <div class="donut-center-text" th:text="${carbPercent} + '%'">61%</div>
+            </div>
+        </article>
+    </section>
+
+</div>
+</body>
+</html>
