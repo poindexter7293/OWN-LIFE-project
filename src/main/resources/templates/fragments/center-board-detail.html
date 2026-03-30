@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="centerBoardDetail">
+    <div style="max-width:900px; margin:0 auto; padding:20px;">
+        <h1 th:text="${post.title}" style="font-size:28px; font-weight:800; margin-bottom:20px;">제목</h1>
+
+        <div style="border:1px solid #ddd; border-radius:10px; padding:20px; background:white;">
+            <div style="color:#666; margin-bottom:20px;">
+                작성자ID: <span th:text="${post.memberId}">1</span> |
+                조회수: <span th:text="${post.viewCount}">0</span> |
+                작성일: <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">2026-03-30</span>
+            </div>
+
+            <div style="min-height:200px; white-space:pre-wrap;" th:text="${post.content}">내용</div>
+
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <a th:href="@{/board}" style="padding:10px 16px; background:#999; color:white; border-radius:6px; text-decoration:none;">목록</a>
+                <a th:href="@{/board/edit/{id}(id=${post.postId})}" style="padding:10px 16px; background:#4a90e2; color:white; border-radius:6px; text-decoration:none;">수정</a>
+                <form th:action="@{/board/delete/{id}(id=${post.postId})}" method="post" style="display:inline;">
+                    <button type="submit" style="padding:10px 16px; background:#e74c3c; color:white; border:none; border-radius:6px; cursor:pointer;">삭제</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>
