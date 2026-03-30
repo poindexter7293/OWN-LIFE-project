@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>게시판 목록</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border-bottom: 1px solid #ddd; padding: 12px; text-align: center; }
+    th { background: #f5f5f5; }
+    a { text-decoration: none; color: inherit; }
+    .top { display: flex; justify-content: space-between; align-items: center; }
+    .btn { padding: 10px 16px; background: #4a90e2; color: white; border-radius: 6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>자유게시판</h1>
+    <a th:href="@{/board/write}" class="btn">글쓰기</a>
+  </div>
+
+  <table>
+    <thead>
+    <tr>
+      <th>번호</th>
+      <th>제목</th>
+      <th>작성자ID</th>
+      <th>조회수</th>
+      <th>작성일</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="post : ${posts}">
+      <td th:text="${post.postId}">1</td>
+      <td>
+        <a th:href="@{/board/{id}(id=${post.postId})}" th:text="${post.title}">제목</a>
+      </td>
+      <td th:text="${post.memberId}">1</td>
+      <td th:text="${post.viewCount}">0</td>
+      <td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">2026-03-30</td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
