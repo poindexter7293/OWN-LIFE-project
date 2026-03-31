@@ -16,10 +16,51 @@
 
             <div style="margin-top:20px; display:flex; gap:10px;">
                 <a th:href="@{/board}" style="padding:10px 16px; background:#999; color:white; border-radius:6px; text-decoration:none;">목록</a>
-                <a th:href="@{/board/edit/{id}(id=${post.postId})}" style="padding:10px 16px; background:#4a90e2; color:white; border-radius:6px; text-decoration:none;">수정</a>
-                <form th:action="@{/board/delete/{id}(id=${post.postId})}" method="post" style="display:inline;">
-                    <button type="submit" style="padding:10px 16px; background:#e74c3c; color:white; border:none; border-radius:6px; cursor:pointer;">삭제</button>
+                <th:block th:if="${post.memberId == loginMemberId}">
+                    <a th:href="@{/board/edit/{id}(id=${post.postId})}">
+                        수정
+                    </a>
+
+                    <form th:action="@{/board/delete/{id}(id=${post.postId})}" method="post">
+                        <button type="submit">삭제</button>
+                    </form>
+                </th:block>
+            </div>
+        </div>
+    </div>
+    <div style="margin-top:40px;">
+        <h3 style="margin-bottom:15px;">댓글</h3>
+
+        <form th:action="@{/board/{id}/comment(id=${post.postId})}" method="post">
+        <textarea name="content"
+                  required
+                  placeholder="댓글을 입력하세요"
+                  style="width:100%; height:90px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;"></textarea>
+            <button type="submit"
+                    style="margin-top:10px; padding:8px 14px; background:#4a90e2; color:white; border:none; border-radius:6px; cursor:pointer;">
+                댓글 작성
+            </button>
+        </form>
+
+        <div style="margin-top:20px;">
+            <div th:each="comment : ${comments}"
+                 style="padding:14px 0; border-bottom:1px solid #eee;">
+
+                <div style="font-size:14px; color:#666; margin-bottom:6px;">
+                    작성자ID: <span th:text="${post.nickname}">닉네임</span>|
+                    작성일: <span th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}">2026-03-30 12:00</span>
+                </div>
+
+                <div style="margin-bottom:8px; white-space:pre-wrap;" th:text="${comment.content}">
+                    댓글 내용
+                </div>
+
+                <th:block th:if="${comment.memberId == loginMemberId}">
+                <form th:action="@{/board/comment/delete/{commentId}(commentId=${comment.commentId})}" method="post">
+                    <input type="hidden" name="postId" th:value="${post.postId}">
+                    <button type="submit">삭제</button>
                 </form>
+                </th:block>
             </div>
         </div>
     </div>
