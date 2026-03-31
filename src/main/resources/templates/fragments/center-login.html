@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="centerLogin" class="login-page">
+    <div class="login-shell">
+        <div class="card login-card">
+            <p class="login-eyebrow">WELCOME BACK</p>
+            <h1>OWN LIFE 로그인</h1>
+            <p class="login-description">
+                가입한 아이디와 비밀번호로 로그인하고 운동, 식단, 게시판 기능을 이어서 이용해 보세요.
+            </p>
+
+            <div class="login-alert login-alert-success" th:if="${logoutSuccess}">
+                로그아웃되었습니다.
+            </div>
+
+            <form th:action="@{/login}" method="post" th:object="${loginForm}" class="login-form" data-login-form>
+                <div class="login-alert login-alert-error" th:if="${#fields.hasGlobalErrors()}">
+                    아이디 또는 비밀번호가 올바르지 않습니다.
+                </div>
+
+                <div class="form-field">
+                    <label for="username">아이디 <span>*</span></label>
+                    <input type="text"
+                           th:field="*{username}"
+                           placeholder="아이디를 입력해 주세요"
+                           autocomplete="username"
+                           data-login-validate="username">
+                    <p class="field-hint">가입 시 사용한 아이디를 입력해 주세요.</p>
+                    <p class="field-hint" data-login-feedback="username"></p>
+                    <p class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></p>
+                </div>
+
+                <div class="form-field">
+                    <label for="password">비밀번호 <span>*</span></label>
+                    <input type="password"
+                           th:field="*{password}"
+                           placeholder="비밀번호를 입력해 주세요"
+                           autocomplete="current-password"
+                           data-login-validate="password">
+                    <p class="field-hint" data-login-feedback="password"></p>
+                    <p class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
+                </div>
+
+                <div class="login-actions">
+                    <button type="submit" class="login-button login-button-primary">로그인</button>
+                    <a th:href="@{/signup}" class="login-button login-button-secondary">회원가입</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+</body>
+</html>
+
+

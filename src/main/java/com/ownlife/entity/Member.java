@@ -24,6 +24,7 @@ public class Member {
     @Column(name = "username", length = 50, unique = true)
     private String username;
 
+
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
