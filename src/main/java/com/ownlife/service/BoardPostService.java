@@ -1,5 +1,6 @@
 package com.ownlife.service;
 
+import com.ownlife.dto.BoardPostViewDto;
 import com.ownlife.entity.BoardPost;
 import com.ownlife.repository.BoardPostRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,14 +22,25 @@ public class BoardPostService {
     }
 
     @Transactional(readOnly = true)
+    public List<BoardPostViewDto> findAllView() {
+        return boardPostRepository.findAllWithNickname();
+    }
+
+    @Transactional(readOnly = true)
     public BoardPost findById(Long postId) {
         return boardPostRepository.findByPostIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다. id=" + postId));
     }
 
-    public BoardPost save(String title, String content) {
+    @Transactional(readOnly = true)
+    public BoardPostViewDto findViewById(Long postId) {
+        return boardPostRepository.findViewByPostId(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다. id=" + postId));
+    }
+
+    public BoardPost save(Long memberId, String title, String content) {
         BoardPost boardPost = new BoardPost();
-        boardPost.setMemberId(1L); // 로그인 연동 전까지 임시 고정
+        boardPost.setMemberId(memberId);
         boardPost.setTitle(title);
         boardPost.setContent(content);
         boardPost.setViewCount(0);
@@ -42,9 +54,14 @@ public class BoardPostService {
         boardPost.setContent(content);
     }
 
-    public void delete(Long postId) {
-        BoardPost boardPost = findById(postId);
-        boardPost.setIsDeleted(true);
+    public void delete(Long postId, Long loginMemberId) {
+        BoardPost post = findById(postId);
+
+        if (!post.getMemberId().equals(loginMemberId)) {
+            throw new IllegalArgumentException("본인 글만 삭제 가능");
+        }
+
+        post.setIsDeleted(true);
     }
 
     public void increaseViewCount(Long postId) {

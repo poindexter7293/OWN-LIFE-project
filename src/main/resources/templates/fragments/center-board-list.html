@@ -31,7 +31,7 @@
                         제목
                     </a>
                 </td>
-                <td style="padding:12px; text-align:center;" th:text="${post.memberId}">1</td>
+                <td style="padding:12px; text-align:center;" th:text="${post.nickname}">닉네임</td>
                 <td style="padding:12px; text-align:center;" th:text="${post.viewCount}">0</td>
                 <td style="padding:12px; text-align:center;"
                     th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">
