@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${pageTitle}">OWN LIFE</title>
     <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet"
+          th:if="${extraCssFiles != null}"
+          th:each="cssFile : ${extraCssFiles}"
+          th:href="${cssFile}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -22,19 +26,22 @@
 </div>
 
 <script th:src="@{/js/main.js}"></script>
+<script th:if="${extraJsFiles != null}"
+        th:each="jsFile : ${extraJsFiles}"
+        th:src="${jsFile}"></script>
 <script th:inline="javascript">
     window.dashboardData = {
-        weight: [[${weight}]],
-        weightDiff: [[${weightDiff}]],
-        burnedCalories: [[${burnedCalories}]],
-        burnedDiff: [[${burnedDiff}]],
-        intakeCalories: [[${intakeCalories}]],
-        targetCalories: [[${targetCalories}]],
-        carbPercent: [[${carbPercent}]],
-        fatPercent: [[${fatPercent}]],
-        proteinPercent: [[${proteinPercent}]],
-        weightLabels: [[${weightLabels}]],
-        weightData: [[${weightData}]]
+        weight: /*[[${weight}]]*/ null,
+        weightDiff: /*[[${weightDiff}]]*/ null,
+        burnedCalories: /*[[${burnedCalories}]]*/ null,
+        burnedDiff: /*[[${burnedDiff}]]*/ null,
+        intakeCalories: /*[[${intakeCalories}]]*/ null,
+        targetCalories: /*[[${targetCalories}]]*/ null,
+        carbPercent: /*[[${carbPercent}]]*/ null,
+        fatPercent: /*[[${fatPercent}]]*/ null,
+        proteinPercent: /*[[${proteinPercent}]]*/ null,
+        weightLabels: /*[[${weightLabels}]]*/ [],
+        weightData: /*[[${weightData}]]*/ []
     };
 </script>
 </body>
