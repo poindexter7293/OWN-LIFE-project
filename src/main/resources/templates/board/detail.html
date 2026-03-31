@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>게시글 상세</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .wrap { max-width: 900px; margin: 0 auto; }
+        .box { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        .meta { color: #666; margin-bottom: 20px; }
+        .content { min-height: 200px; white-space: pre-wrap; }
+        .btns { margin-top: 20px; display: flex; gap: 10px; }
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; }
+        .blue { background: #4a90e2; color: white; }
+        .gray { background: #999; color: white; }
+        .red { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1 th:text="${post.title}">제목</h1>
+    <div class="box">
+        <div class="meta">
+            작성자ID: <span th:text="${post.memberId}">1</span> |
+            조회수: <span th:text="${post.viewCount}">0</span> |
+            작성일: <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">2026-03-30</span>
+        </div>
+
+        <div class="content" th:text="${post.content}">내용</div>
+
+        <div class="btns">
+            <a th:href="@{/board}" class="btn gray">목록</a>
+            <a th:href="@{/board/edit/{id}(id=${post.postId})}" class="btn blue">수정</a>
+            <form th:action="@{/board/delete/{id}(id=${post.postId})}" method="post" style="display:inline;">
+                <button type="submit" class="btn red">삭제</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

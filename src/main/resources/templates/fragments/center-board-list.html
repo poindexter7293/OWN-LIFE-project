@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="centerBoardList">
+    <div style="max-width:1000px; margin:0 auto; padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h1 style="font-size:32px; font-weight:800;">자유게시판</h1>
+            <a th:href="@{/board/write}"
+               style="padding:10px 16px; background:#4a90e2; color:white; border-radius:6px; text-decoration:none;">
+                글쓰기
+            </a>
+        </div>
+
+        <table style="width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden;">
+            <thead>
+            <tr style="background:#f5f5f5;">
+                <th style="padding:12px;">번호</th>
+                <th style="padding:12px;">제목</th>
+                <th style="padding:12px;">작성자ID</th>
+                <th style="padding:12px;">조회수</th>
+                <th style="padding:12px;">작성일</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="post : ${posts}" style="border-bottom:1px solid #eee;">
+                <td style="padding:12px; text-align:center;" th:text="${post.postId}">1</td>
+                <td style="padding:12px; text-align:center;">
+                    <a th:href="@{/board/{id}(id=${post.postId})}"
+                       th:text="${post.title}"
+                       style="text-decoration:none; color:#222;">
+                        제목
+                    </a>
+                </td>
+                <td style="padding:12px; text-align:center;" th:text="${post.memberId}">1</td>
+                <td style="padding:12px; text-align:center;" th:text="${post.viewCount}">0</td>
+                <td style="padding:12px; text-align:center;"
+                    th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">
+                    2026-03-30
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

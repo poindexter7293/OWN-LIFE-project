@@ -31,6 +31,8 @@ public class MainController {
         model.addAttribute("weightData",
                 List.of(71.8, 71.9, 71.3, 71.1, 70.8, 71.2, 72.4));
 
+        model.addAttribute("centerFragment", "fragments/center-dashboard :: centerDashboard");
+
         return "main";
     }
 }
