@@ -10,10 +10,12 @@ import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +32,7 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public boolean existsByUsername(String username) {
-        return StringUtils.hasText(username) && memberRepository.existsByUsername(normalizeName(username));
+        return StringUtils.hasText(username) && memberRepository.existsByUsername(normalizeUsername(username));
     }
 
     @Transactional(readOnly = true)
@@ -38,9 +40,22 @@ public class MemberService {
         return StringUtils.hasText(email) && memberRepository.existsByEmail(normalizeIdentity(email));
     }
 
+    @Transactional(readOnly = true)
+    public Optional<Member> authenticate(String username, String rawPassword) {
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedUsername) || !StringUtils.hasText(rawPassword)) {
+            return Optional.empty();
+        }
+
+        return memberRepository.findByUsername(normalizedUsername)
+                .filter(member -> member.getLoginType() == Member.LoginType.LOCAL)
+                .filter(member -> member.getStatus() == Member.Status.ACTIVE)
+                .filter(member -> verifyPassword(rawPassword, member.getPasswordHash()));
+    }
+
     public Member register(SignupForm signupForm) {
         Member member = new Member();
-        member.setUsername(normalizeName(signupForm.getUsername()));
+        member.setUsername(normalizeUsername(signupForm.getUsername()));
         member.setPasswordHash(hashPassword(signupForm.getPassword()));
         member.setNickname(trimToNull(signupForm.getNickname()));
         member.setEmail(normalizeIdentity(signupForm.getEmail()));
@@ -54,8 +69,8 @@ public class MemberService {
         return memberRepository.saveAndFlush(member);
     }
 
-    private String normalizeName(String value) {
-        return trimToNull(value);
+    private String normalizeUsername(String value) {
+        return normalizeIdentity(value);
     }
 
     private String normalizeIdentity(String value) {
@@ -83,6 +98,44 @@ public class MemberService {
                     + Base64.getEncoder().encodeToString(hash);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException exception) {
             throw new IllegalStateException("비밀번호 해시 생성에 실패했습니다.", exception);
+        } finally {
+            spec.clearPassword();
+        }
+    }
+
+    private boolean verifyPassword(String rawPassword, String storedPasswordHash) {
+        if (!StringUtils.hasText(storedPasswordHash) || !storedPasswordHash.startsWith("pbkdf2$")) {
+            return false;
+        }
+
+        String[] parts = storedPasswordHash.split("\\$");
+        if (parts.length != 4) {
+            return false;
+        }
+
+        int iterations;
+        try {
+            iterations = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException exception) {
+            return false;
+        }
+
+        byte[] salt;
+        byte[] expectedHash;
+        try {
+            salt = Base64.getDecoder().decode(parts[2]);
+            expectedHash = Base64.getDecoder().decode(parts[3]);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+
+        PBEKeySpec spec = new PBEKeySpec(rawPassword.toCharArray(), salt, iterations, expectedHash.length * 8);
+        try {
+            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(HASH_ALGORITHM);
+            byte[] actualHash = secretKeyFactory.generateSecret(spec).getEncoded();
+            return MessageDigest.isEqual(actualHash, expectedHash);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException exception) {
+            throw new IllegalStateException("비밀번호 검증에 실패했습니다.", exception);
         } finally {
             spec.clearPassword();
         }

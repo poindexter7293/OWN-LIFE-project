@@ -1,0 +1,119 @@
+.login-page {
+    padding-top: 12px;
+}
+
+.login-shell {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.login-card {
+    padding: 36px;
+}
+
+.login-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(123, 165, 230, 0.14);
+    color: #5270a0;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    font-size: 0.82rem;
+    margin-bottom: 16px;
+}
+
+.login-card h1 {
+    font-size: 2.1rem;
+    color: #27416b;
+    margin-bottom: 12px;
+}
+
+.login-description {
+    color: #5f7192;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.login-alert {
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+
+.login-alert-success {
+    background: rgba(115, 208, 170, 0.18);
+    color: #25795a;
+    border: 1px solid rgba(74, 165, 125, 0.28);
+}
+
+.login-alert-error {
+    background: rgba(234, 142, 159, 0.14);
+    color: #a04256;
+    border: 1px solid rgba(214, 112, 132, 0.24);
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.login-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.login-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 20px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.login-button:hover {
+    transform: translateY(-1px);
+}
+
+.login-button-primary {
+    background: linear-gradient(180deg, #89b2f0, #6d9ee7);
+    color: #ffffff;
+    box-shadow: 0 12px 22px rgba(109, 158, 231, 0.22);
+}
+
+.login-button-secondary {
+    background: rgba(255, 255, 255, 0.82);
+    color: #496181;
+    border: 1px solid rgba(124, 153, 196, 0.28);
+}
+
+@media (max-width: 768px) {
+    .login-card {
+        padding: 24px 18px;
+        border-radius: 22px;
+    }
+
+    .login-card h1 {
+        font-size: 1.8rem;
+    }
+
+    .login-actions {
+        justify-content: stretch;
+    }
+
+    .login-button {
+        width: 100%;
+    }
+}
+
