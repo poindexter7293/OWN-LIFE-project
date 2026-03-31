@@ -101,7 +101,7 @@ public class MemberController {
         }
 
         memberService.register(signupForm);
-        return "redirect:/signup?success=true";
+        return "redirect:/main";
     }
 
     private void applyPageAttributes(Model model, boolean success) {

@@ -54,7 +54,7 @@ class MemberControllerTest {
                         .param("heightCm", "175.5")
                         .param("weightKg", "72.3"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/signup?success=true"));
+                .andExpect(redirectedUrl("/main"));
 
         org.junit.jupiter.api.Assertions.assertEquals(1, memberService.registerCallCount);
     }
@@ -112,7 +112,7 @@ class MemberControllerTest {
                         .param("nickname", "하늘")
                         .param("email", "sky@example.com"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/signup?success=true"));
+                .andExpect(redirectedUrl("/main"));
 
         org.junit.jupiter.api.Assertions.assertEquals(1, memberService.registerCallCount);
     }
