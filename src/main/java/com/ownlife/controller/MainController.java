@@ -34,6 +34,10 @@ public class MainController {
                 ? Math.min(100, (int) Math.round((intakeCalories * 100.0) / targetCalories))
                 : 0;
 
+        int burnedPercent = targetCalories > 0
+                ? Math.min(100, (int) Math.round((burnedCalories * 100.0) / targetCalories))
+                : 0;
+
         int remainingBurnCalories = Math.max(0, targetCalories - burnedCalories);
 
         model.addAttribute("pageTitle", "OWN LIFE");
@@ -43,6 +47,7 @@ public class MainController {
         model.addAttribute("streakDays", streakDays);
         model.addAttribute("streakMessage", "연속 기록 중");
         model.addAttribute("burnedCalories", burnedCalories);
+        model.addAttribute("burnedPercent", burnedPercent);
         model.addAttribute("remainingBurnCalories", remainingBurnCalories);
         model.addAttribute("intakeCalories", intakeCalories);
         model.addAttribute("targetCalories", targetCalories);

@@ -16,16 +16,21 @@
                 <p class="metric-card__meta" th:text="${weightDiffText}">기록 없음</p>
             </article>
 
-            <article class="summary-card metric-card">
-                <div class="metric-card__header">
-                    <span class="metric-card__title">소모</span>
+            <article class="summary-card progress-card">
+                <div class="progress-card__header">
+                    <span class="progress-card__title">소모 칼로리</span>
                     <span class="metric-card__icon metric-card__icon--mint">🔥</span>
                 </div>
-                <div class="metric-card__value-row">
-                    <strong class="metric-card__value" th:text="${burnedCalories}">0</strong>
-                    <span class="metric-card__unit">kcal</span>
+
+                <div class="progress-card__chart-wrap">
+                    <canvas id="burnedProgressChart"></canvas>
+                    <div class="progress-card__center">
+                        <strong th:text="${burnedPercent} + '%'">0%</strong>
+                        <span>달성</span>
+                    </div>
                 </div>
-                <p class="metric-card__meta" th:text="|남은 ${remainingBurnCalories}kcal|">남은 2200kcal</p>
+
+                <p class="progress-card__meta" th:text="|${burnedCalories} / ${targetCalories} kcal|">0 / 2200 kcal</p>
             </article>
         </div>
 
@@ -42,17 +47,21 @@
                 <p class="metric-card__meta" th:text="${streakMessage}">오늘 기록 없음</p>
             </article>
 
-            <article class="summary-card intake-card">
-                <div class="intake-card__content">
-                    <div class="intake-card__chart-wrap">
-                        <canvas id="intakeProgressChart"></canvas>
-                        <div class="intake-card__center">
-                            <strong th:text="${intakePercent} + '%'">0%</strong>
-                            <span>달성</span>
-                        </div>
-                    </div>
-                    <p class="intake-card__meta" th:text="|${intakeCalories} / ${targetCalories} kcal|">0 / 2200 kcal</p>
+            <article class="summary-card progress-card">
+                <div class="progress-card__header">
+                    <span class="progress-card__title">섭취 칼로리</span>
+                    <span class="metric-card__icon">🍽️</span>
                 </div>
+
+                <div class="progress-card__chart-wrap">
+                    <canvas id="intakeProgressChart"></canvas>
+                    <div class="progress-card__center">
+                        <strong th:text="${intakePercent} + '%'">0%</strong>
+                        <span>달성</span>
+                    </div>
+                </div>
+
+                <p class="progress-card__meta" th:text="|${intakeCalories} / ${targetCalories} kcal|">0 / 2200 kcal</p>
             </article>
         </div>
 
