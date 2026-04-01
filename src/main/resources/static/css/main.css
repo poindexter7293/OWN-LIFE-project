@@ -163,33 +163,38 @@ button {
 }
 
 .metric-card,
-.intake-card {
-    min-height: 168px;
-    padding: 22px 20px;
+.progress-card {
+    min-height: 158px;
+    padding: 18px 18px;
 }
 
-.metric-card__header {
+.metric-card__header,
+.progress-card__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
 }
 
-.metric-card__title {
+.metric-card__header {
+    margin-bottom: 16px;
+}
+
+.metric-card__title,
+.progress-card__title {
     color: #9aa0ad;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
 }
 
 .metric-card__icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     background: #f4efff;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .metric-card__icon--mint {
@@ -204,14 +209,14 @@ button {
 }
 
 .metric-card__value {
-    font-size: 3rem;
+    font-size: 2.5rem;
     line-height: 1;
     font-weight: 800;
     letter-spacing: -0.04em;
 }
 
 .metric-card__value--streak {
-    font-size: 3.2rem;
+    font-size: 2.7rem;
 }
 
 .metric-card__unit {
@@ -220,34 +225,33 @@ button {
     padding-bottom: 4px;
 }
 
-.metric-card__meta,
-.intake-card__meta {
-    margin-top: 8px;
+.metric-card__meta {
+    margin-top: 6px;
     color: #9aa0ad;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
 }
 
-.intake-card {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.intake-card__content {
+/* 추가: 원형그래프 카드 */
+.progress-card {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    width: 100%;
+    align-items: stretch;
+    justify-content: flex-start;
 }
 
-.intake-card__chart-wrap {
+.progress-card__header {
+    margin-bottom: 6px;
+}
+
+.progress-card__chart-wrap {
     position: relative;
-    width: 160px;
-    height: 160px;
+    width: 104px;
+    height: 104px;
+    margin: 2px auto 0;
 }
 
-.intake-card__center {
+.progress-card__center {
     position: absolute;
     inset: 0;
     display: flex;
@@ -256,22 +260,30 @@ button {
     justify-content: center;
 }
 
-.intake-card__center strong {
-    font-size: 2rem;
-    font-weight: 800;
+.progress-card__center strong {
+    font-size: 0.95rem;
     line-height: 1;
+    font-weight: 800;
 }
 
-.intake-card__center span {
-    margin-top: 4px;
-    font-size: 13px;
+.progress-card__center span {
+    margin-top: 3px;
+    font-size: 11px;
     color: #8f95a3;
+    font-weight: 700;
+}
+
+.progress-card__meta {
+    margin-top: 8px;
+    text-align: center;
+    color: #8f95a3;
+    font-size: 12px;
     font-weight: 700;
 }
 
 .nutrition-panel {
     padding: 18px 20px;
-    min-height: 346px;
+    min-height: 430px;
 }
 
 .nutrition-panel__title,
@@ -334,12 +346,12 @@ button {
 }
 
 .chart-panel {
-    min-height: 280px;
-    padding: 18px 22px 16px;
+    min-height: 380px;
+    padding: 18px 22px 18px;
 }
 
 .chart-panel__body {
-    height: 220px;
+    height: 310px;
 }
 
 @media (max-width: 1100px) {
@@ -349,6 +361,7 @@ button {
 
     .nutrition-panel {
         grid-column: 1 / -1;
+        min-height: 346px;
     }
 }
 
@@ -390,4 +403,141 @@ button {
     .brand-text {
         font-size: 1.6rem;
     }
+}
+
+/* 중앙 정렬 카드 */
+.metric-card--center {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* 중앙 영역 */
+.metric-card__center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+/* 숫자 중앙 강조 */
+.metric-card--center .metric-card__value {
+    font-size: 2.6rem;
+}
+
+/* 연속기록 중앙 정렬 */
+.metric-card--center .streak-row {
+    justify-content: center;
+}
+
+/* 메타 텍스트 중앙 */
+.metric-card--center .metric-card__meta {
+    text-align: center;
+}
+
+.metric-card__center-content {
+    gap: 4px;
+}
+
+.metric-card,
+.progress-card,
+.nutrition-panel,
+.chart-panel {
+    transition:
+            transform 0.22s ease,
+            box-shadow 0.22s ease,
+            border-color 0.22s ease,
+            background-color 0.22s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 28px rgba(91, 61, 245, 0.08);
+    border-color: #e4defd;
+}
+
+.hover-card:hover .metric-card__icon {
+    transform: scale(1.06);
+}
+
+.metric-card__icon {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card--center {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.metric-card__center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+/* 숫자를 10~15% 정도 위로 */
+.metric-card__center-content--raised {
+    transform: translateY(-12%);
+}
+
+.metric-card--center .metric-card__value {
+    font-size: 2.6rem;
+}
+
+.metric-card--center .streak-row {
+    justify-content: center;
+}
+
+.metric-card--center .metric-card__meta {
+    text-align: center;
+}
+
+.progress-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-card::after,
+.metric-card::after,
+.nutrition-panel::after,
+.chart-panel::after {
+    content: "";
+    position: absolute;
+    inset: auto -30% -60% auto;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(91, 61, 245, 0.06) 0%, rgba(91, 61, 245, 0) 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.progress-card:hover::after,
+.metric-card:hover::after,
+.nutrition-panel:hover::after,
+.chart-panel:hover::after {
+    opacity: 1;
+}
+
+.progress-card__chart-wrap canvas,
+.nutrition-panel__chart-wrap canvas,
+.chart-panel__body canvas {
+    transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.progress-card:hover .progress-card__chart-wrap canvas {
+    transform: scale(1.03);
+}
+
+.nutrition-panel:hover .nutrition-panel__chart-wrap canvas,
+.chart-panel:hover .chart-panel__body canvas {
+    transform: scale(1.01);
 }
