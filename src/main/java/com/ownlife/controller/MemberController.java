@@ -1,8 +1,12 @@
 package com.ownlife.controller;
 
+import com.ownlife.dto.PendingGoogleSignup;
 import com.ownlife.dto.SignupForm;
+import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
+import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.MemberService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -30,6 +34,7 @@ public class MemberController {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
 
     private final MemberService memberService;
+    private final GoogleAuthService googleAuthService;
 
     @ModelAttribute("genderOptions")
     public Member.Gender[] genderOptions() {
@@ -42,7 +47,23 @@ public class MemberController {
         if (!model.containsAttribute("signupForm")) {
             model.addAttribute("signupForm", new SignupForm());
         }
-        applyPageAttributes(model, success);
+        applyPageAttributes(model, success, false);
+        return "main";
+    }
+
+    @GetMapping("/signup/google")
+    public String googleSignupForm(Model model, HttpSession session) {
+        PendingGoogleSignup pendingGoogleSignup = getPendingGoogleSignup(session);
+        if (pendingGoogleSignup == null) {
+            return "redirect:/login?googleError=signup-session-expired";
+        }
+
+        if (!model.containsAttribute("signupForm")) {
+            SignupForm signupForm = new SignupForm();
+            applyGooglePrefill(signupForm, pendingGoogleSignup, true);
+            model.addAttribute("signupForm", signupForm);
+        }
+        applyPageAttributes(model, false, true);
         return "main";
     }
 
@@ -88,6 +109,27 @@ public class MemberController {
         return response;
     }
 
+    @GetMapping("/signup/check-nickname")
+    @ResponseBody
+    public Map<String, Object> checkNickname(@RequestParam String nickname) {
+        String normalizedNickname = trimToNull(nickname);
+        String validationMessage = validateNicknameValue(normalizedNickname);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        if (validationMessage != null) {
+            response.put("available", false);
+            response.put("valid", false);
+            response.put("message", validationMessage);
+            return response;
+        }
+
+        boolean exists = memberService.existsByNickname(normalizedNickname);
+        response.put("available", !exists);
+        response.put("valid", true);
+        response.put("message", exists ? "이미 사용 중인 닉네임입니다." : "사용 가능한 닉네임입니다.");
+        return response;
+    }
+
     @PostMapping("/signup")
     public String signup(@ModelAttribute("signupForm") SignupForm signupForm,
                          BindingResult bindingResult,
@@ -96,7 +138,7 @@ public class MemberController {
         validateSignupForm(signupForm, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, false);
+            applyPageAttributes(model, false, false);
             return "main";
         }
 
@@ -104,18 +146,67 @@ public class MemberController {
         return "redirect:/main";
     }
 
-    private void applyPageAttributes(Model model, boolean success) {
-        model.addAttribute("pageTitle", "회원가입");
+    @PostMapping("/signup/google")
+    public String googleSignup(@ModelAttribute("signupForm") SignupForm signupForm,
+                               BindingResult bindingResult,
+                               Model model,
+                               HttpSession session) {
+        PendingGoogleSignup pendingGoogleSignup = getPendingGoogleSignup(session);
+        if (pendingGoogleSignup == null) {
+            return "redirect:/login?googleError=signup-session-expired";
+        }
+
+        normalizeGoogleSignupForm(signupForm, pendingGoogleSignup);
+        validateGoogleSignupForm(signupForm, bindingResult);
+
+        if (bindingResult.hasErrors()) {
+            applyPageAttributes(model, false, true);
+            return "main";
+        }
+
+        Member member;
+        try {
+            member = memberService.registerGoogleMember(signupForm, pendingGoogleSignup.toGoogleUserProfile());
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            bindingResult.reject("googleSignupFailed", exception.getMessage());
+            applyPageAttributes(model, false, true);
+            return "main";
+        }
+        session.removeAttribute(AuthController.PENDING_GOOGLE_SIGNUP);
+        session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
+        return "redirect:/main";
+    }
+
+    private void applyPageAttributes(Model model, boolean success, boolean googleSignupMode) {
+        model.addAttribute("pageTitle", googleSignupMode ? "Google 추가 회원가입" : "회원가입");
         model.addAttribute("centerFragment", "fragments/center-signup :: centerSignup");
         model.addAttribute("extraCssFiles", List.of("/css/signup.css"));
         model.addAttribute("extraJsFiles", List.of("/js/signup.js"));
         model.addAttribute("signupSuccess", success);
+        model.addAttribute("googleSignupMode", googleSignupMode);
+        model.addAttribute("signupAction", googleSignupMode ? "/signup/google" : "/signup");
+        model.addAttribute("signupHeading", googleSignupMode ? "Google 계정 추가 정보 입력" : "건강한 루틴을 위한 회원가입");
+        model.addAttribute("signupDescriptionText", googleSignupMode
+                ? "Google 인증은 완료되었어요. 닉네임, 성별, 키, 체중 같은 기본 정보를 입력하면 가입이 완료됩니다."
+                : "기본 계정 정보와 기초 프로필만 먼저 입력하고, 세부 목표는 가입 후에 천천히 설정할 수 있어요.");
+        model.addAttribute("signupSubmitLabel", googleSignupMode ? "Google 회원가입 완료" : "회원가입 완료");
+        model.addAttribute("googleAuthEnabled", googleAuthService.isEnabled());
+        model.addAttribute("googleClientId", googleAuthService.getGoogleClientId());
+        model.addAttribute("googleRedirectUrl", googleAuthService.getGoogleRedirectUrl());
     }
 
     private void normalizeForm(SignupForm signupForm) {
         signupForm.setUsername(normalizeIdentity(signupForm.getUsername()));
         signupForm.setNickname(trimToNull(signupForm.getNickname()));
         signupForm.setEmail(normalizeIdentity(signupForm.getEmail()));
+    }
+
+    private void normalizeGoogleSignupForm(SignupForm signupForm, PendingGoogleSignup pendingGoogleSignup) {
+        signupForm.setUsername(null);
+        signupForm.setPassword(null);
+        signupForm.setPasswordConfirm(null);
+        signupForm.setNickname(trimToNull(signupForm.getNickname()));
+        signupForm.setEmail(normalizeIdentity(pendingGoogleSignup.getEmail()));
     }
 
     private void validateSignupForm(SignupForm signupForm, BindingResult bindingResult) {
@@ -126,6 +217,18 @@ public class MemberController {
         validateBirthDate(signupForm, bindingResult);
         validateDecimalRange(signupForm.getHeightCm(), "heightCm", "키는 0보다 커야 합니다.", "키는 300cm 이하로 입력해 주세요.", bindingResult, new BigDecimal("300"));
         validateDecimalRange(signupForm.getWeightKg(), "weightKg", "현재 체중은 0보다 커야 합니다.", "현재 체중은 500kg 이하로 입력해 주세요.", bindingResult, new BigDecimal("500"));
+    }
+
+    private void validateGoogleSignupForm(SignupForm signupForm, BindingResult bindingResult) {
+        validateNickname(signupForm, bindingResult);
+        String emailValidationMessage = validateEmailValue(signupForm.getEmail());
+        if (emailValidationMessage != null) {
+            bindingResult.rejectValue("email", "invalid", emailValidationMessage);
+        }
+        validateGenderRequired(signupForm, bindingResult);
+        validateBirthDate(signupForm, bindingResult);
+        validateRequiredDecimal(signupForm.getHeightCm(), "heightCm", "키를 입력해 주세요.", "키는 0보다 커야 합니다.", "키는 300cm 이하로 입력해 주세요.", bindingResult, new BigDecimal("300"));
+        validateRequiredDecimal(signupForm.getWeightKg(), "weightKg", "현재 체중을 입력해 주세요.", "현재 체중은 0보다 커야 합니다.", "현재 체중은 500kg 이하로 입력해 주세요.", bindingResult, new BigDecimal("500"));
     }
 
     private void validateUsername(SignupForm signupForm, BindingResult bindingResult) {
@@ -159,12 +262,29 @@ public class MemberController {
 
     private void validateNickname(SignupForm signupForm, BindingResult bindingResult) {
         String nickname = signupForm.getNickname();
-        if (!StringUtils.hasText(nickname)) {
-            bindingResult.rejectValue("nickname", "required", "닉네임을 입력해 주세요.");
+        String validationMessage = validateNicknameValue(nickname);
+        if (validationMessage != null) {
+            bindingResult.rejectValue("nickname", "invalid", validationMessage);
             return;
         }
+        if (memberService.existsByNickname(nickname)) {
+            bindingResult.rejectValue("nickname", "duplicate", "이미 사용 중인 닉네임입니다.");
+        }
+    }
+
+    private String validateNicknameValue(String nickname) {
+        if (!StringUtils.hasText(nickname)) {
+            return "닉네임을 입력해 주세요.";
+        }
         if (nickname.length() < 2 || nickname.length() > 50) {
-            bindingResult.rejectValue("nickname", "length", "닉네임은 2자 이상 50자 이하로 입력해 주세요.");
+            return "닉네임은 2자 이상 50자 이하로 입력해 주세요.";
+        }
+        return null;
+    }
+
+    private void validateGenderRequired(SignupForm signupForm, BindingResult bindingResult) {
+        if (signupForm.getGender() == null) {
+            bindingResult.rejectValue("gender", "required", "성별을 선택해 주세요.");
         }
     }
 
@@ -203,6 +323,20 @@ public class MemberController {
         }
     }
 
+    private void validateRequiredDecimal(BigDecimal value,
+                                         String fieldName,
+                                         String requiredMessage,
+                                         String underMinMessage,
+                                         String overMaxMessage,
+                                         BindingResult bindingResult,
+                                         BigDecimal max) {
+        if (value == null) {
+            bindingResult.rejectValue(fieldName, "required", requiredMessage);
+            return;
+        }
+        validateDecimalRange(value, fieldName, underMinMessage, overMaxMessage, bindingResult, max);
+    }
+
     private String validateUsernameValue(String username) {
         if (!StringUtils.hasText(username)) {
             return "아이디를 입력해 주세요.";
@@ -233,6 +367,22 @@ public class MemberController {
             return null;
         }
         return value.trim();
+    }
+
+    private PendingGoogleSignup getPendingGoogleSignup(HttpSession session) {
+        Object attribute = session.getAttribute(AuthController.PENDING_GOOGLE_SIGNUP);
+        return attribute instanceof PendingGoogleSignup ? (PendingGoogleSignup) attribute : null;
+    }
+
+    private void applyGooglePrefill(SignupForm signupForm, PendingGoogleSignup pendingGoogleSignup, boolean fillNicknameIfEmpty) {
+        signupForm.setEmail(normalizeIdentity(pendingGoogleSignup.getEmail()));
+        if (fillNicknameIfEmpty && !StringUtils.hasText(signupForm.getNickname())) {
+            signupForm.setNickname(trimToNull(pendingGoogleSignup.getName()));
+        }
+    }
+
+    private SessionMember toSessionMember(Member member) {
+        return new SessionMember(member.getMemberId(), member.getUsername(), member.getNickname(), member.getRole());
     }
 }
 

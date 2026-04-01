@@ -95,7 +95,7 @@ class MyPageControllerTest {
         private int updateCallCount;
 
         StubMemberService() {
-            super(null);
+            super(null, null, null);
             member = new Member();
             member.setMemberId(1L);
             member.setUsername("tester01");

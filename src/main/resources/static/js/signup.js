@@ -14,11 +14,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const passwordConfirmInput = document.getElementById('passwordConfirm');
     const passwordMatchHint = document.querySelector('[data-password-match]');
     const submitButton = form.querySelector('button[type="submit"]');
+    const googleSignupMode = form.getAttribute('data-google-signup-mode') === 'true';
 
     const usernamePattern = /^[a-z0-9][a-z0-9._-]{3,49}$/;
     const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     const availabilityState = {
         username: { value: null, available: false, pending: false },
+        nickname: { value: null, available: false, pending: false },
         email: { value: null, available: false, pending: false }
     };
 
@@ -45,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (emailInput) {
+    if (emailInput && !googleSignupMode) {
         emailInput.addEventListener('blur', function () {
             emailInput.value = emailInput.value.trim().toLowerCase();
             validateEmailField(true);
@@ -59,11 +61,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (nicknameInput) {
         nicknameInput.addEventListener('input', function () {
-            validateNicknameField();
+            availabilityState.nickname = { value: null, available: false, pending: false };
+            validateNicknameField(false);
         });
         nicknameInput.addEventListener('blur', function () {
             trimValue(nicknameInput);
-            validateNicknameField();
+            validateNicknameField(true);
         });
     }
 
@@ -193,12 +196,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     };
 
-    const validateNicknameField = function () {
+    const validateNicknameField = function (checkAvailability) {
         if (!nicknameInput) {
             return true;
         }
 
         const value = nicknameInput.value.trim();
+        nicknameInput.value = value;
         if (!value) {
             setFeedback('nickname', '닉네임을 입력해 주세요.', 'error');
             return false;
@@ -208,7 +212,42 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         }
 
-        setFeedback('nickname', '사용 가능한 형식의 닉네임입니다.', 'success');
+        if (!checkAvailability) {
+            setFeedback('nickname', '형식이 올바릅니다. 입력을 마치면 중복을 확인합니다.', 'success');
+            return true;
+        }
+
+        if (availabilityState.nickname.value === value && !availabilityState.nickname.pending) {
+            setFeedback('nickname', availabilityState.nickname.available ? '사용 가능한 닉네임입니다.' : '이미 사용 중인 닉네임입니다.', availabilityState.nickname.available ? 'success' : 'error');
+            return availabilityState.nickname.available;
+        }
+
+        availabilityState.nickname.pending = true;
+        setFeedback('nickname', '닉네임 중복을 확인하는 중입니다...', 'checking');
+        setSubmitDisabled(true);
+
+        fetch('/signup/check-nickname?nickname=' + encodeURIComponent(value), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                availabilityState.nickname = {
+                    value: value,
+                    available: !!data.available,
+                    pending: false
+                };
+                setFeedback('nickname', data.message, data.available ? 'success' : 'error');
+            })
+            .catch(function () {
+                availabilityState.nickname = { value: value, available: false, pending: false };
+                setFeedback('nickname', '닉네임 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+            })
+            .finally(function () {
+                setSubmitDisabled(false);
+            });
+
         return true;
     };
 
@@ -348,17 +387,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('submit', async function (event) {
         const localValid = [
-            validateUsernameField(false),
-            validateNicknameField(),
-            validateEmailField(false),
-            validatePasswordField(),
+            googleSignupMode ? true : validateUsernameField(false),
+            validateNicknameField(false),
+            googleSignupMode ? true : validateEmailField(false),
+            googleSignupMode ? true : validatePasswordField(),
             validateBirthDateField(),
             validateNumberField(heightInput, 'heightCm', 300, '키는 0보다 커야 합니다.', '키는 300cm 이하로 입력해 주세요.'),
             validateNumberField(weightInput, 'weightKg', 500, '현재 체중은 0보다 커야 합니다.', '현재 체중은 500kg 이하로 입력해 주세요.')
         ].every(Boolean);
 
         updatePasswordMatchHint();
-        if (!localValid || (passwordInput && passwordConfirmInput && passwordInput.value !== passwordConfirmInput.value)) {
+        if (!localValid || (!googleSignupMode && passwordInput && passwordConfirmInput && passwordInput.value !== passwordConfirmInput.value)) {
             event.preventDefault();
             return;
         }
@@ -366,13 +405,21 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         setSubmitDisabled(true);
 
-        validateUsernameField(true);
-        validateEmailField(true);
+        validateNicknameField(true);
+        if (!googleSignupMode) {
+            validateUsernameField(true);
+            validateEmailField(true);
+        }
 
-        const results = await Promise.all([
-            waitForAvailabilityCheck('username'),
-            waitForAvailabilityCheck('email')
-        ]);
+        const checks = googleSignupMode
+            ? [waitForAvailabilityCheck('nickname')]
+            : [
+                waitForAvailabilityCheck('username'),
+                waitForAvailabilityCheck('nickname'),
+                waitForAvailabilityCheck('email')
+            ];
+
+        const results = await Promise.all(checks);
 
         setSubmitDisabled(false);
         if (results.every(Boolean)) {
