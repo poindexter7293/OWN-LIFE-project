@@ -41,7 +41,11 @@
                th:href="@{/board}">
                 게시판
             </a>
-            <a class="nav-item" th:href="@{/mypage}">마이페이지</a>
+            <a class="nav-item"
+               th:classappend="${centerFragment != null and #strings.contains(centerFragment, 'center-mypage')} ? ' active' : ''"
+               th:href="@{/mypage}">
+                마이페이지
+            </a>
         </div>
     </div>
 </div>

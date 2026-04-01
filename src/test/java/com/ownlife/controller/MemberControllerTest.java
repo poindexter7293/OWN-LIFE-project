@@ -1,11 +1,15 @@
 package com.ownlife.controller;
 
+import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.PendingGoogleSignup;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
+import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -26,7 +30,7 @@ class MemberControllerTest {
     @BeforeEach
     void setUp() {
         memberService = new StubMemberService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(memberService)).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(memberService, new GoogleAuthService("test-client-id", "http://localhost:8081/login/google/auth"))).build();
     }
 
     @Test
@@ -37,7 +41,8 @@ class MemberControllerTest {
                 .andExpect(view().name("main"))
                 .andExpect(model().attributeExists("signupForm"))
                 .andExpect(model().attribute("pageTitle", "회원가입"))
-                .andExpect(model().attribute("centerFragment", "fragments/center-signup :: centerSignup"));
+                .andExpect(model().attribute("centerFragment", "fragments/center-signup :: centerSignup"))
+                .andExpect(model().attribute("googleAuthEnabled", true));
     }
 
     @Test
@@ -78,6 +83,24 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("중복 닉네임은 회원가입 화면에 오류와 함께 다시 표시한다")
+    void signupDuplicateNickname() throws Exception {
+        memberService.duplicateNickname = "길동이";
+
+        mockMvc.perform(post("/signup")
+                        .param("username", "honggildong")
+                        .param("password", "Password123!")
+                        .param("passwordConfirm", "Password123!")
+                        .param("nickname", "길동이")
+                        .param("email", "hong@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attributeHasFieldErrors("signupForm", "nickname"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, memberService.registerCallCount);
+    }
+
+    @Test
     @DisplayName("아이디 중복 확인 API는 사용 가능 여부를 반환한다")
     void checkUsernameAvailability() throws Exception {
         mockMvc.perform(get("/signup/check-username").param("username", "newuser01"))
@@ -103,6 +126,22 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("닉네임 중복 확인 API는 사용 가능 여부를 반환한다")
+    void checkNicknameAvailability() throws Exception {
+        mockMvc.perform(get("/signup/check-nickname").param("nickname", "새닉네임"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valid").value(true))
+                .andExpect(jsonPath("$.available").value(true));
+
+        memberService.duplicateNickname = "중복닉네임";
+
+        mockMvc.perform(get("/signup/check-nickname").param("nickname", "중복닉네임"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valid").value(true))
+                .andExpect(jsonPath("$.available").value(false));
+    }
+
+    @Test
     @DisplayName("목표 관련 값 없이도 회원가입할 수 있다")
     void signupWithoutGoalFields() throws Exception {
         mockMvc.perform(post("/signup")
@@ -117,14 +156,50 @@ class MemberControllerTest {
         org.junit.jupiter.api.Assertions.assertEquals(1, memberService.registerCallCount);
     }
 
+    @Test
+    @DisplayName("Google 추가정보 회원가입 페이지는 세션의 이메일과 닉네임을 미리 채워 보여준다")
+    void googleSignupPage() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AuthController.PENDING_GOOGLE_SIGNUP, new PendingGoogleSignup("google-subject-1", "google@example.com", "구글닉네임", null));
+
+        mockMvc.perform(get("/signup/google").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("googleSignupMode", true))
+                .andExpect(model().attribute("signupAction", "/signup/google"))
+                .andExpect(model().attributeExists("signupForm"));
+    }
+
+    @Test
+    @DisplayName("Google 추가정보 회원가입 완료 시 회원을 생성하고 로그인 세션을 저장한다")
+    void googleSignupSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AuthController.PENDING_GOOGLE_SIGNUP, new PendingGoogleSignup("google-subject-1", "google@example.com", "구글닉네임", null));
+
+        mockMvc.perform(post("/signup/google")
+                        .session(session)
+                        .param("nickname", "헬스입문")
+                        .param("email", "tampered@example.com")
+                        .param("gender", "F")
+                        .param("heightCm", "165.2")
+                        .param("weightKg", "58.3"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/main"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.googleRegisterCallCount);
+        org.junit.jupiter.api.Assertions.assertNotNull(session.getAttribute(AuthController.LOGIN_MEMBER));
+    }
+
     private static class StubMemberService extends MemberService {
 
         private String duplicateUsername;
+        private String duplicateNickname;
         private String duplicateEmail;
         private int registerCallCount;
+        private int googleRegisterCallCount;
 
         StubMemberService() {
-            super(null);
+            super(null, null, null);
         }
 
         @Override
@@ -138,9 +213,27 @@ class MemberControllerTest {
         }
 
         @Override
+        public boolean existsByNickname(String nickname) {
+            return nickname != null && nickname.equals(duplicateNickname);
+        }
+
+        @Override
         public Member register(SignupForm signupForm) {
             registerCallCount++;
             return new Member();
+        }
+
+        @Override
+        public Member registerGoogleMember(SignupForm signupForm, GoogleUserProfile googleUserProfile) {
+            googleRegisterCallCount++;
+            Member member = new Member();
+            member.setMemberId(99L);
+            member.setUsername("google_generated_99");
+            member.setNickname(signupForm.getNickname());
+            member.setRole(Member.Role.USER);
+            member.setEmail(googleUserProfile.getEmail());
+            member.setLoginType(Member.LoginType.GOOGLE);
+            return member;
         }
     }
 }

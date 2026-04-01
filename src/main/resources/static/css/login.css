@@ -198,6 +198,48 @@
     border: 1px solid rgba(124, 153, 196, 0.28);
 }
 
+.social-login-panel {
+    position: relative;
+    z-index: 1;
+    margin-top: 22px;
+}
+
+.social-login-divider {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.social-login-divider::before {
+    content: "";
+    position: absolute;
+    inset: 50% 0 auto;
+    border-top: 1px solid rgba(124, 153, 196, 0.24);
+}
+
+.social-login-divider span {
+    position: relative;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #8090ae;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.social-login-description {
+    margin-bottom: 14px;
+    color: #66789c;
+    font-size: 0.94rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.social-login-panel .g_id_signin {
+    display: flex;
+    justify-content: center;
+}
+
 @media (max-width: 768px) {
     .login-card {
         padding: 26px 18px;
