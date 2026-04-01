@@ -14,35 +14,36 @@
 <body>
 <div class="page-bg">
     <div class="main-shell">
-
-        <!-- header + nav 통합 -->
         <header th:replace="~{fragments/header :: siteHeader}"></header>
 
-        <!-- center -->
         <main class="content-wrap">
             <section th:replace="~{__${centerFragment}__}"></section>
         </main>
     </div>
 </div>
 
-<script th:src="@{/js/main.js}"></script>
-<script th:if="${extraJsFiles != null}"
-        th:each="jsFile : ${extraJsFiles}"
-        th:src="${jsFile}"></script>
 <script th:inline="javascript">
     window.dashboardData = {
         weight: /*[[${weight}]]*/ null,
-        weightDiff: /*[[${weightDiff}]]*/ null,
-        burnedCalories: /*[[${burnedCalories}]]*/ null,
-        burnedDiff: /*[[${burnedDiff}]]*/ null,
-        intakeCalories: /*[[${intakeCalories}]]*/ null,
-        targetCalories: /*[[${targetCalories}]]*/ null,
-        carbPercent: /*[[${carbPercent}]]*/ null,
-        fatPercent: /*[[${fatPercent}]]*/ null,
-        proteinPercent: /*[[${proteinPercent}]]*/ null,
+        weightDiff: /*[[${weightDiff}]]*/ 0,
+        streakDays: /*[[${streakDays}]]*/ 0,
+        burnedCalories: /*[[${burnedCalories}]]*/ 0,
+        intakeCalories: /*[[${intakeCalories}]]*/ 0,
+        targetCalories: /*[[${targetCalories}]]*/ 0,
+        intakePercent: /*[[${intakePercent}]]*/ 0,
+        carbPercent: /*[[${carbPercent}]]*/ 0,
+        fatPercent: /*[[${fatPercent}]]*/ 0,
+        proteinPercent: /*[[${proteinPercent}]]*/ 0,
+        carbGram: /*[[${carbGram}]]*/ 0,
+        fatGram: /*[[${fatGram}]]*/ 0,
+        proteinGram: /*[[${proteinGram}]]*/ 0,
         weightLabels: /*[[${weightLabels}]]*/ [],
         weightData: /*[[${weightData}]]*/ []
     };
 </script>
+<script th:src="@{/js/main.js}"></script>
+<script th:if="${extraJsFiles != null}"
+        th:each="jsFile : ${extraJsFiles}"
+        th:src="${jsFile}"></script>
 </body>
 </html>

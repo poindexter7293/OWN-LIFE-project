@@ -3,27 +3,23 @@
 <body>
 <div th:fragment="siteHeader" class="header-wrap">
 
-    <!-- top header -->
     <div class="top-header">
         <div class="brand-area">
-            <a th:href="@{/}" style="display:flex; align-items:center; text-decoration:none; color:inherit;">
-                <div class="brand-logo">◩</div>
-                <div class="brand-text">OWN LIFE</div>
+            <a class="brand-link" th:href="@{/}">
+                <div class="brand-logo">O</div>
+                <div class="brand-text">OWN라이프</div>
             </a>
         </div>
 
         <div class="auth-menu" th:if="${session.loginMember == null}">
-            <a th:href="@{/login}">로그인</a>
-            <a th:href="@{/signup}">회원가입</a>
+            <a class="auth-pill" th:href="@{/login}">로그인</a>
+            <a class="auth-pill auth-pill--primary" th:href="@{/signup}">회원가입</a>
         </div>
 
         <div class="auth-menu" th:if="${session.loginMember != null}">
             <span th:text="|${session.loginMember.nickname}님|"></span>
             <form th:action="@{/logout}" method="post" style="display:inline;">
-                <button type="submit"
-                        style="border:none; background:none; color:inherit; font:inherit; cursor:pointer; padding:0;">
-                    로그아웃
-                </button>
+                <button type="submit" class="auth-pill">로그아웃</button>
             </form>
         </div>
     </div>
@@ -36,26 +32,14 @@
                 홈
             </a>
 
-            <a class="nav-item"
-               th:href="@{/diet}">
-                식단 관리
-            </a>
-
-            <a class="nav-item"
-               th:href="@{/exercise}">
-                운동 일지
-            </a>
-
+            <a class="nav-item" th:href="@{/diet}">식단 관리</a>
+            <a class="nav-item" th:href="@{/exercise}">운동 일지</a>
             <a class="nav-item"
                th:classappend="${centerFragment != null and #strings.contains(centerFragment, 'center-board')} ? ' active' : ''"
                th:href="@{/board}">
-                자유게시판
+                게시판
             </a>
-
-            <a class="nav-item"
-               th:href="@{/mypage}">
-                마이페이지
-            </a>
+            <a class="nav-item" th:href="@{/mypage}">마이페이지</a>
         </div>
     </div>
 </div>

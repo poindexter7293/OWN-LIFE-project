@@ -3,49 +3,89 @@
 <body>
 <div th:fragment="centerDashboard" class="dashboard-container">
 
-    <!-- 상단 큰 카드 -->
-    <section class="hero-card card">
-        <div class="hero-summary">
-            <span class="hero-label">체중</span>
-            <span class="hero-value" th:text="${weight} + 'kg'">74.3kg</span>
-            <span class="hero-diff positive" th:text="'▲ ' + ${weightDiff} + 'kg'">▲ 0.3kg</span>
+    <section class="dashboard-top-grid">
+        <div class="summary-column">
+            <article class="summary-card metric-card">
+                <div class="metric-card__header">
+                    <span class="metric-card__title">체중</span>
+                    <span class="metric-card__icon">⚖</span>
+                </div>
+                <div class="metric-card__value-row">
+                    <strong class="metric-card__value" th:text="${weight} != null ? ${weight} + 'kg' : '—kg'">—kg</strong>
+                </div>
+                <p class="metric-card__meta" th:text="${weightDiffText}">기록 없음</p>
+            </article>
+
+            <article class="summary-card metric-card">
+                <div class="metric-card__header">
+                    <span class="metric-card__title">소모</span>
+                    <span class="metric-card__icon metric-card__icon--mint">🔥</span>
+                </div>
+                <div class="metric-card__value-row">
+                    <strong class="metric-card__value" th:text="${burnedCalories}">0</strong>
+                    <span class="metric-card__unit">kcal</span>
+                </div>
+                <p class="metric-card__meta" th:text="|남은 ${remainingBurnCalories}kcal|">남은 2200kcal</p>
+            </article>
         </div>
-        <div class="hero-chart-wrap">
-            <canvas id="weightChart"></canvas>
+
+        <div class="summary-column">
+            <article class="summary-card metric-card">
+                <div class="metric-card__header">
+                    <span class="metric-card__title">연속 기록</span>
+                    <span class="metric-card__icon">🔗</span>
+                </div>
+                <div class="streak-row">
+                    <strong class="metric-card__value metric-card__value--streak" th:text="${streakDays}">0</strong>
+                    <span class="metric-card__unit">일</span>
+                </div>
+                <p class="metric-card__meta" th:text="${streakMessage}">오늘 기록 없음</p>
+            </article>
+
+            <article class="summary-card intake-card">
+                <div class="intake-card__content">
+                    <div class="intake-card__chart-wrap">
+                        <canvas id="intakeProgressChart"></canvas>
+                        <div class="intake-card__center">
+                            <strong th:text="${intakePercent} + '%'">0%</strong>
+                            <span>달성</span>
+                        </div>
+                    </div>
+                    <p class="intake-card__meta" th:text="|${intakeCalories} / ${targetCalories} kcal|">0 / 2200 kcal</p>
+                </div>
+            </article>
         </div>
+
+        <article class="summary-card nutrition-panel">
+            <div class="nutrition-panel__title">오늘의 영양소</div>
+            <div class="nutrition-panel__body">
+                <div class="nutrition-panel__chart-wrap">
+                    <canvas id="macroChart"></canvas>
+                </div>
+
+                <div class="nutrition-panel__legend">
+                    <div class="macro-item macro-item--carb">
+                        <span class="macro-item__label">탄수화물</span>
+                        <strong th:text="${carbGram} + 'g'">0g</strong>
+                    </div>
+                    <div class="macro-item macro-item--fat">
+                        <span class="macro-item__label">지방</span>
+                        <strong th:text="${fatGram} + 'g'">0g</strong>
+                    </div>
+                    <div class="macro-item macro-item--protein">
+                        <span class="macro-item__label">단백질</span>
+                        <strong th:text="${proteinGram} + 'g'">0g</strong>
+                    </div>
+                </div>
+            </div>
+        </article>
     </section>
 
-    <!-- 하단 3개 카드 -->
-    <section class="dashboard-grid">
-        <article class="mini-card card">
-            <div class="mini-chip">✓ 소모칼로리</div>
-            <div class="mini-topline">
-                <strong th:text="${burnedCalories}">540</strong><span> kcal</span>
-            </div>
-            <div class="mini-sub negative" th:text="'▲ ' + ${burnedDiff}">▲ 325</div>
-            <div class="mini-chart-wrap">
-                <canvas id="burnChart"></canvas>
-            </div>
-        </article>
-
-        <article class="mini-card card">
-            <div class="mini-chip">✓ 섭취칼로리</div>
-            <div class="mini-topline">
-                <strong th:text="${intakeCalories}">2244</strong><span> kcal</span>
-            </div>
-            <div class="mini-sub success" th:text="'목표 - ' + ${targetCalories} + 'kcal'">목표 - 2200kcal</div>
-            <div class="mini-chart-wrap">
-                <canvas id="intakeChart"></canvas>
-            </div>
-        </article>
-
-        <article class="mini-card card nutrition-card">
-            <div class="mini-chip">✓ 영양소 비율</div>
-            <div class="donut-wrap">
-                <canvas id="macroChart"></canvas>
-                <div class="donut-center-text" th:text="${carbPercent} + '%'">61%</div>
-            </div>
-        </article>
+    <section class="summary-card chart-panel">
+        <div class="chart-panel__title">주간 체중</div>
+        <div class="chart-panel__body">
+            <canvas id="weightChart"></canvas>
+        </div>
     </section>
 
 </div>
