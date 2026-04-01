@@ -1,0 +1,258 @@
+.diet-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.diet-header-card,
+.diet-summary-card,
+.diet-form-card,
+.diet-guide-card,
+.diet-list-card {
+    background: #ffffff;
+    border: 1px solid #e9eef5;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(31, 79, 163, 0.06);
+}
+
+.diet-header-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.diet-header-left h2 {
+    margin: 0 0 8px;
+    font-size: 32px;
+    font-weight: 800;
+    color: #203864;
+}
+
+.diet-header-left p {
+    margin: 0;
+    color: #6f7d95;
+    font-size: 15px;
+}
+
+.diet-date-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.diet-date-form input[type="date"] {
+    border: 1px solid #d7dfeb;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 14px;
+    background: #fff;
+}
+
+.diet-date-form button,
+.submit-btn,
+.delete-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.diet-date-form button,
+.submit-btn {
+    background: linear-gradient(135deg, #73a7ff, #5b8def);
+    color: #fff;
+}
+
+.diet-date-form button:hover,
+.submit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(91, 141, 239, 0.25);
+}
+
+.diet-summary-card h3,
+.diet-form-card h3,
+.diet-guide-card h3,
+.diet-list-card h3 {
+    margin: 0 0 18px;
+    font-size: 20px;
+    font-weight: 800;
+    color: #203864;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.summary-item {
+    background: #f8fbff;
+    border: 1px solid #e4edf9;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+}
+
+.summary-item .label {
+    display: block;
+    margin-bottom: 10px;
+    color: #6f7d95;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.summary-item strong {
+    font-size: 28px;
+    font-weight: 800;
+    color: #203864;
+}
+
+.summary-item .unit {
+    margin-left: 6px;
+    color: #6f7d95;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.diet-content-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+}
+
+.diet-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-row label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #31496f;
+}
+
+.form-row input,
+.form-row select {
+    width: 100%;
+    border: 1px solid #d7dfeb;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.guide-list {
+    margin: 0;
+    padding-left: 18px;
+    color: #51627f;
+    line-height: 1.8;
+    font-size: 14px;
+}
+
+.diet-table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border-radius: 14px;
+}
+
+.diet-table thead th {
+    background: #f4f8fd;
+    color: #31496f;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 14px 10px;
+    text-align: center;
+    border-bottom: 1px solid #e4edf9;
+}
+
+.diet-table tbody td {
+    padding: 14px 10px;
+    text-align: center;
+    border-bottom: 1px solid #eef3f9;
+    font-size: 14px;
+    color: #334766;
+}
+
+.diet-table tbody tr:hover {
+    background: #fbfdff;
+}
+
+.meal-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eaf2ff;
+    color: #3767c7;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.delete-btn {
+    background: #ffe8ea;
+    color: #d14b5a;
+}
+
+.delete-btn:hover {
+    background: #ffd9de;
+}
+
+.empty-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    border: 1px dashed #d9e3f0;
+    border-radius: 16px;
+    color: #7b8aa5;
+    background: #fafcff;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .diet-content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .diet-header-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .diet-date-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .diet-table {
+        display: block;
+        overflow-x: auto;
+    }
+}

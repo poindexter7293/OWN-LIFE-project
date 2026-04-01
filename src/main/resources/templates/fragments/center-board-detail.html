@@ -7,7 +7,7 @@
 
         <div style="border:1px solid #ddd; border-radius:10px; padding:20px; background:white;">
             <div style="color:#666; margin-bottom:20px;">
-                작성자ID: <span th:text="${post.memberId}">1</span> |
+                작성자: <span th:text="${post.nickname}">닉네임</span> |
                 조회수: <span th:text="${post.viewCount}">0</span> |
                 작성일: <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">2026-03-30</span>
             </div>
@@ -47,7 +47,7 @@
                  style="padding:14px 0; border-bottom:1px solid #eee;">
 
                 <div style="font-size:14px; color:#666; margin-bottom:6px;">
-                    작성자ID: <span th:text="${post.nickname}">닉네임</span>|
+                    작성자ID: <span th:text="${comment.nickname}">닉네임</span>|
                     작성일: <span th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}">2026-03-30 12:00</span>
                 </div>
 
