@@ -82,3 +82,49 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+document.addEventListener('DOMContentLoaded', function () {
+    initExerciseModeTabs();
+    initQuickTabs();
+});
+
+function initExerciseModeTabs() {
+    const modeTabs = document.querySelectorAll('.exercise-mode-tab');
+    const modePanels = document.querySelectorAll('.exercise-mode-panel');
+
+    modeTabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const targetId = this.dataset.modeTarget;
+
+            modeTabs.forEach(btn => btn.classList.remove('active'));
+            modePanels.forEach(panel => panel.classList.remove('is-active'));
+
+            this.classList.add('active');
+
+            const targetPanel = document.getElementById(targetId);
+            if (targetPanel) {
+                targetPanel.classList.add('is-active');
+            }
+        });
+    });
+}
+
+function initQuickTabs() {
+    const quickTabs = document.querySelectorAll('.exercise-quick-tabs .exercise-chip');
+    const quickForms = document.querySelectorAll('.exercise-quick-form');
+
+    quickTabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const targetId = this.dataset.quickTarget;
+
+            quickTabs.forEach(btn => btn.classList.remove('active'));
+            quickForms.forEach(form => form.classList.remove('is-active'));
+
+            this.classList.add('active');
+
+            const targetForm = document.getElementById(targetId);
+            if (targetForm) {
+                targetForm.classList.add('is-active');
+            }
+        });
+    });
+}

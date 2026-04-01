@@ -43,6 +43,7 @@ public class ExerciseType {
     public enum Category {
         COUNT_SET,
         TIME,
-        ROUTE
+        ROUTE,
+        SELF
     }
 }
