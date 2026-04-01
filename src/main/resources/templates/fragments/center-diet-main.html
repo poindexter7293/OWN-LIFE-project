@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="centerDietMain" class="diet-page">
+
+    <section class="diet-header-card">
+        <div class="diet-header-left">
+            <h2>식단 관리</h2>
+            <p th:text="${selectedDate}">2026-04-01</p>
+        </div>
+
+        <form th:action="@{/diet}" method="get" class="diet-date-form">
+            <input type="date" name="date" th:value="${selectedDate}">
+            <button type="submit">조회</button>
+        </form>
+    </section>
+
+    <section class="diet-summary-card">
+        <h3>오늘 섭취 요약</h3>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <span class="label">칼로리</span>
+                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['kcal'] : 0, 1, 1)}">0.0</strong>
+                <span class="unit">kcal</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">탄수화물</span>
+                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['carb'] : 0, 1, 1)}">0.0</strong>
+                <span class="unit">g</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">단백질</span>
+                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['protein'] : 0, 1, 1)}">0.0</strong>
+                <span class="unit">g</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">지방</span>
+                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['fat'] : 0, 1, 1)}">0.0</strong>
+                <span class="unit">g</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="diet-content-grid">
+        <section class="diet-form-card">
+            <h3>식단 추가</h3>
+
+            <form th:action="@{/diet/add}" method="post" class="diet-form">
+                <input type="hidden" name="mealDate" th:value="${selectedDate}">
+
+                <div class="form-row">
+                    <label for="mealType">식사 구분</label>
+                    <select id="mealType" name="mealType" required>
+                        <option value="">선택</option>
+                        <option value="BREAKFAST">아침</option>
+                        <option value="LUNCH">점심</option>
+                        <option value="DINNER">저녁</option>
+                        <option value="SNACK">간식</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="foodId">음식</label>
+                    <select id="foodId" name="foodId" required>
+                        <option value="">음식 선택</option>
+                        <option th:each="food : ${foodList}"
+                                th:value="${food.foodId}"
+                                th:text="${food.foodName}">
+                            음식명
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="count">개수</label>
+                    <input type="number" id="count" name="count" min="1" value="1" required>
+                </div>
+
+                <div class="form-row">
+                    <button type="submit" class="submit-btn">추가하기</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="diet-guide-card">
+            <h3>입력 가이드</h3>
+            <ul class="guide-list">
+                <li>음식은 미리 등록된 목록에서 선택합니다.</li>
+                <li>개수 입력 시 내부적으로 기준 g로 환산됩니다.</li>
+                <li>기록된 값 기준으로 칼로리와 영양소가 자동 계산됩니다.</li>
+            </ul>
+        </section>
+    </section>
+
+    <section class="diet-list-card">
+        <h3>오늘 식단 기록</h3>
+
+        <div th:if="${mealLogs == null or #lists.isEmpty(mealLogs)}" class="empty-box">
+            등록된 식단이 없습니다.
+        </div>
+
+        <table th:if="${mealLogs != null and !#lists.isEmpty(mealLogs)}" class="diet-table">
+            <thead>
+            <tr>
+                <th>식사구분</th>
+                <th>음식명</th>
+                <th>섭취량(g)</th>
+                <th>칼로리</th>
+                <th>탄수화물</th>
+                <th>단백질</th>
+                <th>지방</th>
+                <th>삭제</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="meal : ${mealLogs}">
+                <td>
+                    <span class="meal-badge"
+                          th:switch="${meal.mealType}">
+                        <span th:case="'BREAKFAST'">아침</span>
+                        <span th:case="'LUNCH'">점심</span>
+                        <span th:case="'DINNER'">저녁</span>
+                        <span th:case="*">간식</span>
+                    </span>
+                </td>
+                <td th:text="${meal.foodNameSnapshot}">달걀</td>
+                <td th:text="${#numbers.formatDecimal(meal.intakeG, 1, 1)}">120.0</td>
+                <td th:text="${#numbers.formatDecimal(meal.caloriesKcal, 1, 1)}">186.0</td>
+                <td th:text="${#numbers.formatDecimal(meal.carbG, 1, 1)}">1.3</td>
+                <td th:text="${#numbers.formatDecimal(meal.proteinG, 1, 1)}">15.6</td>
+                <td th:text="${#numbers.formatDecimal(meal.fatG, 1, 1)}">13.2</td>
+                <td>
+                    <form th:action="@{/diet/delete/{mealLogId}(mealLogId=${meal.mealLogId})}" method="post">
+                        <input type="hidden" name="date" th:value="${selectedDate}">
+                        <button type="submit" class="delete-btn">삭제</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+</div>
+</body>
+</html>
