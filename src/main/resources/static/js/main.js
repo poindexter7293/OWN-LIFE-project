@@ -5,6 +5,99 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const data = window.dashboardData;
 
+    const animateNumber = ({
+                               element,
+                               endValue,
+                               duration = 1200,
+                               decimals = 0,
+                               suffix = '',
+                               prefix = '',
+                               formatter = null
+                           }) => {
+        if (!element) return;
+
+        const startTime = performance.now();
+        const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+        const frame = (now) => {
+            const progress = Math.min((now - startTime) / duration, 1);
+            const eased = easeOutCubic(progress);
+
+            let current = endValue * eased;
+
+            if (decimals === 0) {
+                current = Math.round(current);
+            } else {
+                current = Number(current.toFixed(decimals));
+            }
+
+            if (formatter) {
+                element.textContent = formatter(current);
+            } else {
+                element.textContent = `${prefix}${current}${suffix}`;
+            }
+
+            if (progress < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                if (formatter) {
+                    element.textContent = formatter(endValue);
+                } else if (decimals === 0) {
+                    element.textContent = `${prefix}${Math.round(endValue)}${suffix}`;
+                } else {
+                    element.textContent = `${prefix}${Number(endValue).toFixed(decimals)}${suffix}`;
+                }
+            }
+        };
+
+        requestAnimationFrame(frame);
+    };
+
+    const runCountAnimations = () => {
+        document.querySelectorAll('.count-up-weight').forEach((el) => {
+            const target = Number(el.dataset.target || 0);
+            animateNumber({
+                element: el,
+                endValue: target,
+                duration: 1400,
+                decimals: 1,
+                formatter: (value) => `${Number(value).toFixed(1)}kg`
+            });
+        });
+
+        document.querySelectorAll('.count-up-int').forEach((el) => {
+            const target = Number(el.dataset.target || 0);
+            animateNumber({
+                element: el,
+                endValue: target,
+                duration: 1100,
+                decimals: 0
+            });
+        });
+
+        document.querySelectorAll('.count-up-percent').forEach((el) => {
+            const target = Number(el.dataset.target || 0);
+            animateNumber({
+                element: el,
+                endValue: target,
+                duration: 1200,
+                decimals: 0,
+                suffix: '%'
+            });
+        });
+
+        document.querySelectorAll('.count-up-gram').forEach((el) => {
+            const target = Number(el.dataset.target || 0);
+            animateNumber({
+                element: el,
+                endValue: target,
+                duration: 1300,
+                decimals: 0,
+                suffix: 'g'
+            });
+        });
+    };
+
     const commonNoLegend = {
         responsive: true,
         maintainAspectRatio: false,
@@ -12,6 +105,99 @@ document.addEventListener('DOMContentLoaded', function () {
             legend: { display: false },
             tooltip: { enabled: true }
         }
+    };
+
+    const lineDelayAnimation = {
+        x: {
+            type: 'number',
+            easing: 'easeOutCubic',
+            duration: 500,
+            from: NaN,
+            delay(ctx) {
+                if (ctx.type !== 'data' || ctx.xStarted) return 0;
+                ctx.xStarted = true;
+                return ctx.dataIndex * 140;
+            }
+        },
+        y: {
+            type: 'number',
+            easing: 'easeOutCubic',
+            duration: 500,
+            from(ctx) {
+                if (ctx.type !== 'data') {
+                    return ctx.chart.scales.y.getPixelForValue(ctx.chart.scales.y.min);
+                }
+
+                const meta = ctx.chart.getDatasetMeta(ctx.datasetIndex);
+                const prev = ctx.index === 0
+                    ? meta.data[0].getProps(['y'], true).y
+                    : meta.data[ctx.index - 1].getProps(['y'], true).y;
+
+                return prev;
+            },
+            delay(ctx) {
+                if (ctx.type !== 'data' || ctx.yStarted) return 0;
+                ctx.yStarted = true;
+                return ctx.dataIndex * 140;
+            }
+        }
+    };
+
+    const animateDoughnutFill = (chart, targetPercent, duration = 1200) => {
+        const startTime = performance.now();
+        const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+        const frame = (now) => {
+            const progress = Math.min((now - startTime) / duration, 1);
+            const eased = easeOutCubic(progress);
+
+            const currentPercent = targetPercent * eased;
+            const remain = Math.max(0, 100 - currentPercent);
+
+            chart.data.datasets[0].data = [currentPercent, remain];
+            chart.update('none');
+
+            if (progress < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                chart.data.datasets[0].data = [targetPercent, Math.max(0, 100 - targetPercent)];
+                chart.update('none');
+            }
+        };
+
+        requestAnimationFrame(frame);
+    };
+
+    const createProgressDoughnut = (canvas, targetPercent) => {
+        if (!canvas) return null;
+
+        const chart = new Chart(canvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['달성', '남음'],
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: ['#d7d9e1', '#f3f4f8'],
+                    borderWidth: 0,
+                    cutout: '82%',
+                    hoverOffset: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                rotation: -90,
+                circumference: 360,
+                animation: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+
+        animateDoughnutFill(chart, targetPercent, 1250);
+        return chart;
     };
 
     const weightCanvas = document.getElementById('weightChart');
@@ -34,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             options: {
                 ...commonNoLegend,
+                animation: lineDelayAnimation,
                 scales: {
                     y: {
                         beginAtZero: false,
@@ -49,52 +236,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const burnedProgressCanvas = document.getElementById('burnedProgressChart');
-    if (burnedProgressCanvas) {
-        const burnedCalories = Number(data.burnedCalories || 0);
-        const targetCalories = Number(data.targetCalories || 0);
-        const burnedPercent = targetCalories > 0
-            ? Math.min(100, Math.round((burnedCalories * 100) / targetCalories))
-            : 0;
+    const burnedCalories = Number(data.burnedCalories || 0);
+    const targetCalories = Number(data.targetCalories || 0);
+    const burnedPercent = targetCalories > 0
+        ? Math.min(100, Math.round((burnedCalories * 100) / targetCalories))
+        : 0;
 
-        new Chart(burnedProgressCanvas, {
-            type: 'doughnut',
-            data: {
-                labels: ['달성', '남음'],
-                datasets: [{
-                    data: [burnedPercent, Math.max(0, 100 - burnedPercent)],
-                    backgroundColor: ['#e5e7eb', '#f6f7fb'],
-                    borderWidth: 0,
-                    cutout: '82%'
-                }]
-            },
-            options: {
-                ...commonNoLegend,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } }
-            }
-        });
-    }
+    const intakePercent = Number(data.intakePercent || 0);
 
-    const intakeProgressCanvas = document.getElementById('intakeProgressChart');
-    if (intakeProgressCanvas) {
-        const percent = Number(data.intakePercent || 0);
-        new Chart(intakeProgressCanvas, {
-            type: 'doughnut',
-            data: {
-                labels: ['달성', '남음'],
-                datasets: [{
-                    data: [percent, Math.max(0, 100 - percent)],
-                    backgroundColor: ['#e5e7eb', '#f6f7fb'],
-                    borderWidth: 0,
-                    cutout: '82%'
-                }]
-            },
-            options: {
-                ...commonNoLegend,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } }
-            }
-        });
-    }
+    createProgressDoughnut(
+        document.getElementById('burnedProgressChart'),
+        burnedPercent
+    );
+
+    createProgressDoughnut(
+        document.getElementById('intakeProgressChart'),
+        intakePercent
+    );
 
     const macroCanvas = document.getElementById('macroChart');
     if (macroCanvas) {
@@ -116,10 +274,18 @@ document.addEventListener('DOMContentLoaded', function () {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    duration: 1200,
+                    easing: 'easeOutCubic',
+                    animateRotate: true,
+                    animateScale: false
+                },
                 plugins: {
                     legend: { display: false }
                 }
             }
         });
     }
+
+    runCountAnimations();
 });

@@ -5,18 +5,22 @@
 
     <section class="dashboard-top-grid">
         <div class="summary-column">
-            <article class="summary-card metric-card">
+            <article class="summary-card metric-card metric-card--center hover-card">
                 <div class="metric-card__header">
                     <span class="metric-card__title">체중</span>
                     <span class="metric-card__icon">⚖</span>
                 </div>
-                <div class="metric-card__value-row">
-                    <strong class="metric-card__value" th:text="${weight} != null ? ${weight} + 'kg' : '—kg'">—kg</strong>
+
+                <div class="metric-card__center-content metric-card__center-content--raised">
+                    <strong class="metric-card__value count-up-weight"
+                            th:attr="data-target=${weight != null ? weight : 0}"
+                            th:text="${weight} != null ? ${weight} + 'kg' : '—kg'">—kg</strong>
+                    <p class="metric-card__meta"
+                       th:text="${weightDiffText}">기록 없음</p>
                 </div>
-                <p class="metric-card__meta" th:text="${weightDiffText}">기록 없음</p>
             </article>
 
-            <article class="summary-card progress-card">
+            <article class="summary-card progress-card hover-card">
                 <div class="progress-card__header">
                     <span class="progress-card__title">소모 칼로리</span>
                     <span class="metric-card__icon metric-card__icon--mint">🔥</span>
@@ -25,7 +29,9 @@
                 <div class="progress-card__chart-wrap">
                     <canvas id="burnedProgressChart"></canvas>
                     <div class="progress-card__center">
-                        <strong th:text="${burnedPercent} + '%'">0%</strong>
+                        <strong class="count-up-percent"
+                                th:attr="data-target=${burnedPercent}"
+                                th:text="${burnedPercent} + '%'">0%</strong>
                         <span>달성</span>
                     </div>
                 </div>
@@ -35,19 +41,25 @@
         </div>
 
         <div class="summary-column">
-            <article class="summary-card metric-card">
+            <article class="summary-card metric-card metric-card--center hover-card">
                 <div class="metric-card__header">
                     <span class="metric-card__title">연속 기록</span>
                     <span class="metric-card__icon">🔗</span>
                 </div>
-                <div class="streak-row">
-                    <strong class="metric-card__value metric-card__value--streak" th:text="${streakDays}">0</strong>
-                    <span class="metric-card__unit">일</span>
+
+                <div class="metric-card__center-content metric-card__center-content--raised">
+                    <div class="streak-row">
+                        <strong class="metric-card__value metric-card__value--streak count-up-int"
+                                th:attr="data-target=${streakDays}"
+                                th:text="${streakDays}">0</strong>
+                        <span class="metric-card__unit">일</span>
+                    </div>
+                    <p class="metric-card__meta"
+                       th:text="${streakMessage}">연속 기록 중</p>
                 </div>
-                <p class="metric-card__meta" th:text="${streakMessage}">오늘 기록 없음</p>
             </article>
 
-            <article class="summary-card progress-card">
+            <article class="summary-card progress-card hover-card">
                 <div class="progress-card__header">
                     <span class="progress-card__title">섭취 칼로리</span>
                     <span class="metric-card__icon">🍽️</span>
@@ -56,8 +68,10 @@
                 <div class="progress-card__chart-wrap">
                     <canvas id="intakeProgressChart"></canvas>
                     <div class="progress-card__center">
-                        <strong th:text="${intakePercent} + '%'">0%</strong>
-                        <span>달성</span>
+                        <strong class="count-up-percent"
+                                th:attr="data-target=${intakePercent}"
+                                th:text="${intakePercent} + '%'">0%</strong>
+                        <span>섭취</span>
                     </div>
                 </div>
 
@@ -65,7 +79,7 @@
             </article>
         </div>
 
-        <article class="summary-card nutrition-panel">
+        <article class="summary-card nutrition-panel hover-card">
             <div class="nutrition-panel__title">오늘의 영양소</div>
             <div class="nutrition-panel__body">
                 <div class="nutrition-panel__chart-wrap">
@@ -75,22 +89,28 @@
                 <div class="nutrition-panel__legend">
                     <div class="macro-item macro-item--carb">
                         <span class="macro-item__label">탄수화물</span>
-                        <strong th:text="${carbGram} + 'g'">0g</strong>
+                        <strong class="count-up-gram"
+                                th:attr="data-target=${carbGram}"
+                                th:text="${carbGram} + 'g'">0g</strong>
                     </div>
                     <div class="macro-item macro-item--fat">
                         <span class="macro-item__label">지방</span>
-                        <strong th:text="${fatGram} + 'g'">0g</strong>
+                        <strong class="count-up-gram"
+                                th:attr="data-target=${fatGram}"
+                                th:text="${fatGram} + 'g'">0g</strong>
                     </div>
                     <div class="macro-item macro-item--protein">
                         <span class="macro-item__label">단백질</span>
-                        <strong th:text="${proteinGram} + 'g'">0g</strong>
+                        <strong class="count-up-gram"
+                                th:attr="data-target=${proteinGram}"
+                                th:text="${proteinGram} + 'g'">0g</strong>
                     </div>
                 </div>
             </div>
         </article>
     </section>
 
-    <section class="summary-card chart-panel">
+    <section class="summary-card chart-panel hover-card">
         <div class="chart-panel__title">주간 체중</div>
         <div class="chart-panel__body">
             <canvas id="weightChart"></canvas>

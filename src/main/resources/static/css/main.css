@@ -404,3 +404,140 @@ button {
         font-size: 1.6rem;
     }
 }
+
+/* 중앙 정렬 카드 */
+.metric-card--center {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* 중앙 영역 */
+.metric-card__center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+/* 숫자 중앙 강조 */
+.metric-card--center .metric-card__value {
+    font-size: 2.6rem;
+}
+
+/* 연속기록 중앙 정렬 */
+.metric-card--center .streak-row {
+    justify-content: center;
+}
+
+/* 메타 텍스트 중앙 */
+.metric-card--center .metric-card__meta {
+    text-align: center;
+}
+
+.metric-card__center-content {
+    gap: 4px;
+}
+
+.metric-card,
+.progress-card,
+.nutrition-panel,
+.chart-panel {
+    transition:
+            transform 0.22s ease,
+            box-shadow 0.22s ease,
+            border-color 0.22s ease,
+            background-color 0.22s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 28px rgba(91, 61, 245, 0.08);
+    border-color: #e4defd;
+}
+
+.hover-card:hover .metric-card__icon {
+    transform: scale(1.06);
+}
+
+.metric-card__icon {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card--center {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.metric-card__center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+/* 숫자를 10~15% 정도 위로 */
+.metric-card__center-content--raised {
+    transform: translateY(-12%);
+}
+
+.metric-card--center .metric-card__value {
+    font-size: 2.6rem;
+}
+
+.metric-card--center .streak-row {
+    justify-content: center;
+}
+
+.metric-card--center .metric-card__meta {
+    text-align: center;
+}
+
+.progress-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-card::after,
+.metric-card::after,
+.nutrition-panel::after,
+.chart-panel::after {
+    content: "";
+    position: absolute;
+    inset: auto -30% -60% auto;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(91, 61, 245, 0.06) 0%, rgba(91, 61, 245, 0) 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.progress-card:hover::after,
+.metric-card:hover::after,
+.nutrition-panel:hover::after,
+.chart-panel:hover::after {
+    opacity: 1;
+}
+
+.progress-card__chart-wrap canvas,
+.nutrition-panel__chart-wrap canvas,
+.chart-panel__body canvas {
+    transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.progress-card:hover .progress-card__chart-wrap canvas {
+    transform: scale(1.03);
+}
+
+.nutrition-panel:hover .nutrition-panel__chart-wrap canvas,
+.chart-panel:hover .chart-panel__body canvas {
+    transform: scale(1.01);
+}
