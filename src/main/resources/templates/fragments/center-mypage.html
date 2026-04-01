@@ -79,6 +79,53 @@
                         <strong th:text="${member.updatedAt != null ? #temporals.format(member.updatedAt, 'yyyy.MM.dd HH:mm') : '정보 없음'}">정보 없음</strong>
                     </div>
                 </div>
+
+                <div class="mypage-social-section">
+                    <div class="mypage-card-title-wrap mypage-card-title-wrap--compact">
+                        <p class="mypage-card-kicker">연동</p>
+                        <h2>소셜 계정</h2>
+                    </div>
+
+                    <div class="mypage-alert mypage-alert-success" th:if="${googleLinkSuccessMessage != null}" th:text="${googleLinkSuccessMessage}">
+                        Google 계정이 성공적으로 연동되었습니다.
+                    </div>
+                    <div class="mypage-alert mypage-alert-error" th:if="${googleLinkErrorMessage != null}" th:text="${googleLinkErrorMessage}">
+                        Google 계정 연동 중 오류가 발생했습니다.
+                    </div>
+
+                    <div class="mypage-social-card">
+                        <div class="mypage-social-card__info">
+                            <div>
+                                <strong>Google 계정</strong>
+                                <p th:if="${googleLinked}">현재 계정에 Google 로그인을 연결해 두었습니다.</p>
+                                <p th:if="${!googleLinked}">연동하면 기존 계정으로 Google 로그인을 함께 사용할 수 있어요.</p>
+                            </div>
+                            <span class="mypage-social-badge" th:classappend="${googleLinked} ? ' is-linked' : ' is-unlinked'"
+                                  th:text="${googleLinked} ? '연동 완료' : '미연동'">미연동</span>
+                        </div>
+
+                        <div class="mypage-social-meta" th:if="${googleLinked}">
+                            <span th:text="|연동 이메일: ${googleLinkedEmail != null ? googleLinkedEmail : '정보 없음'}|">연동 이메일</span>
+                            <span th:text="${googleLinkedAt != null ? '연동일: ' + #temporals.format(googleLinkedAt, 'yyyy.MM.dd HH:mm') : '연동일 정보 없음'}">연동일</span>
+                            <span th:text="${googleLastLoginAt != null ? '마지막 Google 로그인: ' + #temporals.format(googleLastLoginAt, 'yyyy.MM.dd HH:mm') : 'Google 로그인 기록 없음'}">마지막 로그인</span>
+                        </div>
+
+                        <div class="mypage-social-actions" th:if="${googleAuthEnabled and !googleLinked}">
+                            <div id="g_id_onload"
+                                 th:attr="data-client_id=${googleClientId},data-login_uri=${googleLinkUrl},data-ux_mode='redirect',data-auto_prompt='false',data-context='use'">
+                            </div>
+                            <div class="g_id_signin"
+                                 data-type="standard"
+                                 data-shape="pill"
+                                 data-theme="outline"
+                                 data-text="continue_with"
+                                 data-size="large"
+                                 data-logo_alignment="left"
+                                 data-width="320">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </article>
 
             <article class="summary-card mypage-settings-card">
@@ -133,6 +180,8 @@
             </article>
         </div>
     </div>
+
+    <script th:if="${googleAuthEnabled and !googleLinked}" src="https://accounts.google.com/gsi/client" async defer></script>
 </section>
 </body>
 </html>

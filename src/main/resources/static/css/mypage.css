@@ -88,6 +88,11 @@
     margin-bottom: 20px;
 }
 
+.mypage-card-title-wrap--compact {
+    margin-top: 28px;
+    margin-bottom: 16px;
+}
+
 .mypage-profile-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -118,6 +123,77 @@
     color: #2b3f67;
     font-size: 1rem;
     word-break: break-word;
+}
+
+.mypage-social-section {
+    margin-top: 8px;
+}
+
+.mypage-social-card {
+    padding: 18px;
+    border-radius: 20px;
+    background: #fafbff;
+    border: 1px solid rgba(124, 153, 196, 0.16);
+}
+
+.mypage-social-card__info {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.mypage-social-card__info strong {
+    display: block;
+    color: #2b3f67;
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+}
+
+.mypage-social-card__info p,
+.mypage-social-meta span {
+    color: #6f7f9d;
+    line-height: 1.6;
+    font-size: 0.92rem;
+}
+
+.mypage-social-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 90px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.mypage-social-badge.is-linked {
+    background: rgba(115, 208, 170, 0.16);
+    color: #25795a;
+}
+
+.mypage-social-badge.is-unlinked {
+    background: rgba(123, 165, 230, 0.14);
+    color: #5270a0;
+}
+
+.mypage-social-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 16px;
+}
+
+.mypage-social-actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.mypage-social-actions .g_id_signin {
+    display: flex;
 }
 
 .mypage-alert {
@@ -252,6 +328,10 @@
     .mypage-form-grid {
         grid-template-columns: 1fr;
         display: grid;
+    }
+
+    .mypage-social-card__info {
+        flex-direction: column;
     }
 
     .mypage-hero-card__header {

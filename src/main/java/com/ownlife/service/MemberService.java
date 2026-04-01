@@ -78,6 +78,14 @@ public class MemberService {
                 .filter(member -> member.getStatus() == Member.Status.ACTIVE);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<SocialAccount> findSocialAccount(Long memberId, SocialAccount.Provider provider) {
+        if (memberId == null || provider == null) {
+            return Optional.empty();
+        }
+        return socialAccountRepository.findByMemberMemberIdAndProvider(memberId, provider);
+    }
+
     public Member register(SignupForm signupForm) {
         Member member = new Member();
         member.setUsername(normalizeUsername(signupForm.getUsername()));
@@ -183,6 +191,39 @@ public class MemberService {
         return savedMember;
     }
 
+    public Member linkGoogleAccount(Long memberId, GoogleUserProfile googleUserProfile) {
+        if (googleUserProfile == null) {
+            throw new IllegalArgumentException("Google 인증 정보가 올바르지 않습니다.");
+        }
+        if (!googleUserProfile.isEmailVerified()) {
+            throw new IllegalArgumentException("이메일 인증이 완료된 Google 계정만 연동할 수 있습니다.");
+        }
+
+        Member member = findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        Optional<SocialAccount> linkedByProviderUserId = socialAccountRepository
+                .findByProviderAndProviderUserId(SocialAccount.Provider.GOOGLE, googleUserProfile.getSubject());
+        if (linkedByProviderUserId.isPresent()) {
+            SocialAccount socialAccount = linkedByProviderUserId.get();
+            if (!socialAccount.getMember().getMemberId().equals(member.getMemberId())) {
+                throw new IllegalStateException("이미 다른 계정에 연결된 Google 계정입니다.");
+            }
+            upsertGoogleSocialAccount(member, googleUserProfile);
+            return memberRepository.saveAndFlush(member);
+        }
+
+        Optional<SocialAccount> existingGoogleAccount = socialAccountRepository
+                .findByMemberMemberIdAndProvider(member.getMemberId(), SocialAccount.Provider.GOOGLE);
+        if (existingGoogleAccount.isPresent()) {
+            throw new IllegalStateException("이미 Google 계정이 연동되어 있습니다.");
+        }
+
+        applyGoogleProfileDefaultsForLinkedMember(member, googleUserProfile);
+        upsertGoogleSocialAccount(member, googleUserProfile);
+        return memberRepository.saveAndFlush(member);
+    }
+
     private String normalizeUsername(String value) {
         return normalizeIdentity(value);
     }
@@ -242,6 +283,24 @@ public class MemberService {
         socialAccount.setProfileImageUrl(trimToNull(googleUserProfile.getPictureUrl()));
         socialAccount.setLastLoginAt(LocalDateTime.now());
         socialAccountRepository.saveAndFlush(socialAccount);
+    }
+
+    private void applyGoogleProfileDefaultsForLinkedMember(Member member, GoogleUserProfile googleUserProfile) {
+        if (!StringUtils.hasText(member.getEmail())) {
+            member.setEmail(normalizeIdentity(googleUserProfile.getEmail()));
+        }
+        if (member.getLoginType() == null) {
+            member.setLoginType(Member.LoginType.GOOGLE);
+        }
+        if (!StringUtils.hasText(member.getSocialProvider())) {
+            member.setSocialProvider("GOOGLE");
+        }
+        if (!StringUtils.hasText(member.getSocialProviderId())) {
+            member.setSocialProviderId(googleUserProfile.getSubject());
+        }
+        if (!StringUtils.hasText(member.getProfileImageUrl())) {
+            member.setProfileImageUrl(trimToNull(googleUserProfile.getPictureUrl()));
+        }
     }
 
     private boolean hasGoalChanges(Member member, MyPageForm myPageForm) {

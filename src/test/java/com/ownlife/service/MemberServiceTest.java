@@ -242,6 +242,67 @@ class MemberServiceTest {
         org.junit.jupiter.api.Assertions.assertEquals("google-linked-subject", socialAccount.getProviderUserId());
     }
 
+    @Test
+    @DisplayName("마이페이지에서 현재 로그인한 계정에 Google 계정을 연동할 수 있다")
+    void linkGoogleAccountFromMyPage() {
+        SignupForm localSignupForm = new SignupForm();
+        localSignupForm.setUsername("mypagelink01");
+        localSignupForm.setPassword("Password123!");
+        localSignupForm.setNickname("연동대상회원");
+        localSignupForm.setEmail("local-link@example.com");
+
+        Member member = memberService.register(localSignupForm);
+
+        GoogleUserProfile googleUserProfile = new GoogleUserProfile(
+                "google-mypage-link-subject",
+                "different-google@example.com",
+                "구글연동대상",
+                "https://example.com/google-linked.png",
+                true
+        );
+
+        Member linkedMember = memberService.linkGoogleAccount(member.getMemberId(), googleUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertEquals(member.getMemberId(), linkedMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals(1, socialAccountHandler.storage.size());
+        SocialAccount socialAccount = socialAccountHandler.storage.values().iterator().next();
+        org.junit.jupiter.api.Assertions.assertEquals("google-mypage-link-subject", socialAccount.getProviderUserId());
+        org.junit.jupiter.api.Assertions.assertEquals(member.getMemberId(), socialAccount.getMember().getMemberId());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isPresent());
+    }
+
+    @Test
+    @DisplayName("이미 다른 회원에게 연결된 Google 계정은 마이페이지에서 다시 연동할 수 없다")
+    void linkGoogleAccountFailsWhenLinkedToAnotherMember() {
+        SignupForm firstForm = new SignupForm();
+        firstForm.setUsername("firstuser01");
+        firstForm.setPassword("Password123!");
+        firstForm.setNickname("첫회원");
+        firstForm.setEmail("first@example.com");
+
+        SignupForm secondForm = new SignupForm();
+        secondForm.setUsername("seconduser01");
+        secondForm.setPassword("Password123!");
+        secondForm.setNickname("둘째회원");
+        secondForm.setEmail("second@example.com");
+
+        Member firstMember = memberService.register(firstForm);
+        Member secondMember = memberService.register(secondForm);
+
+        GoogleUserProfile googleUserProfile = new GoogleUserProfile(
+                "shared-google-subject",
+                "shared-social@example.com",
+                "공유구글",
+                null,
+                true
+        );
+
+        memberService.linkGoogleAccount(firstMember.getMemberId(), googleUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> memberService.linkGoogleAccount(secondMember.getMemberId(), googleUserProfile));
+    }
+
     private static class InMemoryMemberRepositoryHandler implements InvocationHandler {
 
         private final Map<String, Member> storage = new HashMap<>();
