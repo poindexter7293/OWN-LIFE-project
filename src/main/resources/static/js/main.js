@@ -49,6 +49,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const burnedProgressCanvas = document.getElementById('burnedProgressChart');
+    if (burnedProgressCanvas) {
+        const burnedCalories = Number(data.burnedCalories || 0);
+        const targetCalories = Number(data.targetCalories || 0);
+        const burnedPercent = targetCalories > 0
+            ? Math.min(100, Math.round((burnedCalories * 100) / targetCalories))
+            : 0;
+
+        new Chart(burnedProgressCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['달성', '남음'],
+                datasets: [{
+                    data: [burnedPercent, Math.max(0, 100 - burnedPercent)],
+                    backgroundColor: ['#e5e7eb', '#f6f7fb'],
+                    borderWidth: 0,
+                    cutout: '82%'
+                }]
+            },
+            options: {
+                ...commonNoLegend,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            }
+        });
+    }
+
     const intakeProgressCanvas = document.getElementById('intakeProgressChart');
     if (intakeProgressCanvas) {
         const percent = Number(data.intakePercent || 0);
@@ -77,7 +103,11 @@ document.addEventListener('DOMContentLoaded', function () {
             data: {
                 labels: ['탄수화물', '지방', '단백질'],
                 datasets: [{
-                    data: [Number(data.carbPercent || 0), Number(data.fatPercent || 0), Number(data.proteinPercent || 0)],
+                    data: [
+                        Number(data.carbPercent || 0),
+                        Number(data.fatPercent || 0),
+                        Number(data.proteinPercent || 0)
+                    ],
                     backgroundColor: ['#4c57e8', '#f5a000', '#22c55e'],
                     borderWidth: 0,
                     cutout: '64%'
