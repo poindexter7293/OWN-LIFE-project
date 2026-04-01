@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="centerExercise" class="exercise-page">
+
+    <section class="exercise-page__hero">
+        <div>
+            <h2 class="exercise-page__title">운동 일지</h2>
+            <p class="exercise-page__date"
+               th:text="${#temporals.format(exerciseData.selectedDate, 'yyyy.MM.dd') + (exerciseData.selectedDate.equals(T(java.time.LocalDate).now()) ? ' (오늘)' : '')}">2026.04.01 (오늘)</p>
+        </div>
+
+        <div class="exercise-date-box">
+            <form th:action="@{/exercise}" method="get" class="exercise-date-form">
+                <input type="date" name="date" th:value="${exerciseData.selectedDate}" class="exercise-date-input">
+                <button type="submit" class="exercise-date-submit">이동</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="exercise-summary-grid">
+        <article class="exercise-summary-card">
+            <div class="exercise-summary-card__label">오늘 소모</div>
+            <div class="exercise-summary-card__value exercise-summary-card__value--green">
+                <span class="count-up-int" th:attr="data-target=${exerciseData.todayBurnedKcal}">0</span><small>kcal</small>
+            </div>
+        </article>
+
+        <article class="exercise-summary-card">
+            <div class="exercise-summary-card__label">운동 시간</div>
+            <div class="exercise-summary-card__value exercise-summary-card__value--blue">
+                <span class="count-up-int" th:attr="data-target=${exerciseData.todayDurationMin}">0</span><small>분</small>
+            </div>
+        </article>
+
+        <article class="exercise-summary-card">
+            <div class="exercise-summary-card__label">주간 합계</div>
+            <div class="exercise-summary-card__value exercise-summary-card__value--purple">
+                <span class="count-up-int" th:attr="data-target=${exerciseData.weekBurnedKcal}">0</span><small>kcal</small>
+            </div>
+        </article>
+    </section>
+
+    <div class="exercise-message exercise-message--error" th:if="${exerciseErrorMessage != null}" th:text="${exerciseErrorMessage}"></div>
+    <div class="exercise-message exercise-message--success" th:if="${exerciseSuccessMessage != null}" th:text="${exerciseSuccessMessage}"></div>
+
+    <section class="exercise-content-grid">
+        <article class="exercise-panel">
+            <div class="exercise-panel__title">운동 추가</div>
+            <div class="exercise-panel__subtitle">직접 추가</div>
+
+            <form class="exercise-form" th:action="@{/exercise/direct}" method="post">
+                <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+
+                <label class="exercise-form__label">운동 이름</label>
+                <input class="exercise-form__input" type="text" name="exerciseName" placeholder="예: 러닝머신, 홈트, 계단 오르기" required>
+
+                <div class="exercise-form__row exercise-form__row--two">
+                    <div>
+                        <label class="exercise-form__label">소모 칼로리</label>
+                        <input class="exercise-form__input" type="number" name="burnedKcal" min="1" placeholder="예: 320" required>
+                    </div>
+                </div>
+
+                <button class="exercise-submit-btn" type="submit">+ 직접 추가하기</button>
+            </form>
+
+            <div class="exercise-panel__subtitle exercise-panel__subtitle--margin">빠른 추가</div>
+            <div class="exercise-quick-tabs">
+                <button type="button" class="exercise-chip active" data-quick-target="timeQuickForm">분당 칼로리</button>
+                <button type="button" class="exercise-chip" data-quick-target="countQuickForm">세트 × 횟수</button>
+            </div>
+
+            <form id="timeQuickForm" class="exercise-form exercise-quick-form is-active" th:action="@{/exercise/quick/time}" method="post">
+                <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+
+                <label class="exercise-form__label">운동 종류</label>
+                <div class="exercise-chip-list">
+                    <label class="exercise-select-card" th:each="option, stat : ${timeExerciseOptions}">
+                        <input type="radio" name="exerciseTypeId" th:value="${option.exerciseTypeId}" th:checked="${stat.index == 0}" required>
+                        <span th:text="${option.exerciseName}">걷기</span>
+                    </label>
+                </div>
+
+                <label class="exercise-form__label">운동 시간(분)</label>
+                <input class="exercise-form__input" type="number" name="durationMin" min="1" value="30" required>
+
+                <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">+ 빠른 추가하기</button>
+            </form>
+
+            <form id="countQuickForm" class="exercise-form exercise-quick-form" th:action="@{/exercise/quick/count}" method="post">
+                <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+
+                <label class="exercise-form__label">운동 종류</label>
+                <div class="exercise-chip-list">
+                    <label class="exercise-select-card" th:each="option, stat : ${countExerciseOptions}">
+                        <input type="radio" name="exerciseTypeId" th:value="${option.exerciseTypeId}" th:checked="${stat.index == 0}" required>
+                        <span th:text="${option.exerciseName}">스쿼트</span>
+                    </label>
+                </div>
+
+                <div class="exercise-form__row exercise-form__row--two">
+                    <div>
+                        <label class="exercise-form__label">세트 수</label>
+                        <input class="exercise-form__input" type="number" name="setsCount" min="1" value="3" required>
+                    </div>
+                    <div>
+                        <label class="exercise-form__label">횟수</label>
+                        <input class="exercise-form__input" type="number" name="repsCount" min="1" value="15" required>
+                    </div>
+                </div>
+
+                <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">+ 빠른 추가하기</button>
+            </form>
+        </article>
+
+        <article class="exercise-panel exercise-panel--chart">
+            <div class="exercise-panel__title">주간 소모</div>
+            <div class="exercise-chart-wrap">
+                <canvas id="exerciseWeekChart"></canvas>
+            </div>
+        </article>
+    </section>
+
+    <section class="exercise-log-panel">
+        <div class="exercise-log-panel__title" th:text="${#temporals.format(exerciseData.selectedDate, 'yyyy.MM.dd')} + ' 운동'">2026.04.01 운동</div>
+
+        <div class="exercise-empty" th:if="${#lists.isEmpty(exerciseData.todayExercises)}">
+            아직 기록된 운동이 없습니다.
+        </div>
+
+        <div class="exercise-log-list" th:if="${!#lists.isEmpty(exerciseData.todayExercises)}">
+            <div class="exercise-log-item" th:each="item : ${exerciseData.todayExercises}">
+                <div class="exercise-log-item__left">
+                    <div class="exercise-log-item__icon">💪</div>
+                    <div>
+                        <div class="exercise-log-item__name" th:text="${item.exerciseName}">등산</div>
+                        <div class="exercise-log-item__meta" th:text="${item.detail}">70분</div>
+                    </div>
+                </div>
+
+                <div class="exercise-log-item__right">
+                    <strong th:text="${item.burnedKcal} + 'kcal'">400kcal</strong>
+                    <form th:action="@{/exercise/{id}/delete(id=${item.exerciseLogId})}" method="post">
+                        <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+                        <button type="submit" class="exercise-delete-btn">×</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script th:inline="javascript">
+        window.exercisePageData = {
+            weekLabels: /*[[${exerciseData.weekLabels}]]*/ [],
+            weekValues: /*[[${exerciseData.weekValues}]]*/ []
+        };
+    </script>
+</div>
+</body>
+</html>
