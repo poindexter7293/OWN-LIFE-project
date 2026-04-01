@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="centerMyPage" class="mypage-page">
+    <div class="mypage-shell">
+        <article class="summary-card mypage-hero-card">
+            <div class="mypage-hero-card__header">
+                <div>
+                    <p class="mypage-eyebrow">MY PAGE</p>
+                    <h1 th:text="|${member.nickname}님의 건강 설정|">내 건강 설정</h1>
+                </div>
+                <p class="mypage-hero-card__description" th:text="${weightGoalMessage}">
+                    현재 체중과 목표 체중을 모두 입력하면 진행 상황을 한눈에 볼 수 있어요.
+                </p>
+            </div>
+
+            <div class="mypage-stat-grid">
+                <div class="mypage-stat-box">
+                    <span>현재 체중</span>
+                    <strong th:text="${myPageForm.weightKg != null ? myPageForm.weightKg + ' kg' : '미설정'}">미설정</strong>
+                </div>
+                <div class="mypage-stat-box">
+                    <span>목표 체중</span>
+                    <strong th:text="${myPageForm.goalWeight != null ? myPageForm.goalWeight + ' kg' : '미설정'}">미설정</strong>
+                </div>
+                <div class="mypage-stat-box">
+                    <span>목표 섭취</span>
+                    <strong th:text="${myPageForm.goalEatKcal != null ? myPageForm.goalEatKcal + ' kcal' : '미설정'}">미설정</strong>
+                </div>
+                <div class="mypage-stat-box">
+                    <span>목표 소모</span>
+                    <strong th:text="${myPageForm.goalBurnedKcal != null ? myPageForm.goalBurnedKcal + ' kcal' : '미설정'}">미설정</strong>
+                </div>
+            </div>
+        </article>
+
+        <div class="mypage-grid">
+            <article class="summary-card mypage-profile-card">
+                <div class="mypage-card-title-wrap">
+                    <p class="mypage-card-kicker">프로필</p>
+                    <h2>내 정보</h2>
+                </div>
+
+                <div class="mypage-profile-list">
+                    <div class="mypage-profile-item">
+                        <span>아이디</span>
+                        <strong th:text="${member.username}">username</strong>
+                    </div>
+                    <div class="mypage-profile-item">
+                        <span>닉네임</span>
+                        <strong th:text="${member.nickname}">nickname</strong>
+                    </div>
+                    <div class="mypage-profile-item">
+                        <span>이메일</span>
+                        <strong th:text="${member.email != null ? member.email : '미설정'}">미설정</strong>
+                    </div>
+                    <div class="mypage-profile-item">
+                        <span>성별</span>
+                        <strong th:text="${genderLabel}">미설정</strong>
+                    </div>
+                    <div class="mypage-profile-item">
+                        <span>생년월일</span>
+                        <strong th:text="${member.birthDate != null ? #temporals.format(member.birthDate, 'yyyy.MM.dd') : '미설정'}">미설정</strong>
+                    </div>
+                    <div class="mypage-profile-item">
+                        <span>키</span>
+                        <strong th:text="${member.heightCm != null ? member.heightCm + ' cm' : '미설정'}">미설정</strong>
+                    </div>
+                    <div class="mypage-profile-item">
+                        <span>가입 방식</span>
+                        <strong th:text="${loginTypeLabel}">일반 계정</strong>
+                    </div>
+                    <div class="mypage-profile-item">
+                        <span>가입일</span>
+                        <strong th:text="${member.createdAt != null ? #temporals.format(member.createdAt, 'yyyy.MM.dd HH:mm') : '정보 없음'}">정보 없음</strong>
+                    </div>
+                    <div class="mypage-profile-item mypage-profile-item--wide">
+                        <span>최근 수정</span>
+                        <strong th:text="${member.updatedAt != null ? #temporals.format(member.updatedAt, 'yyyy.MM.dd HH:mm') : '정보 없음'}">정보 없음</strong>
+                    </div>
+                </div>
+            </article>
+
+            <article class="summary-card mypage-settings-card">
+                <div class="mypage-card-title-wrap">
+                    <p class="mypage-card-kicker">설정</p>
+                    <h2>건강 목표 관리</h2>
+                </div>
+
+                <form th:action="@{/mypage}" method="post" th:object="${myPageForm}" class="mypage-form">
+                    <div class="mypage-alert mypage-alert-success" th:if="${settingsUpdated}">
+                        마이페이지 설정이 저장되었습니다.
+                    </div>
+                    <div class="mypage-alert mypage-alert-error" th:if="${#fields.hasAnyErrors()}">
+                        입력값을 다시 확인해 주세요. 안내가 표시된 항목부터 수정하면 됩니다.
+                    </div>
+
+                    <div class="mypage-form-grid">
+                        <div class="mypage-form-field">
+                            <label for="weightKg">현재 체중(kg)</label>
+                            <input type="number" id="weightKg" th:field="*{weightKg}" min="0" max="500" step="0.01" placeholder="예: 68.4">
+                            <p class="mypage-field-hint">대시보드와 체중 목표 비교에 사용할 현재 체중입니다.</p>
+                            <p class="mypage-field-error" th:if="${#fields.hasErrors('weightKg')}" th:errors="*{weightKg}"></p>
+                        </div>
+
+                        <div class="mypage-form-field">
+                            <label for="goalWeight">목표 체중(kg)</label>
+                            <input type="number" id="goalWeight" th:field="*{goalWeight}" min="0" max="500" step="0.01" placeholder="예: 63.0">
+                            <p class="mypage-field-hint">감량 또는 증량 목표 체중을 입력해 주세요.</p>
+                            <p class="mypage-field-error" th:if="${#fields.hasErrors('goalWeight')}" th:errors="*{goalWeight}"></p>
+                        </div>
+
+                        <div class="mypage-form-field">
+                            <label for="goalEatKcal">목표 섭취 칼로리(kcal)</label>
+                            <input type="number" id="goalEatKcal" th:field="*{goalEatKcal}" min="0" max="10000" step="1" placeholder="예: 1800">
+                            <p class="mypage-field-hint">하루에 섭취하고 싶은 목표 칼로리를 입력해 주세요.</p>
+                            <p class="mypage-field-error" th:if="${#fields.hasErrors('goalEatKcal')}" th:errors="*{goalEatKcal}"></p>
+                        </div>
+
+                        <div class="mypage-form-field">
+                            <label for="goalBurnedKcal">목표 소모 칼로리(kcal)</label>
+                            <input type="number" id="goalBurnedKcal" th:field="*{goalBurnedKcal}" min="0" max="10000" step="1" placeholder="예: 500">
+                            <p class="mypage-field-hint">하루 운동이나 활동으로 소모하고 싶은 칼로리입니다.</p>
+                            <p class="mypage-field-error" th:if="${#fields.hasErrors('goalBurnedKcal')}" th:errors="*{goalBurnedKcal}"></p>
+                        </div>
+                    </div>
+
+                    <div class="mypage-actions">
+                        <button type="submit" class="mypage-button mypage-button-primary">설정 저장</button>
+                        <a th:href="@{/main}" class="mypage-button mypage-button-secondary">메인으로 이동</a>
+                    </div>
+                </form>
+            </article>
+        </div>
+    </div>
+</section>
+</body>
+</html>
+
+

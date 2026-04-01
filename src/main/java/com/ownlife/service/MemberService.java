@@ -1,5 +1,6 @@
 package com.ownlife.service;
 
+import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.repository.MemberRepository;
@@ -53,6 +54,15 @@ public class MemberService {
                 .filter(member -> verifyPassword(rawPassword, member.getPasswordHash()));
     }
 
+    @Transactional(readOnly = true)
+    public Optional<Member> findById(Long memberId) {
+        if (memberId == null) {
+            return Optional.empty();
+        }
+        return memberRepository.findById(memberId)
+                .filter(member -> member.getStatus() == Member.Status.ACTIVE);
+    }
+
     public Member register(SignupForm signupForm) {
         Member member = new Member();
         member.setUsername(normalizeUsername(signupForm.getUsername()));
@@ -66,6 +76,18 @@ public class MemberService {
         member.setRole(Member.Role.USER);
         member.setStatus(Member.Status.ACTIVE);
         member.setLoginType(Member.LoginType.LOCAL);
+        return memberRepository.saveAndFlush(member);
+    }
+
+    public Member updateMyPageSettings(Long memberId, MyPageForm myPageForm) {
+        Member member = findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        member.setWeightKg(myPageForm.getWeightKg());
+        member.setGoalWeight(myPageForm.getGoalWeight());
+        member.setGoalEatKcal(myPageForm.getGoalEatKcal());
+        member.setGoalBurnedKcal(myPageForm.getGoalBurnedKcal());
+
         return memberRepository.saveAndFlush(member);
     }
 

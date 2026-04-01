@@ -1,5 +1,6 @@
 package com.ownlife.service;
 
+import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.repository.MemberRepository;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -66,6 +68,32 @@ class MemberServiceTest {
         assertFalse(memberService.authenticate("inactive01", "Password123!").isPresent());
     }
 
+    @Test
+    @DisplayName("마이페이지 설정 수정 시 현재 체중과 목표 정보를 저장한다")
+    void updateMyPageSettings() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setUsername("mypage01");
+        signupForm.setPassword("Password123!");
+        signupForm.setNickname("마이페이지유저");
+        signupForm.setEmail("mypage@example.com");
+
+        Member savedMember = memberService.register(signupForm);
+
+        MyPageForm myPageForm = new MyPageForm();
+        myPageForm.setWeightKg(new BigDecimal("68.4"));
+        myPageForm.setGoalWeight(new BigDecimal("63.0"));
+        myPageForm.setGoalEatKcal(1800);
+        myPageForm.setGoalBurnedKcal(500);
+
+        Member updatedMember = memberService.updateMyPageSettings(savedMember.getMemberId(), myPageForm);
+
+        assertTrue(memberService.findById(savedMember.getMemberId()).isPresent());
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("68.4"), updatedMember.getWeightKg());
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("63.0"), updatedMember.getGoalWeight());
+        org.junit.jupiter.api.Assertions.assertEquals(1800, updatedMember.getGoalEatKcal());
+        org.junit.jupiter.api.Assertions.assertEquals(500, updatedMember.getGoalBurnedKcal());
+    }
+
     private static class InMemoryMemberRepositoryHandler implements InvocationHandler {
 
         private final Map<String, Member> storage = new HashMap<>();
@@ -79,6 +107,7 @@ class MemberServiceTest {
                 case "existsByUsername" -> storage.containsKey(((String) args[0]).toLowerCase());
                 case "existsByEmail" -> storage.values().stream().anyMatch(member -> member.getEmail() != null && member.getEmail().equalsIgnoreCase((String) args[0]));
                 case "findByUsername" -> Optional.ofNullable(storage.get(((String) args[0]).toLowerCase()));
+                case "findById" -> storage.values().stream().filter(member -> member.getMemberId().equals(args[0])).findFirst();
                 case "saveAndFlush", "save" -> saveMember((Member) args[0]);
                 case "toString" -> "InMemoryMemberRepository";
                 case "hashCode" -> System.identityHashCode(proxy);
