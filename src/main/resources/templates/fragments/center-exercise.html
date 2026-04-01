@@ -47,71 +47,85 @@
     <section class="exercise-content-grid">
         <article class="exercise-panel">
             <div class="exercise-panel__title">운동 추가</div>
-            <div class="exercise-panel__subtitle">직접 추가</div>
 
-            <form class="exercise-form" th:action="@{/exercise/direct}" method="post">
-                <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
-
-                <label class="exercise-form__label">운동 이름</label>
-                <input class="exercise-form__input" type="text" name="exerciseName" placeholder="예: 러닝머신, 홈트, 계단 오르기" required>
-
-                <div class="exercise-form__row exercise-form__row--two">
-                    <div>
-                        <label class="exercise-form__label">소모 칼로리</label>
-                        <input class="exercise-form__input" type="number" name="burnedKcal" min="1" placeholder="예: 320" required>
-                    </div>
-                </div>
-
-                <button class="exercise-submit-btn" type="submit">+ 직접 추가하기</button>
-            </form>
-
-            <div class="exercise-panel__subtitle exercise-panel__subtitle--margin">빠른 추가</div>
-            <div class="exercise-quick-tabs">
-                <button type="button" class="exercise-chip active" data-quick-target="timeQuickForm">분당 칼로리</button>
-                <button type="button" class="exercise-chip" data-quick-target="countQuickForm">세트 × 횟수</button>
+            <!-- 상단 모드 전환 -->
+            <div class="exercise-mode-tabs">
+                <button type="button" class="exercise-mode-tab active" data-mode-target="directAddPanel">직접 추가</button>
+                <button type="button" class="exercise-mode-tab" data-mode-target="quickAddPanel">빠른 추가</button>
             </div>
 
-            <form id="timeQuickForm" class="exercise-form exercise-quick-form is-active" th:action="@{/exercise/quick/time}" method="post">
-                <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+            <!-- 직접 추가 영역 -->
+            <div id="directAddPanel" class="exercise-mode-panel is-active">
+                <div class="exercise-panel__subtitle">직접 추가</div>
 
-                <label class="exercise-form__label">운동 종류</label>
-                <div class="exercise-chip-list">
-                    <label class="exercise-select-card" th:each="option, stat : ${timeExerciseOptions}">
-                        <input type="radio" name="exerciseTypeId" th:value="${option.exerciseTypeId}" th:checked="${stat.index == 0}" required>
-                        <span th:text="${option.exerciseName}">걷기</span>
-                    </label>
-                </div>
+                <form class="exercise-form" th:action="@{/exercise/direct}" method="post">
+                    <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
 
-                <label class="exercise-form__label">운동 시간(분)</label>
-                <input class="exercise-form__input" type="number" name="durationMin" min="1" value="30" required>
+                    <label class="exercise-form__label">운동 이름</label>
+                    <input class="exercise-form__input" type="text" name="exerciseName" placeholder="예: 러닝머신, 홈트, 계단 오르기" required>
 
-                <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">+ 빠른 추가하기</button>
-            </form>
-
-            <form id="countQuickForm" class="exercise-form exercise-quick-form" th:action="@{/exercise/quick/count}" method="post">
-                <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
-
-                <label class="exercise-form__label">운동 종류</label>
-                <div class="exercise-chip-list">
-                    <label class="exercise-select-card" th:each="option, stat : ${countExerciseOptions}">
-                        <input type="radio" name="exerciseTypeId" th:value="${option.exerciseTypeId}" th:checked="${stat.index == 0}" required>
-                        <span th:text="${option.exerciseName}">스쿼트</span>
-                    </label>
-                </div>
-
-                <div class="exercise-form__row exercise-form__row--two">
-                    <div>
-                        <label class="exercise-form__label">세트 수</label>
-                        <input class="exercise-form__input" type="number" name="setsCount" min="1" value="3" required>
+                    <div class="exercise-form__row exercise-form__row--two">
+                        <div>
+                            <label class="exercise-form__label">소모 칼로리</label>
+                            <input class="exercise-form__input" type="number" name="burnedKcal" min="1" placeholder="예: 320" required>
+                        </div>
                     </div>
-                    <div>
-                        <label class="exercise-form__label">횟수</label>
-                        <input class="exercise-form__input" type="number" name="repsCount" min="1" value="15" required>
-                    </div>
+
+                    <button class="exercise-submit-btn" type="submit">+ 직접 추가하기</button>
+                </form>
+            </div>
+
+            <!-- 빠른 추가 영역 -->
+            <div id="quickAddPanel" class="exercise-mode-panel">
+                <div class="exercise-panel__subtitle">빠른 추가</div>
+
+                <div class="exercise-quick-tabs">
+                    <button type="button" class="exercise-chip active" data-quick-target="timeQuickForm">분당 칼로리</button>
+                    <button type="button" class="exercise-chip" data-quick-target="countQuickForm">세트 × 횟수</button>
                 </div>
 
-                <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">+ 빠른 추가하기</button>
-            </form>
+                <form id="timeQuickForm" class="exercise-form exercise-quick-form is-active" th:action="@{/exercise/quick/time}" method="post">
+                    <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+
+                    <label class="exercise-form__label">운동 종류</label>
+                    <div class="exercise-chip-list">
+                        <label class="exercise-select-card" th:each="option, stat : ${timeExerciseOptions}">
+                            <input type="radio" name="exerciseTypeId" th:value="${option.exerciseTypeId}" th:checked="${stat.index == 0}" required>
+                            <span th:text="${option.exerciseName}">걷기</span>
+                        </label>
+                    </div>
+
+                    <label class="exercise-form__label">운동 시간(분)</label>
+                    <input class="exercise-form__input" type="number" name="durationMin" min="1" value="30" required>
+
+                    <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">+ 빠른 추가하기</button>
+                </form>
+
+                <form id="countQuickForm" class="exercise-form exercise-quick-form" th:action="@{/exercise/quick/count}" method="post">
+                    <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+
+                    <label class="exercise-form__label">운동 종류</label>
+                    <div class="exercise-chip-list">
+                        <label class="exercise-select-card" th:each="option, stat : ${countExerciseOptions}">
+                            <input type="radio" name="exerciseTypeId" th:value="${option.exerciseTypeId}" th:checked="${stat.index == 0}" required>
+                            <span th:text="${option.exerciseName}">스쿼트</span>
+                        </label>
+                    </div>
+
+                    <div class="exercise-form__row exercise-form__row--two">
+                        <div>
+                            <label class="exercise-form__label">세트 수</label>
+                            <input class="exercise-form__input" type="number" name="setsCount" min="1" value="3" required>
+                        </div>
+                        <div>
+                            <label class="exercise-form__label">횟수</label>
+                            <input class="exercise-form__input" type="number" name="repsCount" min="1" value="15" required>
+                        </div>
+                    </div>
+
+                    <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">+ 빠른 추가하기</button>
+                </form>
+            </div>
         </article>
 
         <article class="exercise-panel exercise-panel--chart">

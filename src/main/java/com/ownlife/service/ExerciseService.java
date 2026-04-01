@@ -17,7 +17,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,7 +30,6 @@ import java.util.stream.Collectors;
 @Transactional
 public class ExerciseService {
 
-    private static final long DIRECT_INPUT_TYPE_ID = 0L;
     private static final DateTimeFormatter LABEL_FORMATTER = DateTimeFormatter.ofPattern("M/d", Locale.KOREA);
 
     private final ExerciseLogRepository exerciseLogRepository;
@@ -44,15 +48,20 @@ public class ExerciseService {
                 .findByMember_MemberIdAndExerciseDateBetweenOrderByExerciseDateAscCreatedAtAsc(memberId, weekStart, selectedDate);
 
         BigDecimal todayBurned = safeDecimal(exerciseLogRepository.sumBurnedKcalByMemberAndDate(memberId, selectedDate));
-        int todayDuration = safeInt(exerciseLogRepository.sumDurationByMemberAndDate(memberId, selectedDate));
+        Integer todayDuration = safeInteger(exerciseLogRepository.sumDurationByMemberAndDate(memberId, selectedDate));
         BigDecimal weekBurned = safeDecimal(exerciseLogRepository.sumBurnedKcalByMemberAndDateBetween(memberId, weekStart, selectedDate));
 
         Map<LocalDate, BigDecimal> dailyMap = new LinkedHashMap<>();
         for (int i = 0; i < 7; i++) {
             dailyMap.put(weekStart.plusDays(i), BigDecimal.ZERO);
         }
+
         for (ExerciseLog log : weekLogs) {
-            dailyMap.computeIfPresent(log.getExerciseDate(), (key, value) -> value.add(safeDecimal(log.getBurnedKcal())));
+            LocalDate exerciseDate = log.getExerciseDate();
+            if (exerciseDate != null && dailyMap.containsKey(exerciseDate)) {
+                dailyMap.put(exerciseDate,
+                        dailyMap.get(exerciseDate).add(safeDecimal(log.getBurnedKcal())));
+            }
         }
 
         List<String> labels = dailyMap.keySet().stream()
@@ -64,8 +73,9 @@ public class ExerciseService {
                 .toList();
 
         List<ExerciseItem> items = todayLogs.stream()
-                .sorted(Comparator.comparing(ExerciseLog::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(ExerciseLog::getExerciseLogId, Comparator.reverseOrder()))
+                .sorted(Comparator
+                        .comparing(ExerciseLog::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(ExerciseLog::getExerciseLogId, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::toItem)
                 .toList();
 
@@ -89,11 +99,11 @@ public class ExerciseService {
         }
 
         Member member = getMember(memberId);
-        ExerciseType manualType = getExerciseType(DIRECT_INPUT_TYPE_ID);
+        ExerciseType directInputType = getDirectInputType();
 
         ExerciseLog log = new ExerciseLog();
         log.setMember(member);
-        log.setExerciseType(manualType);
+        log.setExerciseType(directInputType);
         log.setExerciseDate(defaultDate(exerciseDate));
         log.setDurationMin(null);
         log.setSetsCount(null);
@@ -101,18 +111,29 @@ public class ExerciseService {
         log.setDistanceKm(null);
         log.setBurnedKcal(BigDecimal.valueOf(burnedKcal));
         log.setMemo(exerciseName.trim());
+
         exerciseLogRepository.save(log);
     }
 
     public void addQuickCountExercise(Long memberId, LocalDate exerciseDate, Long exerciseTypeId, Integer setsCount, Integer repsCount) {
-        if (setsCount == null || setsCount <= 0 || repsCount == null || repsCount <= 0) {
-            throw new IllegalArgumentException("세트 수와 횟수는 1 이상이어야 합니다.");
+        if (exerciseTypeId == null) {
+            throw new IllegalArgumentException("운동 종류를 선택해 주세요.");
+        }
+        if (setsCount == null || setsCount <= 0) {
+            throw new IllegalArgumentException("세트 수는 1 이상이어야 합니다.");
+        }
+        if (repsCount == null || repsCount <= 0) {
+            throw new IllegalArgumentException("횟수는 1 이상이어야 합니다.");
         }
 
         Member member = getMember(memberId);
         ExerciseType exerciseType = getExerciseType(exerciseTypeId);
-        if (exerciseType.getCategory() != ExerciseType.Category.COUNT_SET || exerciseType.getKcalPerRep() == null) {
-            throw new IllegalArgumentException("세트형 운동이 아닙니다.");
+
+        if (exerciseType.getCategory() != ExerciseType.Category.COUNT_SET) {
+            throw new IllegalArgumentException("세트형 운동만 추가할 수 있습니다.");
+        }
+        if (exerciseType.getKcalPerRep() == null) {
+            throw new IllegalArgumentException("회당 칼로리 정보가 없습니다.");
         }
 
         BigDecimal burnedKcal = exerciseType.getKcalPerRep()
@@ -129,18 +150,28 @@ public class ExerciseService {
         log.setDurationMin(null);
         log.setDistanceKm(null);
         log.setBurnedKcal(burnedKcal);
+        log.setMemo(null);
+
         exerciseLogRepository.save(log);
     }
 
     public void addQuickTimeExercise(Long memberId, LocalDate exerciseDate, Long exerciseTypeId, Integer durationMin) {
+        if (exerciseTypeId == null) {
+            throw new IllegalArgumentException("운동 종류를 선택해 주세요.");
+        }
         if (durationMin == null || durationMin <= 0) {
             throw new IllegalArgumentException("운동 시간은 1분 이상이어야 합니다.");
         }
 
         Member member = getMember(memberId);
         ExerciseType exerciseType = getExerciseType(exerciseTypeId);
-        if (exerciseType.getCategory() != ExerciseType.Category.TIME || exerciseType.getKcalPerMin() == null) {
-            throw new IllegalArgumentException("시간형 운동이 아닙니다.");
+
+        if (exerciseType.getCategory() != ExerciseType.Category.TIME
+                && exerciseType.getCategory() != ExerciseType.Category.ROUTE) {
+            throw new IllegalArgumentException("시간형 운동만 추가할 수 있습니다.");
+        }
+        if (exerciseType.getKcalPerMin() == null) {
+            throw new IllegalArgumentException("분당 칼로리 정보가 없습니다.");
         }
 
         BigDecimal burnedKcal = exerciseType.getKcalPerMin()
@@ -156,16 +187,24 @@ public class ExerciseService {
         log.setRepsCount(null);
         log.setDistanceKm(null);
         log.setBurnedKcal(burnedKcal);
+        log.setMemo(null);
+
         exerciseLogRepository.save(log);
     }
 
     public void deleteExercise(Long memberId, Long exerciseLogId) {
+        if (exerciseLogId == null) {
+            throw new IllegalArgumentException("삭제할 운동 기록이 없습니다.");
+        }
+
         ExerciseLog log = exerciseLogRepository.findById(exerciseLogId)
                 .orElseThrow(() -> new IllegalArgumentException("운동 기록을 찾을 수 없습니다."));
 
-        if (!log.getMember().getMemberId().equals(memberId)) {
-            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+        if (log.getMember() == null || log.getMember().getMemberId() == null
+                || !log.getMember().getMemberId().equals(memberId)) {
+            throw new IllegalArgumentException("본인의 운동 기록만 삭제할 수 있습니다.");
         }
+
         exerciseLogRepository.delete(log);
     }
 
@@ -176,30 +215,34 @@ public class ExerciseService {
 
     @Transactional(readOnly = true)
     public List<QuickExerciseOption> getTimeOptions() {
-        return getQuickOptions(ExerciseType.Category.TIME);
+        List<QuickExerciseOption> result = new ArrayList<>();
+        result.addAll(getQuickOptions(ExerciseType.Category.ROUTE));
+        result.addAll(getQuickOptions(ExerciseType.Category.TIME));
+        return result;
     }
 
     private List<QuickExerciseOption> getQuickOptions(ExerciseType.Category category) {
         return exerciseTypeRepository.findAll().stream()
                 .filter(type -> Boolean.TRUE.equals(type.getIsActive()))
                 .filter(type -> type.getCategory() == category)
-                .filter(type -> type.getExerciseTypeId() != null && type.getExerciseTypeId() > 0)
+                .filter(type -> type.getExerciseTypeId() != null)
                 .sorted(Comparator.comparing(ExerciseType::getExerciseTypeId))
                 .map(type -> new QuickExerciseOption(type.getExerciseTypeId(), type.getExerciseName()))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private ExerciseItem toItem(ExerciseLog log) {
-        String displayName = log.getExerciseType() != null && log.getExerciseType().getExerciseTypeId() != null
-                && log.getExerciseType().getExerciseTypeId() == DIRECT_INPUT_TYPE_ID
+        ExerciseType exerciseType = log.getExerciseType();
+
+        String displayName = isDirectInput(exerciseType)
                 ? defaultText(log.getMemo(), "직접 입력")
-                : log.getExerciseType().getExerciseName();
+                : (exerciseType != null ? defaultText(exerciseType.getExerciseName(), "운동") : "운동");
 
         String detail = "";
-        if (log.getExerciseType().getCategory() == ExerciseType.Category.COUNT_SET) {
-            detail = safeInt(log.getSetsCount()) + "세트 · " + safeInt(log.getRepsCount()) + "회";
-        } else if (safeInt(log.getDurationMin()) > 0) {
-            detail = safeInt(log.getDurationMin()) + "분";
+        if (exerciseType != null && exerciseType.getCategory() == ExerciseType.Category.COUNT_SET) {
+            detail = safeInteger(log.getSetsCount()) + "세트 · " + safeInteger(log.getRepsCount()) + "회";
+        } else if (safeInteger(log.getDurationMin()) > 0) {
+            detail = safeInteger(log.getDurationMin()) + "분";
         }
 
         return ExerciseItem.builder()
@@ -220,6 +263,15 @@ public class ExerciseService {
                 .orElseThrow(() -> new IllegalArgumentException("exercise_type 테이블에 필요한 운동 타입이 없습니다. 먼저 기초 데이터를 넣어 주세요."));
     }
 
+    private ExerciseType getDirectInputType() {
+        return exerciseTypeRepository.findFirstByCategoryAndIsActiveTrue(ExerciseType.Category.SELF)
+                .orElseThrow(() -> new IllegalArgumentException("직접 입력용 운동 타입(SELF)이 없습니다."));
+    }
+
+    private boolean isDirectInput(ExerciseType exerciseType) {
+        return exerciseType != null && exerciseType.getCategory() == ExerciseType.Category.SELF;
+    }
+
     private LocalDate defaultDate(LocalDate exerciseDate) {
         return exerciseDate == null ? LocalDate.now() : exerciseDate;
     }
@@ -228,7 +280,7 @@ public class ExerciseService {
         return value == null ? BigDecimal.ZERO : value;
     }
 
-    private Integer safeInt(Integer value) {
+    private Integer safeInteger(Integer value) {
         return value == null ? 0 : value;
     }
 
