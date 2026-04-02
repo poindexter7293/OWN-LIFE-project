@@ -55,8 +55,8 @@ public class BoardController {
     }
 
     @PostMapping("/write")
-    public String write(@RequestParam String title,
-                        @RequestParam String content,
+    public String write(@RequestParam("title") String title,
+                        @RequestParam("content") String content,
                         HttpSession session) {
 
         var loginMember = (com.ownlife.dto.SessionMember) session.getAttribute("loginMember");
@@ -80,8 +80,8 @@ public class BoardController {
 
     @PostMapping("/edit/{id}")
     public String edit(@PathVariable("id") Long id,
-                       @RequestParam String title,
-                       @RequestParam String content) {
+                       @RequestParam("title") String title,
+                       @RequestParam("content") String content) {
         boardPostService.update(id, title, content);
         return "redirect:/board/" + id;
     }
@@ -102,7 +102,7 @@ public class BoardController {
 
     @PostMapping("/{id}/comment")
     public String writeComment(@PathVariable("id") Long id,
-                               @RequestParam String content,
+                               @RequestParam("content") String content,
                                HttpSession session) {
 
         var loginMember = (com.ownlife.dto.SessionMember) session.getAttribute("loginMember");
@@ -118,7 +118,7 @@ public class BoardController {
 
     @PostMapping("/comment/delete/{commentId}")
     public String deleteComment(@PathVariable("commentId") Long commentId,
-                                @RequestParam Long postId,
+                                @RequestParam("postId") Long postId,
                                 HttpSession session) {
 
         var loginMember = (com.ownlife.dto.SessionMember) session.getAttribute("loginMember");
