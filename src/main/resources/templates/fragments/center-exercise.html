@@ -19,19 +19,29 @@
     </section>
 
     <section class="exercise-summary-grid">
-        <article class="exercise-summary-card">
+        <article class="exercise-summary-card" id="todayBurnedCard">
             <div class="exercise-summary-card__label">금일 소모 칼로리</div>
             <div class="exercise-summary-card__value exercise-summary-card__value--green">
-                <span class="count-up-int" th:attr="data-target=${exerciseData.todayBurnedKcal}">0</span><small>kcal</small>
+        <span class="count-up-int"
+              th:attr="data-target=${exerciseData.todayBurnedKcal}"
+              th:text="${exerciseData.todayBurnedKcal}">0</span><small>kcal</small>
             </div>
         </article>
 
-        <article class="exercise-summary-card">
+        <article class="exercise-summary-card" id="goalBurnedCard">
             <div class="exercise-summary-card__label">목표 소모 칼로리</div>
-            <div class="exercise-summary-card__value exercise-summary-card__value--green">
+
+            <div class="exercise-summary-card__value exercise-summary-card__value--green"
+                 th:if="${exerciseData.goalBurnedKcal > 0}">
         <span class="count-up-int"
-              th:attr="data-target=${exerciseData.goalBurnedKcal}">0</span>
+              th:attr="data-target=${exerciseData.goalBurnedKcal}"
+              th:text="${exerciseData.goalBurnedKcal}">0</span>
                 <small>kcal</small>
+            </div>
+
+            <div class="exercise-summary-card__value exercise-summary-card__value--muted"
+                 th:unless="${exerciseData.goalBurnedKcal > 0}">
+                <span>미설정</span>
             </div>
         </article>
 
@@ -46,14 +56,20 @@
     <div class="exercise-message exercise-message--error" th:if="${exerciseErrorMessage != null}" th:text="${exerciseErrorMessage}"></div>
     <div class="exercise-message exercise-message--success" th:if="${exerciseSuccessMessage != null}" th:text="${exerciseSuccessMessage}"></div>
 
-    <section class="exercise-content-grid">
+    <section class="exercise-content-grid" id="exerciseAddSection">
         <article class="exercise-panel">
             <div class="exercise-panel__title">운동 추가</div>
 
             <!-- 상단 모드 전환 -->
             <div class="exercise-mode-tabs">
-                <button type="button" class="exercise-mode-tab active" data-mode-target="directAddPanel">직접 추가</button>
-                <button type="button" class="exercise-mode-tab" data-mode-target="quickAddPanel">빠른 추가</button>
+                <button type="button"
+                        class="exercise-mode-tab active"
+                        id="directAddTab"
+                        data-mode-target="directAddPanel">직접 추가</button>
+                <button type="button"
+                        class="exercise-mode-tab"
+                        id="quickAddTab"
+                        data-mode-target="quickAddPanel">빠른 추가</button>
             </div>
 
             <!-- 직접 추가 영역 -->
@@ -64,7 +80,12 @@
                     <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
 
                     <label class="exercise-form__label">운동 이름</label>
-                    <input class="exercise-form__input" type="text" name="exerciseName" placeholder="예: 러닝머신, 홈트, 계단 오르기" required>
+                    <input id="exerciseNameInput"
+                           class="exercise-form__input"
+                           type="text"
+                           name="exerciseName"
+                           placeholder="예: 러닝머신, 홈트, 계단 오르기"
+                           required>
 
                     <div class="exercise-form__row exercise-form__row--two">
                         <div>

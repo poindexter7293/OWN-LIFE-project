@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initExerciseModeTabs();
     initQuickTabs();
     initExerciseWeekChart();
+    initSummaryCardActions();
 });
 
 function initCountUp() {
@@ -194,4 +195,56 @@ function initExerciseWeekChart() {
             }
         }
     });
+}
+
+function initSummaryCardActions() {
+    const todayBurnedCard = document.getElementById('todayBurnedCard');
+    const goalBurnedCard = document.getElementById('goalBurnedCard');
+
+    const exerciseAddSection = document.getElementById('exerciseAddSection');
+    const directAddTab = document.getElementById('directAddTab');
+    const directAddPanel = document.getElementById('directAddPanel');
+    const exerciseNameInput = document.getElementById('exerciseNameInput');
+
+    if (todayBurnedCard) {
+        todayBurnedCard.style.cursor = 'pointer';
+
+        todayBurnedCard.addEventListener('click', function () {
+            if (exerciseAddSection) {
+                exerciseAddSection.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+
+            if (directAddTab && !directAddTab.classList.contains('active')) {
+                directAddTab.click();
+            }
+
+            window.setTimeout(function () {
+                if (directAddPanel && !directAddPanel.classList.contains('is-active')) {
+                    directAddPanel.classList.add('is-active');
+                }
+
+                if (exerciseNameInput) {
+                    exerciseNameInput.focus();
+                    if (typeof exerciseNameInput.select === 'function') {
+                        exerciseNameInput.select();
+                    }
+                }
+            }, 380);
+        });
+    }
+
+    if (goalBurnedCard) {
+        goalBurnedCard.style.cursor = 'pointer';
+
+        goalBurnedCard.addEventListener('click', function () {
+            const confirmed = window.confirm('목표 소모 칼로리 수정을 위해 마이페이지로 이동하겠습니다.');
+
+            if (confirmed) {
+                window.location.href = '/mypage';
+            }
+        });
+    }
 }

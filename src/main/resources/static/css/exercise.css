@@ -451,3 +451,28 @@
     position: relative;
     height: 280px;
 }
+
+.exercise-summary-card__value--muted {
+    color: #9ca3af;
+}
+
+.exercise-summary-card__sub {
+    margin-top: 6px;
+    font-size: 0.84rem;
+    color: #9ca3af;
+    line-height: 1.4;
+}
+
+.exercise-summary-card--clickable,
+#todayBurnedCard,
+#goalBurnedCard {
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.exercise-summary-card--clickable:hover,
+#todayBurnedCard:hover,
+#goalBurnedCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
