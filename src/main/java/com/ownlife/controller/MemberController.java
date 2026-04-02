@@ -89,7 +89,7 @@ public class MemberController {
 
     @GetMapping("/signup/check-username")
     @ResponseBody
-    public Map<String, Object> checkUsername(@RequestParam String username) {
+    public Map<String, Object> checkUsername(@RequestParam("username") String username) {
         String normalizedUsername = normalizeIdentity(username);
         String validationMessage = validateUsernameValue(normalizedUsername);
 
@@ -110,7 +110,7 @@ public class MemberController {
 
     @GetMapping("/signup/check-email")
     @ResponseBody
-    public Map<String, Object> checkEmail(@RequestParam String email) {
+    public Map<String, Object> checkEmail(@RequestParam("email") String email) {
         String normalizedEmail = normalizeIdentity(email);
         String validationMessage = validateEmailValue(normalizedEmail);
 
@@ -131,7 +131,7 @@ public class MemberController {
 
     @GetMapping("/signup/check-nickname")
     @ResponseBody
-    public Map<String, Object> checkNickname(@RequestParam String nickname) {
+    public Map<String, Object> checkNickname(@RequestParam("nickname") String nickname) {
         String normalizedNickname = trimToNull(nickname);
         String validationMessage = validateNicknameValue(normalizedNickname);
 
