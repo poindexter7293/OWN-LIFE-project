@@ -37,6 +37,7 @@ public class ExerciseController {
         model.addAttribute("exerciseData", pageData);
         model.addAttribute("countExerciseOptions", exerciseService.getCountOptions());
         model.addAttribute("timeExerciseOptions", exerciseService.getTimeOptions());
+        model.addAttribute("routeExerciseOptions", exerciseService.getRouteOptions());
         return "main";
     }
 
