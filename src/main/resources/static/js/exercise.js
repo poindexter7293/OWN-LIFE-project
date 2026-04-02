@@ -1,5 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
+    initCountUp();
+    initExerciseModeTabs();
+    initQuickTabs();
+    initExerciseWeekChart();
+});
+
+function initCountUp() {
     const countUps = document.querySelectorAll('.exercise-page .count-up-int');
+
     countUps.forEach((element) => {
         const endValue = Number(element.dataset.target || 0);
         const startTime = performance.now();
@@ -9,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const progress = Math.min((now - startTime) / duration, 1);
             const eased = 1 - Math.pow(1 - progress, 3);
             element.textContent = String(Math.round(endValue * eased));
+
             if (progress < 1) {
                 requestAnimationFrame(frame);
             } else {
@@ -18,80 +27,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         requestAnimationFrame(frame);
     });
-
-    document.querySelectorAll('.exercise-chip[data-quick-target]').forEach((button) => {
-        button.addEventListener('click', function () {
-            document.querySelectorAll('.exercise-chip[data-quick-target]').forEach((chip) => chip.classList.remove('active'));
-            document.querySelectorAll('.exercise-quick-form').forEach((form) => form.classList.remove('is-active'));
-
-            button.classList.add('active');
-            const targetId = button.dataset.quickTarget;
-            const targetForm = document.getElementById(targetId);
-            if (targetForm) {
-                targetForm.classList.add('is-active');
-            }
-        });
-    });
-
-    if (typeof Chart === 'undefined' || !window.exercisePageData) {
-        return;
-    }
-
-    const chartElement = document.getElementById('exerciseWeekChart');
-    if (!chartElement) {
-        return;
-    }
-
-    new Chart(chartElement, {
-        type: 'bar',
-        data: {
-            labels: window.exercisePageData.weekLabels || [],
-            datasets: [{
-                data: window.exercisePageData.weekValues || [],
-                backgroundColor: [
-                    'rgba(34, 197, 94, 0.12)',
-                    'rgba(34, 197, 94, 0.12)',
-                    'rgba(34, 197, 94, 0.12)',
-                    'rgba(34, 197, 94, 0.12)',
-                    'rgba(34, 197, 94, 0.12)',
-                    'rgba(34, 197, 94, 0.20)',
-                    'rgba(34, 197, 94, 1)'
-                ],
-                borderRadius: 8,
-                borderSkipped: false
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: true }
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#6b7280' }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#eef0f5' },
-                    ticks: { color: '#6b7280' }
-                }
-            }
-        }
-    });
-});
-document.addEventListener('DOMContentLoaded', function () {
-    initExerciseModeTabs();
-    initQuickTabs();
-});
+}
 
 function initExerciseModeTabs() {
     const modeTabs = document.querySelectorAll('.exercise-mode-tab');
     const modePanels = document.querySelectorAll('.exercise-mode-panel');
 
-    modeTabs.forEach(tab => {
+    modeTabs.forEach((tab) => {
         tab.addEventListener('click', function () {
             const targetId = this.dataset.modeTarget;
 
@@ -112,7 +54,7 @@ function initQuickTabs() {
     const quickTabs = document.querySelectorAll('.exercise-quick-tabs .exercise-chip');
     const quickForms = document.querySelectorAll('.exercise-quick-form');
 
-    quickTabs.forEach(tab => {
+    quickTabs.forEach((tab) => {
         tab.addEventListener('click', function () {
             const targetId = this.dataset.quickTarget;
 
@@ -126,5 +68,130 @@ function initQuickTabs() {
                 targetForm.classList.add('is-active');
             }
         });
+    });
+}
+
+function initExerciseWeekChart() {
+    if (typeof Chart === 'undefined' || !window.exercisePageData) {
+        return;
+    }
+
+    const chartElement = document.getElementById('exerciseWeekChart');
+    if (!chartElement) {
+        return;
+    }
+
+    const labels = window.exercisePageData.weekLabels || [];
+    const values = window.exercisePageData.weekValues || [];
+    const goalBurnedKcal = Number(window.exercisePageData.goalBurnedKcal || 0);
+
+    const datasets = [
+        {
+            type: 'bar',
+            label: '일일 소모 칼로리',
+            data: values,
+            backgroundColor: [
+                'rgba(34, 197, 94, 0.12)',
+                'rgba(34, 197, 94, 0.12)',
+                'rgba(34, 197, 94, 0.12)',
+                'rgba(34, 197, 94, 0.12)',
+                'rgba(34, 197, 94, 0.12)',
+                'rgba(34, 197, 94, 0.20)',
+                'rgba(34, 197, 94, 1)'
+            ],
+            borderRadius: 8,
+            borderSkipped: false,
+            barPercentage: 0.62,
+            categoryPercentage: 0.7
+        }
+    ];
+
+    if (goalBurnedKcal > 0) {
+        datasets.push({
+            type: 'line',
+            label: '하루 목표 칼로리',
+            data: Array(labels.length).fill(goalBurnedKcal),
+            borderColor: 'rgba(249, 115, 22, 0.95)',
+            borderWidth: 2,
+            borderDash: [6, 6],
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
+            tension: 0
+        });
+    }
+
+    new Chart(chartElement, {
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            animation: {
+                duration: 1200,
+                easing: 'easeOutQuart'
+            },
+
+            plugins: {
+                legend: {
+                    display: goalBurnedKcal > 0
+                },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        afterBody: function (tooltipItems) {
+                            if (goalBurnedKcal <= 0 || !tooltipItems || !tooltipItems.length) {
+                                return [];
+                            }
+
+                            const barItem = tooltipItems.find(item => item.dataset.type === 'bar') || tooltipItems[0];
+                            const currentValue = Number(barItem.raw || 0);
+                            const rate = Math.round((currentValue * 100) / goalBurnedKcal);
+
+                            return ['해당일 목표 달성률: ' + rate + '%'];
+                        }
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#6b7280' }
+                },
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: Math.max(...values, goalBurnedKcal, 100) * 1.15,
+                    grid: { color: '#eef0f5' },
+                    ticks: { color: '#6b7280' }
+                }
+            },
+
+            datasets: {
+                bar: {
+                    animations: {
+                        y: {
+                            duration: 1200,
+                            easing: 'easeOutQuart'
+                        },
+                        base: {
+                            duration: 1200,
+                            easing: 'easeOutQuart'
+                        }
+                    }
+                },
+                line: {
+                    animations: {
+                        y: {
+                            duration: 1200,
+                            easing: 'easeOutQuart'
+                        }
+                    }
+                }
+            }
+        }
     });
 }
