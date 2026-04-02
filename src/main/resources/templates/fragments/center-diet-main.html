@@ -10,9 +10,39 @@
         </div>
 
         <form th:action="@{/diet}" method="get" class="diet-date-form">
+            <input type="hidden" name="period" th:value="${period}">
             <input type="date" name="date" th:value="${selectedDate}">
             <button type="submit">조회</button>
         </form>
+    </section>
+
+    <section class="diet-goal-card">
+        <h3>오늘 목표 관리</h3>
+        <div class="goal-grid">
+            <div class="goal-item">
+                <span class="label">목표 칼로리</span>
+                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['goalKcal'], 1, 1)}">0.0</strong>
+                <span class="unit">kcal</span>
+            </div>
+
+            <div class="goal-item">
+                <span class="label">현재 섭취</span>
+                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['totalKcal'], 1, 1)}">0.0</strong>
+                <span class="unit">kcal</span>
+            </div>
+
+            <div class="goal-item">
+                <span class="label">남은 칼로리</span>
+                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['remainingKcal'], 1, 1)}">0.0</strong>
+                <span class="unit">kcal</span>
+            </div>
+
+            <div class="goal-item" th:if="${dietGoalSummary['exceededKcal'] > 0}">
+                <span class="label">초과 칼로리</span>
+                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['exceededKcal'], 1, 1)}">0.0</strong>
+                <span class="unit">kcal</span>
+            </div>
+        </div>
     </section>
 
     <section class="diet-summary-card">
@@ -41,12 +71,29 @@
         </div>
     </section>
 
+    <!-- 식단 추가 카드만 남김 -->
     <section class="diet-content-grid">
         <section class="diet-form-card">
             <h3>식단 추가</h3>
 
             <form th:action="@{/diet/add}" method="post" class="diet-form">
                 <input type="hidden" name="mealDate" th:value="${selectedDate}">
+
+                <div class="input-mode-box">
+                    <label class="radio-label">
+                        <input type="radio" name="inputMode" value="select" checked> 목록 선택
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="inputMode" value="custom"> 직접 입력
+                    </label>
+                </div>
+
+                <div class="form-row checkbox-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="saveAsFood">
+                        자주 먹는 음식으로 저장
+                    </label>
+                </div>
 
                 <div class="form-row">
                     <label for="mealType">식사 구분</label>
@@ -59,16 +106,82 @@
                     </select>
                 </div>
 
-                <div class="form-row">
-                    <label for="foodId">음식</label>
-                    <select id="foodId" name="foodId" required>
-                        <option value="">음식 선택</option>
-                        <option th:each="food : ${foodList}"
-                                th:value="${food.foodId}"
-                                th:text="${food.foodName}">
-                            음식명
-                        </option>
-                    </select>
+                <div id="selectModeFields">
+                    <div class="form-row">
+                        <label for="foodId">음식</label>
+                        <select id="foodId" name="foodId">
+                            <option value="">음식 선택</option>
+                            <option th:each="food : ${foodList}"
+                                    th:value="${food.foodId}"
+                                    th:text="${food.foodName}"
+                                    th:attr="data-base-amount=${food.baseAmountG},
+                                             data-calories=${food.caloriesKcal},
+                                             data-carb=${food.carbG},
+                                             data-protein=${food.proteinG},
+                                             data-fat=${food.fatG}">
+                                음식명
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="select-food-preview-grid">
+                        <div class="form-row">
+                            <label for="selectedBaseAmountG">기준량(g)</label>
+                            <input type="number" id="selectedBaseAmountG" readonly placeholder="자동 표시">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="selectedCaloriesKcal">칼로리 (100g 기준)</label>
+                            <input type="number" id="selectedCaloriesKcal" readonly placeholder="자동 표시">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="selectedCarbG">탄수화물 (100g 기준)</label>
+                            <input type="number" id="selectedCarbG" readonly placeholder="자동 표시">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="selectedProteinG">단백질 (100g 기준)</label>
+                            <input type="number" id="selectedProteinG" readonly placeholder="자동 표시">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="selectedFatG">지방 (100g 기준)</label>
+                            <input type="number" id="selectedFatG" readonly placeholder="자동 표시">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="customModeFields" style="display:none;">
+                    <div class="form-row">
+                        <label for="customFoodName">음식명</label>
+                        <input type="text" id="customFoodName" name="customFoodName" placeholder="예: 김치찌개">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="customBaseAmountG">기준량(g)</label>
+                        <input type="number" step="0.1" id="customBaseAmountG" name="customBaseAmountG" placeholder="예: 150">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="customCaloriesKcal">칼로리 (100g 기준)</label>
+                        <input type="number" step="0.1" id="customCaloriesKcal" name="customCaloriesKcal" placeholder="예: 80">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="customCarbG">탄수화물 (100g 기준)</label>
+                        <input type="number" step="0.1" id="customCarbG" name="customCarbG" placeholder="예: 5">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="customProteinG">단백질 (100g 기준)</label>
+                        <input type="number" step="0.1" id="customProteinG" name="customProteinG" placeholder="예: 4">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="customFatG">지방 (100g 기준)</label>
+                        <input type="number" step="0.1" id="customFatG" name="customFatG" placeholder="예: 3">
+                    </div>
                 </div>
 
                 <div class="form-row">
@@ -81,16 +194,51 @@
                 </div>
             </form>
         </section>
-
-        <section class="diet-guide-card">
-            <h3>입력 가이드</h3>
-            <ul class="guide-list">
-                <li>음식은 미리 등록된 목록에서 선택합니다.</li>
-                <li>개수 입력 시 내부적으로 기준 g로 환산됩니다.</li>
-                <li>기록된 값 기준으로 칼로리와 영양소가 자동 계산됩니다.</li>
-            </ul>
-        </section>
     </section>
+
+    <!-- 그래프는 단독 카드 -->
+    <section class="diet-chart-card">
+        <h3>
+            <span th:if="${period == 'day'}">최근 7일 섭취량</span>
+            <span th:if="${period == 'week'}">최근 주간 섭취량</span>
+            <span th:if="${period == 'month'}">최근 월간 섭취량</span>
+            <span th:if="${period == 'year'}">연간 섭취량</span>
+        </h3>
+
+        <div class="chart-tabs">
+            <a th:href="@{/diet(date=${selectedDate}, period='day')}"
+               th:classappend="${period == 'day'} ? 'active'">
+                일
+            </a>
+            <a th:href="@{/diet(date=${selectedDate}, period='week')}"
+               th:classappend="${period == 'week'} ? 'active'">
+                주
+            </a>
+            <a th:href="@{/diet(date=${selectedDate}, period='month')}"
+               th:classappend="${period == 'month'} ? 'active'">
+                월
+            </a>
+            <a th:href="@{/diet(date=${selectedDate}, period='year')}"
+               th:classappend="${period == 'year'} ? 'active'">
+                년
+            </a>
+        </div>
+
+        <p class="chart-sub-text">선택한 기간 기준 섭취 칼로리를 보여줍니다.</p>
+
+        <div class="chart-box">
+            <canvas id="dietIntakeChart"></canvas>
+        </div>
+    </section>
+
+    <script th:inline="javascript">
+        window.weeklyIntakeData = {
+            labels: /*[[${weeklyIntakeSummary.labels}]]*/ [],
+            calories: /*[[${weeklyIntakeSummary.calories}]]*/ [],
+            colors: /*[[${weeklyIntakeSummary.colors}]]*/ [],
+            goalKcal: /*[[${weeklyIntakeSummary.goalKcal}]]*/ 0
+        };
+    </script>
 
     <section class="diet-list-card">
         <h3>오늘 식단 기록</h3>
@@ -115,8 +263,7 @@
             <tbody>
             <tr th:each="meal : ${mealLogs}">
                 <td>
-                    <span class="meal-badge"
-                          th:switch="${meal.mealType}">
+                    <span class="meal-badge" th:switch="${meal.mealType}">
                         <span th:case="'BREAKFAST'">아침</span>
                         <span th:case="'LUNCH'">점심</span>
                         <span th:case="'DINNER'">저녁</span>
