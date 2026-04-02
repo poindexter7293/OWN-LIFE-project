@@ -28,7 +28,7 @@ public class MealLog {
     @Column(name = "meal_type", nullable = false, length = 20)
     private String mealType;
 
-    @Column(name = "food_id", nullable = false)
+    @Column(name = "food_id", nullable = true)
     private Long foodId;
 
     @Column(name = "food_name_snapshot", nullable = false, length = 100)
