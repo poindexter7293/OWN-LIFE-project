@@ -2,6 +2,7 @@ package com.ownlife.service;
 
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
@@ -224,6 +225,79 @@ public class MemberService {
         return memberRepository.saveAndFlush(member);
     }
 
+    public Optional<Member> findKakaoMemberForLogin(KakaoUserProfile kakaoUserProfile) {
+        if (kakaoUserProfile == null) {
+            throw new IllegalArgumentException("카카오 인증 정보가 올바르지 않습니다.");
+        }
+        if (!kakaoUserProfile.isEmailVerified()) {
+            throw new IllegalArgumentException("이메일 인증이 완료된 카카오 계정만 사용할 수 있습니다.");
+        }
+
+        Optional<SocialAccount> existingSocialAccount = socialAccountRepository.findByProviderAndProviderUserId(SocialAccount.Provider.KAKAO, kakaoUserProfile.getId());
+        if (existingSocialAccount.isPresent()) {
+            Member member = existingSocialAccount.get().getMember();
+            validateActiveMember(member);
+            refreshKakaoProfile(member, kakaoUserProfile);
+            upsertKakaoSocialAccount(member, kakaoUserProfile);
+            return Optional.of(memberRepository.saveAndFlush(member));
+        }
+
+        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(kakaoUserProfile.getEmail()));
+        if (existingEmailMember.isPresent()) {
+            Member member = existingEmailMember.get();
+            validateActiveMember(member);
+            refreshKakaoProfile(member, kakaoUserProfile);
+            upsertKakaoSocialAccount(member, kakaoUserProfile);
+            return Optional.of(memberRepository.saveAndFlush(member));
+        }
+
+        return Optional.empty();
+    }
+
+    public Member registerKakaoMember(SignupForm signupForm, KakaoUserProfile kakaoUserProfile) {
+        if (signupForm == null) {
+            throw new IllegalArgumentException("회원가입 정보가 올바르지 않습니다.");
+        }
+        if (kakaoUserProfile == null) {
+            throw new IllegalArgumentException("카카오 인증 정보가 올바르지 않습니다.");
+        }
+        if (!kakaoUserProfile.isEmailVerified()) {
+            throw new IllegalArgumentException("이메일 인증이 완료된 카카오 계정만 사용할 수 있습니다.");
+        }
+
+        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(kakaoUserProfile.getEmail()));
+        if (existingEmailMember.isPresent()) {
+            Member existingMember = existingEmailMember.get();
+            validateActiveMember(existingMember);
+            refreshKakaoProfile(existingMember, kakaoUserProfile);
+            existingMember.setNickname(trimToNull(signupForm.getNickname()));
+            existingMember.setGender(signupForm.getGender());
+            existingMember.setBirthDate(signupForm.getBirthDate());
+            existingMember.setHeightCm(signupForm.getHeightCm());
+            existingMember.setWeightKg(signupForm.getWeightKg());
+            upsertKakaoSocialAccount(existingMember, kakaoUserProfile);
+            return memberRepository.saveAndFlush(existingMember);
+        }
+
+        Member member = new Member();
+        member.setUsername(generateKakaoUsername(kakaoUserProfile.getId()));
+        member.setNickname(trimToNull(signupForm.getNickname()));
+        member.setEmail(normalizeIdentity(kakaoUserProfile.getEmail()));
+        member.setGender(signupForm.getGender());
+        member.setBirthDate(signupForm.getBirthDate());
+        member.setHeightCm(signupForm.getHeightCm());
+        member.setWeightKg(signupForm.getWeightKg());
+        member.setRole(Member.Role.USER);
+        member.setStatus(Member.Status.ACTIVE);
+        member.setLoginType(Member.LoginType.KAKAO);
+        member.setSocialProvider("KAKAO");
+        member.setSocialProviderId(kakaoUserProfile.getId());
+        member.setProfileImageUrl(trimToNull(kakaoUserProfile.getProfileImageUrl()));
+        Member savedMember = memberRepository.saveAndFlush(member);
+        upsertKakaoSocialAccount(savedMember, kakaoUserProfile);
+        return savedMember;
+    }
+
     private String normalizeUsername(String value) {
         return normalizeIdentity(value);
     }
@@ -268,6 +342,28 @@ public class MemberService {
         }
     }
 
+    private void refreshKakaoProfile(Member member, KakaoUserProfile kakaoUserProfile) {
+        member.setEmail(normalizeIdentity(kakaoUserProfile.getEmail()));
+        if (member.getLoginType() == null) {
+            member.setLoginType(Member.LoginType.KAKAO);
+        }
+        if (!StringUtils.hasText(member.getSocialProvider())) {
+            member.setSocialProvider("KAKAO");
+        }
+        if (!StringUtils.hasText(member.getSocialProviderId())) {
+            member.setSocialProviderId(kakaoUserProfile.getId());
+        }
+        if (!StringUtils.hasText(member.getNickname())) {
+            member.setNickname(resolveKakaoNickname(kakaoUserProfile));
+        }
+        if (!StringUtils.hasText(member.getProfileImageUrl())) {
+            member.setProfileImageUrl(trimToNull(kakaoUserProfile.getProfileImageUrl()));
+        }
+        if (!StringUtils.hasText(member.getUsername())) {
+            member.setUsername(generateKakaoUsername(kakaoUserProfile.getId()));
+        }
+    }
+
     private void upsertGoogleSocialAccount(Member member, GoogleUserProfile googleUserProfile) {
         SocialAccount socialAccount = socialAccountRepository
                 .findByProviderAndProviderUserId(SocialAccount.Provider.GOOGLE, googleUserProfile.getSubject())
@@ -281,6 +377,23 @@ public class MemberService {
         socialAccount.setProviderEmail(normalizeIdentity(googleUserProfile.getEmail()));
         socialAccount.setProviderName(trimToNull(googleUserProfile.getName()));
         socialAccount.setProfileImageUrl(trimToNull(googleUserProfile.getPictureUrl()));
+        socialAccount.setLastLoginAt(LocalDateTime.now());
+        socialAccountRepository.saveAndFlush(socialAccount);
+    }
+
+    private void upsertKakaoSocialAccount(Member member, KakaoUserProfile kakaoUserProfile) {
+        SocialAccount socialAccount = socialAccountRepository
+                .findByProviderAndProviderUserId(SocialAccount.Provider.KAKAO, kakaoUserProfile.getId())
+                .orElseGet(() -> socialAccountRepository
+                        .findByMemberMemberIdAndProvider(member.getMemberId(), SocialAccount.Provider.KAKAO)
+                        .orElseGet(SocialAccount::new));
+
+        socialAccount.setMember(member);
+        socialAccount.setProvider(SocialAccount.Provider.KAKAO);
+        socialAccount.setProviderUserId(kakaoUserProfile.getId());
+        socialAccount.setProviderEmail(normalizeIdentity(kakaoUserProfile.getEmail()));
+        socialAccount.setProviderName(trimToNull(kakaoUserProfile.getNickname()));
+        socialAccount.setProfileImageUrl(trimToNull(kakaoUserProfile.getProfileImageUrl()));
         socialAccount.setLastLoginAt(LocalDateTime.now());
         socialAccountRepository.saveAndFlush(socialAccount);
     }
@@ -301,6 +414,22 @@ public class MemberService {
         if (!StringUtils.hasText(member.getProfileImageUrl())) {
             member.setProfileImageUrl(trimToNull(googleUserProfile.getPictureUrl()));
         }
+    }
+
+    private String resolveKakaoNickname(KakaoUserProfile kakaoUserProfile) {
+        String nickname = trimToNull(kakaoUserProfile.getNickname());
+        if (nickname != null) {
+            return nickname.length() > 50 ? nickname.substring(0, 50) : nickname;
+        }
+
+        String email = normalizeIdentity(kakaoUserProfile.getEmail());
+        if (email == null) {
+            return "카카오 사용자";
+        }
+
+        int atIndex = email.indexOf('@');
+        String localPart = atIndex > 0 ? email.substring(0, atIndex) : email;
+        return localPart.length() > 50 ? localPart.substring(0, 50) : localPart;
     }
 
     private boolean hasGoalChanges(Member member, MyPageForm myPageForm) {
@@ -356,6 +485,30 @@ public class MemberService {
         }
         if (!StringUtils.hasText(candidate) || candidate.length() < 4) {
             candidate = "google" + Math.abs(secureRandom.nextInt(100_000));
+        }
+
+        String uniqueCandidate = candidate;
+        int suffix = 1;
+        while (memberRepository.existsByUsername(uniqueCandidate)) {
+            String suffixText = Integer.toString(suffix++);
+            int maxBaseLength = Math.max(1, 50 - suffixText.length());
+            uniqueCandidate = candidate.substring(0, Math.min(candidate.length(), maxBaseLength)) + suffixText;
+        }
+        return uniqueCandidate;
+    }
+
+    private String generateKakaoUsername(String id) {
+        String normalizedId = trimToNull(id);
+        if (!StringUtils.hasText(normalizedId)) {
+            normalizedId = Long.toString(Math.abs(secureRandom.nextLong()));
+        }
+
+        String candidate = "kakao_" + normalizedId.replaceAll("[^a-zA-Z0-9]", "").toLowerCase(Locale.ROOT);
+        if (candidate.length() > 50) {
+            candidate = candidate.substring(0, 50);
+        }
+        if (!StringUtils.hasText(candidate) || candidate.length() < 4) {
+            candidate = "kakao" + Math.abs(secureRandom.nextInt(100_000));
         }
 
         String uniqueCandidate = candidate;

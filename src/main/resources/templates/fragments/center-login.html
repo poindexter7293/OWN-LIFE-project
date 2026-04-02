@@ -18,6 +18,10 @@
                 Google 로그인 중 오류가 발생했습니다.
             </div>
 
+            <div class="login-alert login-alert-error" th:if="${kakaoErrorMessage != null}" th:text="${kakaoErrorMessage}">
+                카카오 로그인 중 오류가 발생했습니다.
+            </div>
+
             <form th:action="@{/login}" method="post" th:object="${loginForm}" class="login-form" data-login-form>
                 <div class="login-alert login-alert-error" th:if="${#fields.hasGlobalErrors()}">
                     아이디 또는 비밀번호가 올바르지 않습니다.
@@ -54,20 +58,30 @@
                 </div>
             </form>
 
-            <div class="social-login-panel" th:if="${googleAuthEnabled}">
+            <div class="social-login-panel" th:if="${googleAuthEnabled or kakaoAuthEnabled}">
                 <div class="social-login-divider"><span>또는</span></div>
-                <p class="social-login-description">Google 계정으로 간편하게 회원가입하거나 로그인할 수 있어요.</p>
-                <div id="g_id_onload"
-                     th:attr="data-client_id=${googleClientId},data-login_uri=${googleRedirectUrl},data-ux_mode='redirect',data-auto_prompt='false',data-context='signin'">
-                </div>
-                <div class="g_id_signin"
-                     data-type="standard"
-                     data-shape="pill"
-                     data-theme="outline"
-                     data-text="continue_with"
-                     data-size="large"
-                     data-logo_alignment="left"
-                     data-width="340">
+                <p class="social-login-description">소셜 계정으로 간편하게 회원가입하거나 로그인할 수 있어요.</p>
+                <div class="social-login-actions">
+                    <div th:if="${googleAuthEnabled}">
+                        <div id="g_id_onload"
+                             th:attr="data-client_id=${googleClientId},data-login_uri=${googleRedirectUrl},data-ux_mode='redirect',data-auto_prompt='false',data-context='signin'">
+                        </div>
+                        <div class="g_id_signin"
+                             data-type="standard"
+                             data-shape="pill"
+                             data-theme="outline"
+                             data-text="continue_with"
+                             data-size="large"
+                             data-logo_alignment="left"
+                             data-width="340">
+                        </div>
+                    </div>
+                    <a class="social-login-button social-login-button--kakao"
+                       th:if="${kakaoAuthEnabled}"
+                       th:href="${kakaoLoginUrl}">
+                        <span class="social-login-button__badge">K</span>
+                        <span>카카오로 로그인 / 회원가입</span>
+                    </a>
                 </div>
             </div>
         </div>

@@ -240,6 +240,48 @@
     justify-content: center;
 }
 
+.social-login-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.social-login-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 340px;
+    max-width: 100%;
+    padding: 14px 18px;
+    border-radius: 999px;
+    font-weight: 800;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.social-login-button:hover {
+    transform: translateY(-1px);
+}
+
+.social-login-button--kakao {
+    background: #fee500;
+    color: #191600;
+    box-shadow: 0 12px 22px rgba(245, 201, 0, 0.22);
+}
+
+.social-login-button__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(25, 22, 0, 0.12);
+    font-size: 0.95rem;
+    font-weight: 900;
+}
+
 @media (max-width: 768px) {
     .login-card {
         padding: 26px 18px;
@@ -255,6 +297,10 @@
     }
 
     .login-button {
+        width: 100%;
+    }
+
+    .social-login-button {
         width: 100%;
     }
 }

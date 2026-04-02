@@ -1,10 +1,12 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.PendingGoogleSignup;
+import com.ownlife.dto.PendingKakaoSignup;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class MemberController {
 
     private final MemberService memberService;
     private final GoogleAuthService googleAuthService;
+    private final KakaoAuthService kakaoAuthService;
 
     @ModelAttribute("genderOptions")
     public Member.Gender[] genderOptions() {
@@ -43,11 +46,12 @@ public class MemberController {
 
     @GetMapping("/signup")
     public String signupForm(@RequestParam(value = "success", defaultValue = "false") boolean success,
+                             HttpSession session,
                              Model model) {
         if (!model.containsAttribute("signupForm")) {
             model.addAttribute("signupForm", new SignupForm());
         }
-        applyPageAttributes(model, success, false);
+        applyPageAttributes(model, success, null, session);
         return "main";
     }
 
@@ -63,7 +67,23 @@ public class MemberController {
             applyGooglePrefill(signupForm, pendingGoogleSignup, true);
             model.addAttribute("signupForm", signupForm);
         }
-        applyPageAttributes(model, false, true);
+        applyPageAttributes(model, false, "google", session);
+        return "main";
+    }
+
+    @GetMapping("/signup/kakao")
+    public String kakaoSignupForm(Model model, HttpSession session) {
+        PendingKakaoSignup pendingKakaoSignup = getPendingKakaoSignup(session);
+        if (pendingKakaoSignup == null) {
+            return "redirect:/login?kakaoError=signup-session-expired";
+        }
+
+        if (!model.containsAttribute("signupForm")) {
+            SignupForm signupForm = new SignupForm();
+            applyKakaoPrefill(signupForm, pendingKakaoSignup, true);
+            model.addAttribute("signupForm", signupForm);
+        }
+        applyPageAttributes(model, false, "kakao", session);
         return "main";
     }
 
@@ -133,12 +153,13 @@ public class MemberController {
     @PostMapping("/signup")
     public String signup(@ModelAttribute("signupForm") SignupForm signupForm,
                          BindingResult bindingResult,
-                         Model model) {
+                         Model model,
+                         HttpSession session) {
         normalizeForm(signupForm);
         validateSignupForm(signupForm, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, false, false);
+            applyPageAttributes(model, false, null, session);
             return "main";
         }
 
@@ -160,7 +181,7 @@ public class MemberController {
         validateGoogleSignupForm(signupForm, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, false, true);
+            applyPageAttributes(model, false, "google", session);
             return "main";
         }
 
@@ -169,7 +190,7 @@ public class MemberController {
             member = memberService.registerGoogleMember(signupForm, pendingGoogleSignup.toGoogleUserProfile());
         } catch (IllegalArgumentException | IllegalStateException exception) {
             bindingResult.reject("googleSignupFailed", exception.getMessage());
-            applyPageAttributes(model, false, true);
+            applyPageAttributes(model, false, "google", session);
             return "main";
         }
         session.removeAttribute(AuthController.PENDING_GOOGLE_SIGNUP);
@@ -177,22 +198,63 @@ public class MemberController {
         return "redirect:/main";
     }
 
-    private void applyPageAttributes(Model model, boolean success, boolean googleSignupMode) {
-        model.addAttribute("pageTitle", googleSignupMode ? "Google 추가 회원가입" : "회원가입");
+    @PostMapping("/signup/kakao")
+    public String kakaoSignup(@ModelAttribute("signupForm") SignupForm signupForm,
+                              BindingResult bindingResult,
+                              Model model,
+                              HttpSession session) {
+        PendingKakaoSignup pendingKakaoSignup = getPendingKakaoSignup(session);
+        if (pendingKakaoSignup == null) {
+            return "redirect:/login?kakaoError=signup-session-expired";
+        }
+
+        normalizeKakaoSignupForm(signupForm, pendingKakaoSignup);
+        validateKakaoSignupForm(signupForm, bindingResult);
+
+        if (bindingResult.hasErrors()) {
+            applyPageAttributes(model, false, "kakao", session);
+            return "main";
+        }
+
+        Member member;
+        try {
+            member = memberService.registerKakaoMember(signupForm, pendingKakaoSignup.toKakaoUserProfile());
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            bindingResult.reject("kakaoSignupFailed", exception.getMessage());
+            applyPageAttributes(model, false, "kakao", session);
+            return "main";
+        }
+        session.removeAttribute(AuthController.PENDING_KAKAO_SIGNUP);
+        session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
+        return "redirect:/main";
+    }
+
+    private void applyPageAttributes(Model model, boolean success, String socialSignupProvider, HttpSession session) {
+        boolean googleSignupMode = "google".equals(socialSignupProvider);
+        boolean kakaoSignupMode = "kakao".equals(socialSignupProvider);
+        boolean socialSignupMode = googleSignupMode || kakaoSignupMode;
+        String socialProviderLabel = googleSignupMode ? "Google" : (kakaoSignupMode ? "카카오" : null);
+
+        model.addAttribute("pageTitle", socialSignupMode ? socialProviderLabel + " 추가 회원가입" : "회원가입");
         model.addAttribute("centerFragment", "fragments/center-signup :: centerSignup");
         model.addAttribute("extraCssFiles", List.of("/css/signup.css"));
         model.addAttribute("extraJsFiles", List.of("/js/signup.js"));
         model.addAttribute("signupSuccess", success);
         model.addAttribute("googleSignupMode", googleSignupMode);
-        model.addAttribute("signupAction", googleSignupMode ? "/signup/google" : "/signup");
-        model.addAttribute("signupHeading", googleSignupMode ? "Google 계정 추가 정보 입력" : "건강한 루틴을 위한 회원가입");
-        model.addAttribute("signupDescriptionText", googleSignupMode
-                ? "Google 인증은 완료되었어요. 닉네임, 성별, 키, 체중 같은 기본 정보를 입력하면 가입이 완료됩니다."
+        model.addAttribute("kakaoSignupMode", kakaoSignupMode);
+        model.addAttribute("socialSignupMode", socialSignupMode);
+        model.addAttribute("socialProviderLabel", socialProviderLabel);
+        model.addAttribute("signupAction", googleSignupMode ? "/signup/google" : (kakaoSignupMode ? "/signup/kakao" : "/signup"));
+        model.addAttribute("signupHeading", socialSignupMode ? socialProviderLabel + " 계정 추가 정보 입력" : "건강한 루틴을 위한 회원가입");
+        model.addAttribute("signupDescriptionText", socialSignupMode
+                ? socialProviderLabel + " 인증은 완료되었어요. 닉네임, 성별, 키, 체중 같은 기본 정보를 입력하면 가입이 완료됩니다."
                 : "기본 계정 정보와 기초 프로필만 먼저 입력하고, 세부 목표는 가입 후에 천천히 설정할 수 있어요.");
-        model.addAttribute("signupSubmitLabel", googleSignupMode ? "Google 회원가입 완료" : "회원가입 완료");
+        model.addAttribute("signupSubmitLabel", socialSignupMode ? socialProviderLabel + " 회원가입 완료" : "회원가입 완료");
         model.addAttribute("googleAuthEnabled", googleAuthService.isEnabled());
         model.addAttribute("googleClientId", googleAuthService.getGoogleClientId());
         model.addAttribute("googleRedirectUrl", googleAuthService.getGoogleRedirectUrl());
+        model.addAttribute("kakaoAuthEnabled", kakaoAuthService.isEnabled());
+        model.addAttribute("kakaoLoginUrl", kakaoAuthService.prepareAuthorizationUrl(session));
     }
 
     private void normalizeForm(SignupForm signupForm) {
@@ -207,6 +269,14 @@ public class MemberController {
         signupForm.setPasswordConfirm(null);
         signupForm.setNickname(trimToNull(signupForm.getNickname()));
         signupForm.setEmail(normalizeIdentity(pendingGoogleSignup.getEmail()));
+    }
+
+    private void normalizeKakaoSignupForm(SignupForm signupForm, PendingKakaoSignup pendingKakaoSignup) {
+        signupForm.setUsername(null);
+        signupForm.setPassword(null);
+        signupForm.setPasswordConfirm(null);
+        signupForm.setNickname(trimToNull(signupForm.getNickname()));
+        signupForm.setEmail(normalizeIdentity(pendingKakaoSignup.getEmail()));
     }
 
     private void validateSignupForm(SignupForm signupForm, BindingResult bindingResult) {
@@ -229,6 +299,10 @@ public class MemberController {
         validateBirthDate(signupForm, bindingResult);
         validateRequiredDecimal(signupForm.getHeightCm(), "heightCm", "키를 입력해 주세요.", "키는 0보다 커야 합니다.", "키는 300cm 이하로 입력해 주세요.", bindingResult, new BigDecimal("300"));
         validateRequiredDecimal(signupForm.getWeightKg(), "weightKg", "현재 체중을 입력해 주세요.", "현재 체중은 0보다 커야 합니다.", "현재 체중은 500kg 이하로 입력해 주세요.", bindingResult, new BigDecimal("500"));
+    }
+
+    private void validateKakaoSignupForm(SignupForm signupForm, BindingResult bindingResult) {
+        validateGoogleSignupForm(signupForm, bindingResult);
     }
 
     private void validateUsername(SignupForm signupForm, BindingResult bindingResult) {
@@ -374,10 +448,22 @@ public class MemberController {
         return attribute instanceof PendingGoogleSignup ? (PendingGoogleSignup) attribute : null;
     }
 
+    private PendingKakaoSignup getPendingKakaoSignup(HttpSession session) {
+        Object attribute = session.getAttribute(AuthController.PENDING_KAKAO_SIGNUP);
+        return attribute instanceof PendingKakaoSignup ? (PendingKakaoSignup) attribute : null;
+    }
+
     private void applyGooglePrefill(SignupForm signupForm, PendingGoogleSignup pendingGoogleSignup, boolean fillNicknameIfEmpty) {
         signupForm.setEmail(normalizeIdentity(pendingGoogleSignup.getEmail()));
         if (fillNicknameIfEmpty && !StringUtils.hasText(signupForm.getNickname())) {
             signupForm.setNickname(trimToNull(pendingGoogleSignup.getName()));
+        }
+    }
+
+    private void applyKakaoPrefill(SignupForm signupForm, PendingKakaoSignup pendingKakaoSignup, boolean fillNicknameIfEmpty) {
+        signupForm.setEmail(normalizeIdentity(pendingKakaoSignup.getEmail()));
+        if (fillNicknameIfEmpty && !StringUtils.hasText(signupForm.getNickname())) {
+            signupForm.setNickname(trimToNull(pendingKakaoSignup.getNickname()));
         }
     }
 

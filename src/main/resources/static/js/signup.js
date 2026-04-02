@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const passwordConfirmInput = document.getElementById('passwordConfirm');
     const passwordMatchHint = document.querySelector('[data-password-match]');
     const submitButton = form.querySelector('button[type="submit"]');
-    const googleSignupMode = form.getAttribute('data-google-signup-mode') === 'true';
+    const socialSignupMode = form.getAttribute('data-social-signup-mode') === 'true';
 
     const usernamePattern = /^[a-z0-9][a-z0-9._-]{3,49}$/;
     const emailPattern = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (emailInput && !googleSignupMode) {
+    if (emailInput && !socialSignupMode) {
         emailInput.addEventListener('blur', function () {
             emailInput.value = emailInput.value.trim().toLowerCase();
             validateEmailField(true);
@@ -387,17 +387,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('submit', async function (event) {
         const localValid = [
-            googleSignupMode ? true : validateUsernameField(false),
+            socialSignupMode ? true : validateUsernameField(false),
             validateNicknameField(false),
-            googleSignupMode ? true : validateEmailField(false),
-            googleSignupMode ? true : validatePasswordField(),
+            socialSignupMode ? true : validateEmailField(false),
+            socialSignupMode ? true : validatePasswordField(),
             validateBirthDateField(),
             validateNumberField(heightInput, 'heightCm', 300, '키는 0보다 커야 합니다.', '키는 300cm 이하로 입력해 주세요.'),
             validateNumberField(weightInput, 'weightKg', 500, '현재 체중은 0보다 커야 합니다.', '현재 체중은 500kg 이하로 입력해 주세요.')
         ].every(Boolean);
 
         updatePasswordMatchHint();
-        if (!localValid || (!googleSignupMode && passwordInput && passwordConfirmInput && passwordInput.value !== passwordConfirmInput.value)) {
+        if (!localValid || (!socialSignupMode && passwordInput && passwordConfirmInput && passwordInput.value !== passwordConfirmInput.value)) {
             event.preventDefault();
             return;
         }
@@ -406,12 +406,12 @@ document.addEventListener('DOMContentLoaded', function () {
         setSubmitDisabled(true);
 
         validateNicknameField(true);
-        if (!googleSignupMode) {
+        if (!socialSignupMode) {
             validateUsernameField(true);
             validateEmailField(true);
         }
 
-        const checks = googleSignupMode
+        const checks = socialSignupMode
             ? [waitForAvailabilityCheck('nickname')]
             : [
                 waitForAvailabilityCheck('username'),

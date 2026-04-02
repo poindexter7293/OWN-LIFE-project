@@ -56,7 +56,7 @@
     border: 1px solid rgba(214, 112, 132, 0.24);
 }
 
-.signup-alert-google {
+.signup-alert-social {
     background: rgba(123, 165, 230, 0.12);
     color: #47658f;
     border: 1px solid rgba(123, 165, 230, 0.22);
@@ -104,6 +104,48 @@
 .signup-social-panel .g_id_signin {
     display: flex;
     justify-content: center;
+}
+
+.signup-social-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.signup-social-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 340px;
+    max-width: 100%;
+    padding: 14px 18px;
+    border-radius: 999px;
+    font-weight: 800;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.signup-social-button:hover {
+    transform: translateY(-1px);
+}
+
+.signup-social-button--kakao {
+    background: #fee500;
+    color: #191600;
+    box-shadow: 0 12px 22px rgba(245, 201, 0, 0.22);
+}
+
+.signup-social-button__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(25, 22, 0, 0.12);
+    font-size: 0.95rem;
+    font-weight: 900;
 }
 
 .signup-grid {
@@ -245,6 +287,10 @@
     }
 
     .signup-button {
+        width: 100%;
+    }
+
+    .signup-social-button {
         width: 100%;
     }
 }

@@ -1,9 +1,11 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,12 +31,14 @@ class AuthControllerTest {
     private MockMvc mockMvc;
     private StubMemberService memberService;
     private StubGoogleAuthService googleAuthService;
+    private StubKakaoAuthService kakaoAuthService;
 
     @BeforeEach
     void setUp() {
         memberService = new StubMemberService();
         googleAuthService = new StubGoogleAuthService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(memberService, googleAuthService)).build();
+        kakaoAuthService = new StubKakaoAuthService();
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(memberService, googleAuthService, kakaoAuthService)).build();
     }
 
     @Test
@@ -46,7 +50,8 @@ class AuthControllerTest {
                 .andExpect(model().attributeExists("loginForm"))
                 .andExpect(model().attribute("pageTitle", "로그인"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-login :: centerLogin"))
-                .andExpect(model().attribute("googleAuthEnabled", true));
+                .andExpect(model().attribute("googleAuthEnabled", true))
+                .andExpect(model().attribute("kakaoAuthEnabled", true));
     }
 
     @Test
@@ -139,10 +144,61 @@ class AuthControllerTest {
                 .andExpect(model().attribute("googleErrorMessage", "Google 로그인 요청 검증에 실패했습니다. 다시 시도해 주세요."));
     }
 
+    @Test
+    @DisplayName("Kakao 로그인 성공 시 세션에 회원 정보를 저장하고 메인으로 이동한다")
+    void kakaoLoginSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("kakaoOauthState", "kakao-state");
+        memberService.kakaoLoginMember = memberService.member;
+
+        mockMvc.perform(get("/login/kakao/auth")
+                        .session(session)
+                        .param("state", "kakao-state")
+                        .param("code", "valid-kakao-code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/main"));
+
+        Object loginMember = session.getAttribute(AuthController.LOGIN_MEMBER);
+        assertNotNull(loginMember);
+    }
+
+    @Test
+    @DisplayName("신규 Kakao 계정은 추가정보 회원가입 페이지로 이동하고 임시 세션을 저장한다")
+    void kakaoLoginRedirectsToKakaoSignup() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("kakaoOauthState", "kakao-state");
+
+        mockMvc.perform(get("/login/kakao/auth")
+                        .session(session)
+                        .param("state", "kakao-state")
+                        .param("code", "valid-kakao-code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/signup/kakao"));
+
+        Object pendingSignup = session.getAttribute(AuthController.PENDING_KAKAO_SIGNUP);
+        assertNotNull(pendingSignup);
+    }
+
+    @Test
+    @DisplayName("Kakao 로그인 state 검증이 실패하면 로그인 화면에 오류를 표시한다")
+    void kakaoLoginStateFail() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("kakaoOauthState", "expected-state");
+
+        mockMvc.perform(get("/login/kakao/auth")
+                        .session(session)
+                        .param("state", "different-state")
+                        .param("code", "valid-kakao-code"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("kakaoErrorMessage", "카카오 로그인 요청 검증에 실패했습니다. 다시 시도해 주세요."));
+    }
+
     private static class StubMemberService extends MemberService {
 
         private final Member member;
         private Member googleLoginMember;
+        private Member kakaoLoginMember;
 
         StubMemberService() {
             super(null, null, null);
@@ -172,6 +228,16 @@ class AuthControllerTest {
             googleLoginMember.setEmail(googleUserProfile.getEmail());
             return Optional.of(googleLoginMember);
         }
+
+        @Override
+        public Optional<Member> findKakaoMemberForLogin(KakaoUserProfile kakaoUserProfile) {
+            if (kakaoLoginMember == null) {
+                return Optional.empty();
+            }
+            kakaoLoginMember.setLoginType(Member.LoginType.KAKAO);
+            kakaoLoginMember.setEmail(kakaoUserProfile.getEmail());
+            return Optional.of(kakaoLoginMember);
+        }
     }
 
     private static class StubGoogleAuthService extends GoogleAuthService {
@@ -187,6 +253,27 @@ class AuthControllerTest {
                         "google-subject-1",
                         "tester@gmail.com",
                         "구글테스터",
+                        null,
+                        true
+                ));
+            }
+            return Optional.empty();
+        }
+    }
+
+    private static class StubKakaoAuthService extends KakaoAuthService {
+
+        StubKakaoAuthService() {
+            super("test-kakao-key", "http://localhost:8081/login/kakao/auth");
+        }
+
+        @Override
+        public Optional<KakaoUserProfile> requestUserProfile(String code) {
+            if ("valid-kakao-code".equals(code)) {
+                return Optional.of(new KakaoUserProfile(
+                        "kakao-user-1",
+                        "tester@kakao.com",
+                        "카카오테스터",
                         null,
                         true
                 ));

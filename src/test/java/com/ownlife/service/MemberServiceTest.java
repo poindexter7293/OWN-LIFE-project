@@ -1,6 +1,7 @@
 package com.ownlife.service;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
@@ -269,6 +270,70 @@ class MemberServiceTest {
         org.junit.jupiter.api.Assertions.assertEquals("google-mypage-link-subject", socialAccount.getProviderUserId());
         org.junit.jupiter.api.Assertions.assertEquals(member.getMemberId(), socialAccount.getMember().getMemberId());
         org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isPresent());
+    }
+
+    @Test
+    @DisplayName("신규 Kakao 계정은 추가정보 가입 완료 시 회원과 소셜 계정을 함께 생성한다")
+    void registerKakaoMember() {
+        KakaoUserProfile kakaoUserProfile = new KakaoUserProfile(
+                "kakao-user-2",
+                "new-kakao@example.com",
+                "새카카오사용자",
+                "https://example.com/kakao-profile.png",
+                true
+        );
+
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("카카오초보");
+        signupForm.setGender(Member.Gender.F);
+        signupForm.setHeightCm(new BigDecimal("161.2"));
+        signupForm.setWeightKg(new BigDecimal("53.4"));
+
+        Member createdMember = memberService.registerKakaoMember(signupForm, kakaoUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.KAKAO, createdMember.getLoginType());
+        org.junit.jupiter.api.Assertions.assertEquals("카카오초보", createdMember.getNickname());
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Gender.F, createdMember.getGender());
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("161.2"), createdMember.getHeightCm());
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("53.4"), createdMember.getWeightKg());
+        org.junit.jupiter.api.Assertions.assertEquals(1, socialAccountHandler.storage.size());
+
+        SocialAccount socialAccount = socialAccountHandler.storage.values().iterator().next();
+        org.junit.jupiter.api.Assertions.assertEquals(SocialAccount.Provider.KAKAO, socialAccount.getProvider());
+        org.junit.jupiter.api.Assertions.assertEquals("kakao-user-2", socialAccount.getProviderUserId());
+    }
+
+    @Test
+    @DisplayName("동일 이메일의 기존 로컬 계정은 Kakao 로그인 시 자동 연결되고 로컬 로그인도 유지된다")
+    void linkKakaoToExistingLocalMemberByEmail() {
+        SignupForm localSignupForm = new SignupForm();
+        localSignupForm.setUsername("localkakao01");
+        localSignupForm.setPassword("Password123!");
+        localSignupForm.setNickname("로컬카카오회원");
+        localSignupForm.setEmail("shared-kakao@example.com");
+
+        Member localMember = memberService.register(localSignupForm);
+
+        KakaoUserProfile kakaoUserProfile = new KakaoUserProfile(
+                "kakao-linked-id",
+                "shared-kakao@example.com",
+                "카카오이름",
+                "https://example.com/kakao-linked.png",
+                true
+        );
+
+        Member linkedMember = memberService.findKakaoMemberForLogin(kakaoUserProfile).orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals(localMember.getMemberId(), linkedMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.LOCAL, linkedMember.getLoginType());
+        org.junit.jupiter.api.Assertions.assertEquals("로컬카카오회원", linkedMember.getNickname());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.authenticate("localkakao01", "Password123!").isPresent());
+        org.junit.jupiter.api.Assertions.assertEquals(1, socialAccountHandler.storage.size());
+
+        SocialAccount socialAccount = socialAccountHandler.storage.values().iterator().next();
+        org.junit.jupiter.api.Assertions.assertEquals(localMember.getMemberId(), socialAccount.getMember().getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals(SocialAccount.Provider.KAKAO, socialAccount.getProvider());
+        org.junit.jupiter.api.Assertions.assertEquals("kakao-linked-id", socialAccount.getProviderUserId());
     }
 
     @Test

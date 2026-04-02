@@ -96,10 +96,15 @@ button {
 }
 
 .auth-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 11px 24px;
     border-radius: 999px;
     border: 1px solid #e5e7ef;
     background: #fff;
+    color: #5f6572;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .auth-pill--primary {
@@ -107,6 +112,33 @@ button {
     background: var(--purple);
     color: #fff;
     box-shadow: 0 10px 18px rgba(91, 61, 245, 0.25);
+}
+
+.auth-pill:hover {
+    background: var(--purple-soft);
+    border-color: #d9dcf0;
+    color: var(--purple);
+    transform: translateY(-1px);
+}
+
+.auth-pill:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(91, 61, 245, 0.18);
+}
+
+.auth-pill--primary:hover {
+    border-color: transparent;
+    background: #4f34df;
+    color: #fff;
+    box-shadow: 0 12px 22px rgba(91, 61, 245, 0.3);
+}
+
+.auth-pill--primary:focus-visible {
+    box-shadow: 0 0 0 3px rgba(91, 61, 245, 0.18), 0 12px 22px rgba(91, 61, 245, 0.3);
+}
+
+button.auth-pill {
+    cursor: pointer;
 }
 
 .nav-bar {

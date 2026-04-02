@@ -1,10 +1,13 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.PendingGoogleSignup;
+import com.ownlife.dto.PendingKakaoSignup;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +33,11 @@ class MemberControllerTest {
     @BeforeEach
     void setUp() {
         memberService = new StubMemberService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(memberService, new GoogleAuthService("test-client-id", "http://localhost:8081/login/google/auth"))).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(
+                memberService,
+                new GoogleAuthService("test-client-id", "http://localhost:8081/login/google/auth"),
+                new KakaoAuthService("test-kakao-key", "http://localhost:8081/login/kakao/auth")
+        )).build();
     }
 
     @Test
@@ -42,7 +49,8 @@ class MemberControllerTest {
                 .andExpect(model().attributeExists("signupForm"))
                 .andExpect(model().attribute("pageTitle", "회원가입"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-signup :: centerSignup"))
-                .andExpect(model().attribute("googleAuthEnabled", true));
+                .andExpect(model().attribute("googleAuthEnabled", true))
+                .andExpect(model().attribute("kakaoAuthEnabled", true));
     }
 
     @Test
@@ -190,6 +198,41 @@ class MemberControllerTest {
         org.junit.jupiter.api.Assertions.assertNotNull(session.getAttribute(AuthController.LOGIN_MEMBER));
     }
 
+    @Test
+    @DisplayName("Kakao 추가정보 회원가입 페이지는 세션의 이메일과 닉네임을 미리 채워 보여준다")
+    void kakaoSignupPage() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AuthController.PENDING_KAKAO_SIGNUP, new PendingKakaoSignup("kakao-user-1", "kakao@example.com", "카카오닉네임", null));
+
+        mockMvc.perform(get("/signup/kakao").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("kakaoSignupMode", true))
+                .andExpect(model().attribute("socialSignupMode", true))
+                .andExpect(model().attribute("signupAction", "/signup/kakao"))
+                .andExpect(model().attributeExists("signupForm"));
+    }
+
+    @Test
+    @DisplayName("Kakao 추가정보 회원가입 완료 시 회원을 생성하고 로그인 세션을 저장한다")
+    void kakaoSignupSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AuthController.PENDING_KAKAO_SIGNUP, new PendingKakaoSignup("kakao-user-1", "kakao@example.com", "카카오닉네임", null));
+
+        mockMvc.perform(post("/signup/kakao")
+                        .session(session)
+                        .param("nickname", "카카오헬서")
+                        .param("email", "tampered@example.com")
+                        .param("gender", "F")
+                        .param("heightCm", "164.5")
+                        .param("weightKg", "55.0"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/main"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.kakaoRegisterCallCount);
+        org.junit.jupiter.api.Assertions.assertNotNull(session.getAttribute(AuthController.LOGIN_MEMBER));
+    }
+
     private static class StubMemberService extends MemberService {
 
         private String duplicateUsername;
@@ -197,6 +240,7 @@ class MemberControllerTest {
         private String duplicateEmail;
         private int registerCallCount;
         private int googleRegisterCallCount;
+        private int kakaoRegisterCallCount;
 
         StubMemberService() {
             super(null, null, null);
@@ -233,6 +277,19 @@ class MemberControllerTest {
             member.setRole(Member.Role.USER);
             member.setEmail(googleUserProfile.getEmail());
             member.setLoginType(Member.LoginType.GOOGLE);
+            return member;
+        }
+
+        @Override
+        public Member registerKakaoMember(SignupForm signupForm, KakaoUserProfile kakaoUserProfile) {
+            kakaoRegisterCallCount++;
+            Member member = new Member();
+            member.setMemberId(100L);
+            member.setUsername("kakao_generated_100");
+            member.setNickname(signupForm.getNickname());
+            member.setRole(Member.Role.USER);
+            member.setEmail(kakaoUserProfile.getEmail());
+            member.setLoginType(Member.LoginType.KAKAO);
             return member;
         }
     }

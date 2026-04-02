@@ -1,11 +1,14 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.LoginForm;
+import com.ownlife.dto.PendingKakaoSignup;
 import com.ownlife.dto.PendingGoogleSignup;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -28,19 +31,23 @@ public class AuthController {
 
     public static final String LOGIN_MEMBER = "loginMember";
     public static final String PENDING_GOOGLE_SIGNUP = "pendingGoogleSignup";
+    public static final String PENDING_KAKAO_SIGNUP = "pendingKakaoSignup";
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]{3,49}$");
 
     private final MemberService memberService;
     private final GoogleAuthService googleAuthService;
+    private final KakaoAuthService kakaoAuthService;
 
     @GetMapping("/login")
     public String loginForm(@RequestParam(value = "logoutSuccess", defaultValue = "false") boolean logoutSuccess,
                             @RequestParam(value = "googleError", required = false) String googleError,
+                             @RequestParam(value = "kakaoError", required = false) String kakaoError,
+                             HttpSession session,
                             Model model) {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, logoutSuccess, resolveGoogleErrorMessage(googleError));
+        applyPageAttributes(model, logoutSuccess, resolveGoogleErrorMessage(googleError), resolveKakaoErrorMessage(kakaoError), session);
         return "main";
     }
 
@@ -53,7 +60,7 @@ public class AuthController {
         validateLoginForm(loginForm, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, false, null);
+            applyPageAttributes(model, false, null, null, session);
             return "main";
         }
 
@@ -65,7 +72,7 @@ public class AuthController {
                 })
                 .orElseGet(() -> {
                     bindingResult.reject("loginFailed", "아이디 또는 비밀번호가 올바르지 않습니다.");
-                    applyPageAttributes(model, false, null);
+                    applyPageAttributes(model, false, null, null, session);
                     return "main";
                 });
     }
@@ -77,17 +84,17 @@ public class AuthController {
                               Model model,
                               HttpSession session) {
         if (!googleAuthService.isEnabled()) {
-            return renderGoogleLoginError(model, "Google 로그인 설정이 아직 완료되지 않았습니다.");
+            return renderGoogleLoginError(model, session, "Google 로그인 설정이 아직 완료되지 않았습니다.");
         }
 
         if (!isValidGoogleCsrf(csrfCookie, csrfToken)) {
-            return renderGoogleLoginError(model, "Google 로그인 요청 검증에 실패했습니다. 다시 시도해 주세요.");
+            return renderGoogleLoginError(model, session, "Google 로그인 요청 검증에 실패했습니다. 다시 시도해 주세요.");
         }
 
         GoogleUserProfile googleUserProfile = googleAuthService.verifyCredential(credential)
                 .orElse(null);
         if (googleUserProfile == null) {
-            return renderGoogleLoginError(model, "Google 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+            return renderGoogleLoginError(model, session, "Google 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.");
         }
 
         try {
@@ -102,7 +109,47 @@ public class AuthController {
                         return "redirect:/signup/google";
                     });
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return renderGoogleLoginError(model, exception.getMessage());
+            return renderGoogleLoginError(model, session, exception.getMessage());
+        }
+    }
+
+    @GetMapping("/login/kakao/auth")
+    public String kakaoLogin(@RequestParam(value = "code", required = false) String code,
+                             @RequestParam(value = "state", required = false) String state,
+                             @RequestParam(value = "error", required = false) String error,
+                             @RequestParam(value = "error_description", required = false) String errorDescription,
+                             Model model,
+                             HttpSession session) {
+        if (!kakaoAuthService.isEnabled()) {
+            return renderKakaoLoginError(model, session, "카카오 로그인 설정이 아직 완료되지 않았습니다.");
+        }
+
+        if (StringUtils.hasText(error)) {
+            return renderKakaoLoginError(model, session, resolveKakaoOauthErrorMessage(error, errorDescription));
+        }
+
+        if (!kakaoAuthService.isValidState(session, state)) {
+            return renderKakaoLoginError(model, session, "카카오 로그인 요청 검증에 실패했습니다. 다시 시도해 주세요.");
+        }
+
+        KakaoUserProfile kakaoUserProfile = kakaoAuthService.requestUserProfile(code).orElse(null);
+        if (kakaoUserProfile == null) {
+            return renderKakaoLoginError(model, session, "카카오 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        try {
+            return memberService.findKakaoMemberForLogin(kakaoUserProfile)
+                    .map(member -> {
+                        session.removeAttribute(PENDING_KAKAO_SIGNUP);
+                        session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
+                        return "redirect:/main";
+                    })
+                    .orElseGet(() -> {
+                        session.setAttribute(PENDING_KAKAO_SIGNUP, PendingKakaoSignup.from(kakaoUserProfile));
+                        return "redirect:/signup/kakao";
+                    });
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return renderKakaoLoginError(model, session, exception.getMessage());
         }
     }
 
@@ -112,15 +159,27 @@ public class AuthController {
         return "redirect:/login?logoutSuccess=true";
     }
 
-    private String renderGoogleLoginError(Model model, String errorMessage) {
+    private String renderGoogleLoginError(Model model, HttpSession session, String errorMessage) {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, false, errorMessage);
+        applyPageAttributes(model, false, errorMessage, null, session);
         return "main";
     }
 
-    private void applyPageAttributes(Model model, boolean logoutSuccess, String googleErrorMessage) {
+    private String renderKakaoLoginError(Model model, HttpSession session, String errorMessage) {
+        if (!model.containsAttribute("loginForm")) {
+            model.addAttribute("loginForm", new LoginForm());
+        }
+        applyPageAttributes(model, false, null, errorMessage, session);
+        return "main";
+    }
+
+    private void applyPageAttributes(Model model,
+                                     boolean logoutSuccess,
+                                     String googleErrorMessage,
+                                     String kakaoErrorMessage,
+                                     HttpSession session) {
         model.addAttribute("pageTitle", "로그인");
         model.addAttribute("centerFragment", "fragments/center-login :: centerLogin");
         model.addAttribute("extraCssFiles", List.of("/css/login.css"));
@@ -129,7 +188,10 @@ public class AuthController {
         model.addAttribute("googleAuthEnabled", googleAuthService.isEnabled());
         model.addAttribute("googleClientId", googleAuthService.getGoogleClientId());
         model.addAttribute("googleRedirectUrl", googleAuthService.getGoogleRedirectUrl());
+        model.addAttribute("kakaoAuthEnabled", kakaoAuthService.isEnabled());
+        model.addAttribute("kakaoLoginUrl", kakaoAuthService.prepareAuthorizationUrl(session));
         model.addAttribute("googleErrorMessage", googleErrorMessage);
+        model.addAttribute("kakaoErrorMessage", kakaoErrorMessage);
     }
 
     private void normalizeForm(LoginForm loginForm) {
@@ -180,6 +242,30 @@ public class AuthController {
             case "signup-session-expired" -> "Google 추가 회원가입 세션이 만료되었습니다. 다시 로그인해 주세요.";
             default -> googleError;
         };
+    }
+
+    private String resolveKakaoErrorMessage(String kakaoError) {
+        if (!StringUtils.hasText(kakaoError)) {
+            return null;
+        }
+        return switch (kakaoError) {
+            case "signup-session-expired" -> "카카오 추가 회원가입 세션이 만료되었습니다. 다시 로그인해 주세요.";
+            default -> kakaoError;
+        };
+    }
+
+    private String resolveKakaoOauthErrorMessage(String error, String errorDescription) {
+        if (!StringUtils.hasText(error)) {
+            return null;
+        }
+
+        if ("access_denied".equals(error)) {
+            return "카카오 로그인 동의가 취소되었습니다. 다시 시도해 주세요.";
+        }
+        if (StringUtils.hasText(errorDescription)) {
+            return errorDescription;
+        }
+        return "카카오 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.";
     }
 
     private SessionMember toSessionMember(Member member) {
