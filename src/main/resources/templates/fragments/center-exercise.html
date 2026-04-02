@@ -82,6 +82,7 @@
                 <div class="exercise-quick-tabs">
                     <button type="button" class="exercise-chip active" data-quick-target="timeQuickForm">분당 칼로리</button>
                     <button type="button" class="exercise-chip" data-quick-target="countQuickForm">세트 × 횟수</button>
+                    <button type="button" class="exercise-chip" data-quick-target="routeQuickForm">거리 측정</button>
                 </div>
 
                 <form id="timeQuickForm" class="exercise-form exercise-quick-form is-active" th:action="@{/exercise/quick/time}" method="post">
@@ -99,6 +100,36 @@
                     <input class="exercise-form__input" type="number" name="durationMin" min="1" value="30" required>
 
                     <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">+ 빠른 추가하기</button>
+                </form>
+
+
+                <form id="routeQuickForm" class="exercise-form exercise-quick-form"
+                      onsubmit="return false;">
+                    <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
+
+                    <label class="exercise-form__label">운동 종류</label>
+                    <div class="exercise-chip-list">
+                        <label class="exercise-select-card" th:each="option, stat : ${routeExerciseOptions}">
+                            <input type="radio" name="exerciseTypeId" th:value="${option.exerciseTypeId}"
+                                   th:checked="${stat.index == 0}" required>
+                            <span th:text="${option.exerciseName}">러닝</span>
+                        </label>
+                    </div>
+
+                    <div class="exercise-form__row exercise-form__row--two">
+                        <div>
+                            <label class="exercise-form__label">거리(km)</label>
+                            <input class="exercise-form__input" type="number" step="0.1" min="0.1" value="3.0" disabled>
+                        </div>
+                        <div>
+                            <label class="exercise-form__label">예상 기능</label>
+                            <input class="exercise-form__input" type="text" value="준비중" disabled>
+                        </div>
+                    </div>
+
+                    <button class="exercise-submit-btn exercise-submit-btn--light" type="button" disabled>
+                        거리 측정 기능 준비중
+                    </button>
                 </form>
 
                 <form id="countQuickForm" class="exercise-form exercise-quick-form" th:action="@{/exercise/quick/count}" method="post">

@@ -216,9 +216,14 @@ public class ExerciseService {
     @Transactional(readOnly = true)
     public List<QuickExerciseOption> getTimeOptions() {
         List<QuickExerciseOption> result = new ArrayList<>();
-        result.addAll(getQuickOptions(ExerciseType.Category.ROUTE));
         result.addAll(getQuickOptions(ExerciseType.Category.TIME));
+        result.addAll(getQuickOptions(ExerciseType.Category.ROUTE));
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<QuickExerciseOption> getRouteOptions() {
+        return getQuickOptions(ExerciseType.Category.ROUTE);
     }
 
     private List<QuickExerciseOption> getQuickOptions(ExerciseType.Category category) {
