@@ -273,7 +273,7 @@
 
 .exercise-chart-wrap {
     position: relative;
-    height: 360px;
+    height: 280px;
     margin-top: 18px;
 }
 
@@ -445,11 +445,6 @@
 
 .exercise-chart-summary__sub strong {
     color: #111827;
-}
-
-.exercise-chart-wrap {
-    position: relative;
-    height: 280px;
 }
 
 .exercise-summary-card__value--muted {
