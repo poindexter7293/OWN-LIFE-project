@@ -20,21 +20,23 @@
 
     <section class="exercise-summary-grid">
         <article class="exercise-summary-card">
-            <div class="exercise-summary-card__label">오늘 소모</div>
+            <div class="exercise-summary-card__label">금일 소모 칼로리</div>
             <div class="exercise-summary-card__value exercise-summary-card__value--green">
                 <span class="count-up-int" th:attr="data-target=${exerciseData.todayBurnedKcal}">0</span><small>kcal</small>
             </div>
         </article>
 
         <article class="exercise-summary-card">
-            <div class="exercise-summary-card__label">운동 시간</div>
-            <div class="exercise-summary-card__value exercise-summary-card__value--blue">
-                <span class="count-up-int" th:attr="data-target=${exerciseData.todayDurationMin}">0</span><small>분</small>
+            <div class="exercise-summary-card__label">목표 소모 칼로리</div>
+            <div class="exercise-summary-card__value exercise-summary-card__value--green">
+        <span class="count-up-int"
+              th:attr="data-target=${exerciseData.goalBurnedKcal}">0</span>
+                <small>kcal</small>
             </div>
         </article>
 
         <article class="exercise-summary-card">
-            <div class="exercise-summary-card__label">주간 합계</div>
+            <div class="exercise-summary-card__label">주간 소모 칼로리</div>
             <div class="exercise-summary-card__value exercise-summary-card__value--purple">
                 <span class="count-up-int" th:attr="data-target=${exerciseData.weekBurnedKcal}">0</span><small>kcal</small>
             </div>
@@ -80,8 +82,8 @@
                 <div class="exercise-panel__subtitle">빠른 추가</div>
 
                 <div class="exercise-quick-tabs">
-                    <button type="button" class="exercise-chip active" data-quick-target="timeQuickForm">분당 칼로리</button>
                     <button type="button" class="exercise-chip" data-quick-target="countQuickForm">세트 × 횟수</button>
+                    <button type="button" class="exercise-chip active" data-quick-target="timeQuickForm">분당 칼로리</button>
                     <button type="button" class="exercise-chip" data-quick-target="routeQuickForm">거리 측정</button>
                 </div>
 
@@ -158,9 +160,36 @@
                 </form>
             </div>
         </article>
-
         <article class="exercise-panel exercise-panel--chart">
             <div class="exercise-panel__title">주간 소모</div>
+
+            <div class="exercise-chart-summary">
+                <div class="exercise-chart-summary__main">
+                    <span>오늘</span>
+                    <strong class="count-up-int"
+                            th:data-target="${exerciseData.todayBurnedKcal}"
+                            th:text="${exerciseData.todayBurnedKcal}">0</strong>
+                    <span> / </span>
+                    <strong class="count-up-int"
+                            th:data-target="${exerciseData.goalBurnedKcal}"
+                            th:text="${exerciseData.goalBurnedKcal}">0</strong>
+                    <span>kcal</span>
+                </div>
+
+                <div class="exercise-chart-summary__sub"
+                     th:if="${exerciseData.goalBurnedKcal > 0}">
+                    목표 달성률
+                    <strong th:text="${exerciseData.goalAchievementRate} + '%'">0%</strong>
+                    · 남은 칼로리
+                    <strong th:text="${exerciseData.goalRemainingKcal} + 'kcal'">0kcal</strong>
+                </div>
+
+                <div class="exercise-chart-summary__sub"
+                     th:if="${exerciseData.goalBurnedKcal == 0}">
+                    목표 소모 칼로리가 설정되지 않았습니다.
+                </div>
+            </div>
+
             <div class="exercise-chart-wrap">
                 <canvas id="exerciseWeekChart"></canvas>
             </div>
@@ -198,7 +227,10 @@
     <script th:inline="javascript">
         window.exercisePageData = {
             weekLabels: /*[[${exerciseData.weekLabels}]]*/ [],
-            weekValues: /*[[${exerciseData.weekValues}]]*/ []
+            weekValues: /*[[${exerciseData.weekValues}]]*/ [],
+            todayBurnedKcal: /*[[${exerciseData.todayBurnedKcal}]]*/ 0,
+            goalBurnedKcal: /*[[${exerciseData.goalBurnedKcal}]]*/ 0,
+            goalAchievementRate: /*[[${exerciseData.goalAchievementRate}]]*/ 0
         };
     </script>
 </div>

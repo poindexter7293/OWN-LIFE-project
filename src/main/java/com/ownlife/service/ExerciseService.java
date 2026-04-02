@@ -41,6 +41,8 @@ public class ExerciseService {
         LocalDate selectedDate = baseDate == null ? LocalDate.now() : baseDate;
         LocalDate weekStart = selectedDate.minusDays(6);
 
+        Member member = getMember(memberId);
+
         List<ExerciseLog> todayLogs = exerciseLogRepository
                 .findByMember_MemberIdAndExerciseDateOrderByCreatedAtDesc(memberId, selectedDate);
 
@@ -79,11 +81,23 @@ public class ExerciseService {
                 .map(this::toItem)
                 .toList();
 
+        int todayBurnedKcal = todayBurned.setScale(0, RoundingMode.HALF_UP).intValue();
+        int weekBurnedKcal = weekBurned.setScale(0, RoundingMode.HALF_UP).intValue();
+        int goalBurnedKcal = safeInteger(member.getGoalBurnedKcal());
+
+        int goalRemainingKcal = Math.max(goalBurnedKcal - todayBurnedKcal, 0);
+        int goalAchievementRate = goalBurnedKcal > 0
+                ? (int) Math.round((todayBurnedKcal * 100.0) / goalBurnedKcal)
+                : 0;
+
         return ExercisePageData.builder()
                 .selectedDate(selectedDate)
-                .todayBurnedKcal(todayBurned.setScale(0, RoundingMode.HALF_UP).intValue())
+                .todayBurnedKcal(todayBurnedKcal)
                 .todayDurationMin(todayDuration)
-                .weekBurnedKcal(weekBurned.setScale(0, RoundingMode.HALF_UP).intValue())
+                .weekBurnedKcal(weekBurnedKcal)
+                .goalBurnedKcal(goalBurnedKcal)
+                .goalRemainingKcal(goalRemainingKcal)
+                .goalAchievementRate(goalAchievementRate)
                 .weekLabels(labels)
                 .weekValues(values)
                 .todayExercises(items)
@@ -300,6 +314,9 @@ public class ExerciseService {
         private int todayBurnedKcal;
         private int todayDurationMin;
         private int weekBurnedKcal;
+        private int goalBurnedKcal;
+        private int goalRemainingKcal;
+        private int goalAchievementRate;
         private List<String> weekLabels;
         private List<Integer> weekValues;
         private List<ExerciseItem> todayExercises;
