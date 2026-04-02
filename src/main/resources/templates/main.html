@@ -40,10 +40,30 @@
         weightLabels: /*[[${weightLabels}]]*/ [],
         weightData: /*[[${weightData}]]*/ []
     };
+
+    window.isLoginMember = /*[[${session.loginMember != null}]]*/ false;
+    window.loginPageUrl = /*[[@{/login}]]*/ '/login';
 </script>
+
 <script th:src="@{/js/main.js}"></script>
 <script th:if="${extraJsFiles != null}"
         th:each="jsFile : ${extraJsFiles}"
         th:src="${jsFile}"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const protectedLinks = document.querySelectorAll('[data-login-required="true"]');
+
+        protectedLinks.forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                if (!window.isLoginMember) {
+                    event.preventDefault();
+                    alert('로그인이 필요한 서비스입니다.');
+                    window.location.href = window.loginPageUrl;
+                }
+            });
+        });
+    });
+</script>
 </body>
 </html>

@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initExerciseModeTabs();
     initQuickTabs();
     initExerciseWeekChart();
+    initSummaryCardActions();
 });
 
 function initCountUp() {
@@ -87,6 +88,7 @@ function initExerciseWeekChart() {
 
     const datasets = [
         {
+            id: 'burnedBar',
             type: 'bar',
             label: '일일 소모 칼로리',
             data: values,
@@ -108,14 +110,16 @@ function initExerciseWeekChart() {
 
     if (goalBurnedKcal > 0) {
         datasets.push({
+            id: 'goalLine',
             type: 'line',
-            label: '하루 목표 칼로리',
+            label: '목표 소모 칼로리',
             data: Array(labels.length).fill(goalBurnedKcal),
             borderColor: 'rgba(249, 115, 22, 0.95)',
             borderWidth: 2,
             borderDash: [6, 6],
             pointRadius: 0,
             pointHoverRadius: 0,
+            pointHitRadius: 8,
             fill: false,
             tension: 0
         });
@@ -129,10 +133,8 @@ function initExerciseWeekChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-
             animation: {
-                duration: 1200,
-                easing: 'easeOutQuart'
+                duration: 0
             },
 
             plugins: {
@@ -170,28 +172,96 @@ function initExerciseWeekChart() {
                 }
             },
 
-            datasets: {
-                bar: {
-                    animations: {
-                        y: {
-                            duration: 1200,
-                            easing: 'easeOutQuart'
-                        },
-                        base: {
-                            duration: 1200,
-                            easing: 'easeOutQuart'
+            animations: {
+                y: {
+                    type: 'number',
+                    easing: 'easeOutQuart',
+                    duration: function (ctx) {
+                        return ctx.dataset && ctx.dataset.id === 'burnedBar' ? 900 : 0;
+                    },
+                    from: function (ctx) {
+                        if (ctx.dataset && ctx.dataset.id === 'burnedBar' && ctx.chart?.scales?.y) {
+                            return ctx.chart.scales.y.getPixelForValue(0);
                         }
+                        return undefined;
                     }
                 },
-                line: {
-                    animations: {
-                        y: {
-                            duration: 1200,
-                            easing: 'easeOutQuart'
+
+                x: {
+                    type: 'number',
+                    easing: 'linear',
+                    duration: function (ctx) {
+                        return ctx.dataset && ctx.dataset.id === 'goalLine' ? 220 : 0;
+                    },
+                    delay: function (ctx) {
+                        if (
+                            ctx.dataset &&
+                            ctx.dataset.id === 'goalLine' &&
+                            ctx.type === 'data' &&
+                            ctx.dataIndex != null
+                        ) {
+                            return ctx.dataIndex * 180;
                         }
+                        return 0;
                     }
                 }
             }
         }
     });
+}
+
+function initSummaryCardActions() {
+    const todayBurnedCard = document.getElementById('todayBurnedCard');
+    const goalBurnedCard = document.getElementById('goalBurnedCard');
+
+    const exerciseAddSection = document.getElementById('exerciseAddSection');
+    const directAddTab = document.getElementById('directAddTab');
+    const directAddPanel = document.getElementById('directAddPanel');
+    const exerciseNameInput = document.getElementById('exerciseNameInput');
+
+    if (todayBurnedCard) {
+        todayBurnedCard.style.cursor = 'pointer';
+
+        todayBurnedCard.addEventListener('click', function () {
+            if (exerciseAddSection) {
+                exerciseAddSection.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+
+            if (directAddTab && !directAddTab.classList.contains('active')) {
+                directAddTab.click();
+            }
+
+            window.setTimeout(function () {
+                if (directAddPanel && !directAddPanel.classList.contains('is-active')) {
+                    directAddPanel.classList.add('is-active');
+                }
+
+                if (exerciseNameInput) {
+                    exerciseNameInput.focus();
+                    if (typeof exerciseNameInput.select === 'function') {
+                        exerciseNameInput.select();
+                    }
+                }
+            }, 380);
+        });
+    }
+
+    if (goalBurnedCard) {
+        goalBurnedCard.style.cursor = 'pointer';
+
+        goalBurnedCard.addEventListener('click', function () {
+            const confirmed = window.confirm('마이페이지로 이동하시겠습니까?');
+
+            if (confirmed) {
+                const myPageUrl = window.exercisePageData && window.exercisePageData.myPageUrl
+                    ? window.exercisePageData.myPageUrl
+                    : '/mypage';
+
+                window.location.href = myPageUrl;
+            }
+        });
+    }
 }

@@ -32,18 +32,29 @@
                 홈
             </a>
 
-            <a class="nav-item" th:href="@{/diet}">식단 관리</a>
+            <a class="nav-item"
+               th:href="@{/diet}"
+               data-login-required="true">
+                식단 관리
+            </a>
+
             <a class="nav-item"
                th:classappend="${centerFragment != null and #strings.contains(centerFragment, 'center-exercise')} ? ' active' : ''"
-               th:href="@{/exercise}">운동 일지</a>
+               th:href="@{/exercise}"
+               data-login-required="true">
+                운동 일지
+            </a>
+
             <a class="nav-item"
                th:classappend="${centerFragment != null and #strings.contains(centerFragment, 'center-board')} ? ' active' : ''"
                th:href="@{/board}">
                 게시판
             </a>
+
             <a class="nav-item"
                th:classappend="${centerFragment != null and #strings.contains(centerFragment, 'center-mypage')} ? ' active' : ''"
-               th:href="@{/mypage}">
+               th:href="@{/mypage}"
+               data-login-required="true">
                 마이페이지
             </a>
         </div>
