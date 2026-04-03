@@ -230,51 +230,75 @@ public class ExerciseService {
     }
 
     private int resolveGoalBurnedKcalForDate(Member member, List<MemberGoalHistory> histories, LocalDate date) {
-        LocalDateTime target = date.atTime(23, 59, 59);
+        LocalDate today = LocalDate.now();
+        int currentGoal = safeInteger(member.getGoalBurnedKcal());
 
-        Integer latestGoal = null;
+        // 오늘 날짜는 항상 member의 현재 목표값을 우선 반영
+        if (date.equals(today)) {
+            return currentGoal;
+        }
+
+        Integer latestGoalFromHistory = null;
+
         for (MemberGoalHistory history : histories) {
-            if (history.getChangedAt() == null || history.getChangedAt().isAfter(target)) {
+            if (history.getChangedAt() == null) {
+                continue;
+            }
+
+            LocalDate changedDate = history.getChangedAt().toLocalDate();
+
+            if (changedDate.isAfter(date)) {
                 break;
             }
+
             if (history.getGoalBurnedKcal() != null) {
-                latestGoal = history.getGoalBurnedKcal();
+                latestGoalFromHistory = history.getGoalBurnedKcal();
             }
         }
 
-        if (latestGoal != null) {
-            return latestGoal;
+        // 과거 날짜는 history 값이 있으면 history 사용
+        if (latestGoalFromHistory != null) {
+            return latestGoalFromHistory;
         }
 
-        if (!histories.isEmpty() && histories.get(0).getGoalBurnedKcal() != null) {
-            return histories.get(0).getGoalBurnedKcal();
-        }
-
-        return safeInteger(member.getGoalBurnedKcal());
+        // history가 전혀 없으면 현재 member 값 사용
+        return currentGoal;
     }
 
     private int resolveGoalBurnedKcalForMonth(Member member, List<MemberGoalHistory> histories, YearMonth month) {
-        LocalDateTime target = month.atEndOfMonth().atTime(23, 59, 59);
+        YearMonth currentMonth = YearMonth.now();
+        int currentGoal = safeInteger(member.getGoalBurnedKcal());
 
-        Integer latestGoal = null;
+        // 현재 달은 항상 member의 현재 목표값을 우선 반영
+        if (month.equals(currentMonth)) {
+            return currentGoal;
+        }
+
+        Integer latestGoalFromHistory = null;
+
         for (MemberGoalHistory history : histories) {
-            if (history.getChangedAt() == null || history.getChangedAt().isAfter(target)) {
+            if (history.getChangedAt() == null) {
+                continue;
+            }
+
+            YearMonth changedMonth = YearMonth.from(history.getChangedAt());
+
+            if (changedMonth.isAfter(month)) {
                 break;
             }
+
             if (history.getGoalBurnedKcal() != null) {
-                latestGoal = history.getGoalBurnedKcal();
+                latestGoalFromHistory = history.getGoalBurnedKcal();
             }
         }
 
-        if (latestGoal != null) {
-            return latestGoal;
+        // 과거 달은 history 값이 있으면 history 사용
+        if (latestGoalFromHistory != null) {
+            return latestGoalFromHistory;
         }
 
-        if (!histories.isEmpty() && histories.get(0).getGoalBurnedKcal() != null) {
-            return histories.get(0).getGoalBurnedKcal();
-        }
-
-        return safeInteger(member.getGoalBurnedKcal());
+        // history가 없으면 현재 member 값 사용
+        return currentGoal;
     }
 
     public void addDirectExercise(Long memberId, LocalDate exerciseDate, String exerciseName, Integer burnedKcal) {
