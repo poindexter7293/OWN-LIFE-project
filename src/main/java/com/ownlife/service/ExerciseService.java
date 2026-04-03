@@ -83,7 +83,7 @@ public class ExerciseService {
 
         int todayBurnedKcal = todayBurned.setScale(0, RoundingMode.HALF_UP).intValue();
         int weekBurnedKcal = weekBurned.setScale(0, RoundingMode.HALF_UP).intValue();
-        int goalBurnedKcal = safeInteger(member.getGoalBurnedKcal());
+        int goalBurnedKcal = getGoalBurnedKcalForSelectedDate(member, selectedDate);
 
         int goalRemainingKcal = Math.max(goalBurnedKcal - todayBurnedKcal, 0);
         int goalAchievementRate = goalBurnedKcal > 0
@@ -299,6 +299,30 @@ public class ExerciseService {
 
         // history가 없으면 현재 member 값 사용
         return currentGoal;
+    }
+
+    private int getGoalBurnedKcalForSelectedDate(Member member, LocalDate selectedDate) {
+        int currentGoal = safeInteger(member.getGoalBurnedKcal());
+
+        if (selectedDate == null) {
+            return currentGoal;
+        }
+
+        // 오늘은 member의 현재 목표값 사용
+        if (selectedDate.equals(LocalDate.now())) {
+            return currentGoal;
+        }
+
+        LocalDateTime endOfSelectedDate = selectedDate.atTime(23, 59, 59);
+
+        return memberGoalHistoryRepository
+                .findFirstByMember_MemberIdAndChangedAtLessThanEqualOrderByChangedAtDesc(
+                        member.getMemberId(),
+                        endOfSelectedDate
+                )
+                .map(MemberGoalHistory::getGoalBurnedKcal)
+                .filter(Objects::nonNull)
+                .orElse(currentGoal);
     }
 
     public void addDirectExercise(Long memberId, LocalDate exerciseDate, String exerciseName, Integer burnedKcal) {
@@ -552,3 +576,4 @@ public class ExerciseService {
         }
     }
 }
+
