@@ -6,6 +6,7 @@ import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,14 +29,14 @@ class MyPageControllerTest {
 
     private MockMvc mockMvc;
     private StubMemberService memberService;
-    private StubGoogleAuthService googleAuthService;
     private MockHttpSession session;
 
     @BeforeEach
     void setUp() {
         memberService = new StubMemberService();
-        googleAuthService = new StubGoogleAuthService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService)).build();
+        StubGoogleAuthService googleAuthService = new StubGoogleAuthService();
+        StubKakaoAuthService kakaoAuthService = new StubKakaoAuthService();
+        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService)).build();
         session = new MockHttpSession();
         session.setAttribute(AuthController.LOGIN_MEMBER, new SessionMember(1L, "tester01", "테스터", Member.Role.USER));
     }
@@ -57,7 +58,8 @@ class MyPageControllerTest {
                 .andExpect(model().attributeExists("myPageForm"))
                 .andExpect(model().attribute("pageTitle", "마이페이지"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-mypage :: centerMyPage"))
-                .andExpect(model().attribute("googleLinked", false));
+                .andExpect(model().attribute("googleLinked", false))
+                .andExpect(model().attribute("kakaoLinked", false));
     }
 
     @Test
@@ -122,6 +124,16 @@ class MyPageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("main"))
                 .andExpect(model().attribute("googleLinkErrorMessage", "이미 Google 계정이 연동되어 있습니다."));
+    }
+
+    @Test
+    @DisplayName("마이페이지에서 카카오 연동을 시작하면 카카오 인증 페이지로 이동한다")
+    void linkKakaoAccountRedirectsToAuthorizationPage() throws Exception {
+        mockMvc.perform(get("/mypage/link/kakao").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=test-kakao-key&redirect_uri=http%3A%2F%2Flocalhost%3A8081%2Flogin%2Fkakao%2Fauth&scope=account_email+profile_nickname+profile_image&state=test-kakao-state"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1L, session.getAttribute(AuthController.PENDING_KAKAO_LINK_MEMBER_ID));
     }
 
     private static class StubMemberService extends MemberService {
@@ -205,6 +217,19 @@ class MyPageControllerTest {
                 ));
             }
             return Optional.empty();
+        }
+    }
+
+    private static class StubKakaoAuthService extends KakaoAuthService {
+
+        StubKakaoAuthService() {
+            super("test-kakao-key", "http://localhost:8081/login/kakao/auth");
+        }
+
+        @Override
+        public String prepareAuthorizationUrl(jakarta.servlet.http.HttpSession session) {
+            session.setAttribute("kakaoOauthState", "test-kakao-state");
+            return "https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=test-kakao-key&redirect_uri=http%3A%2F%2Flocalhost%3A8081%2Flogin%2Fkakao%2Fauth&scope=account_email+profile_nickname+profile_image&state=test-kakao-state";
         }
     }
 }

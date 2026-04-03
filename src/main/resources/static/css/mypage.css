@@ -136,6 +136,17 @@
     border: 1px solid rgba(124, 153, 196, 0.16);
 }
 
+.mypage-social-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.mypage-social-card--kakao {
+    background: linear-gradient(180deg, rgba(254, 229, 0, 0.12), rgba(255, 243, 171, 0.16));
+    border-color: rgba(133, 110, 9, 0.14);
+}
+
 .mypage-social-card__info {
     display: flex;
     align-items: flex-start;
@@ -194,6 +205,43 @@
 
 .mypage-social-actions .g_id_signin {
     display: flex;
+}
+
+.mypage-social-link-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-width: 240px;
+    border-radius: 999px;
+    padding: 13px 18px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.mypage-social-link-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(0.98);
+}
+
+.mypage-social-link-button--kakao {
+    background: #fee500;
+    color: #191919;
+    box-shadow: 0 10px 20px rgba(254, 229, 0, 0.28);
+}
+
+.mypage-social-link-button__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(25, 25, 25, 0.9);
+    color: #fee500;
+    font-size: 0.95rem;
+    font-weight: 900;
 }
 
 .mypage-alert {
@@ -332,6 +380,10 @@
 
     .mypage-social-card__info {
         flex-direction: column;
+    }
+
+    .mypage-social-link-button {
+        width: 100%;
     }
 
     .mypage-hero-card__header {

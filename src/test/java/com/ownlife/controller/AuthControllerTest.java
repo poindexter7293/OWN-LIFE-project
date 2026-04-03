@@ -180,6 +180,23 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("마이페이지 카카오 연동 콜백이 성공하면 마이페이지로 이동한다")
+    void kakaoLinkSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("kakaoOauthState", "kakao-state");
+        session.setAttribute(AuthController.PENDING_KAKAO_LINK_MEMBER_ID, 1L);
+
+        mockMvc.perform(get("/login/kakao/auth")
+                        .session(session)
+                        .param("state", "kakao-state")
+                        .param("code", "valid-kakao-code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mypage?kakaoLinkStatus=success"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.linkKakaoCallCount);
+    }
+
+    @Test
     @DisplayName("Kakao 로그인 state 검증이 실패하면 로그인 화면에 오류를 표시한다")
     void kakaoLoginStateFail() throws Exception {
         MockHttpSession session = new MockHttpSession();
@@ -199,6 +216,7 @@ class AuthControllerTest {
         private final Member member;
         private Member googleLoginMember;
         private Member kakaoLoginMember;
+        private int linkKakaoCallCount;
 
         StubMemberService() {
             super(null, null, null);
@@ -237,6 +255,14 @@ class AuthControllerTest {
             kakaoLoginMember.setLoginType(Member.LoginType.KAKAO);
             kakaoLoginMember.setEmail(kakaoUserProfile.getEmail());
             return Optional.of(kakaoLoginMember);
+        }
+
+        @Override
+        public Member linkKakaoAccount(Long memberId, KakaoUserProfile kakaoUserProfile) {
+            linkKakaoCallCount++;
+            member.setLoginType(Member.LoginType.KAKAO);
+            member.setEmail(kakaoUserProfile.getEmail());
+            return member;
         }
     }
 

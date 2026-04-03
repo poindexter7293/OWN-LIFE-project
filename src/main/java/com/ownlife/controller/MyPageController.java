@@ -6,6 +6,7 @@ import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -33,10 +34,12 @@ public class MyPageController {
 
     private final MemberService memberService;
     private final GoogleAuthService googleAuthService;
+    private final KakaoAuthService kakaoAuthService;
 
     @GetMapping("/mypage")
     public String myPage(@RequestParam(value = "success", defaultValue = "false") boolean success,
                          @RequestParam(value = "googleLinkStatus", required = false) String googleLinkStatus,
+                         @RequestParam(value = "kakaoLinkStatus", required = false) String kakaoLinkStatus,
                          Model model,
                          HttpSession session) {
         SessionMember loginMember = getLoginMember(session);
@@ -54,7 +57,15 @@ public class MyPageController {
         if (!model.containsAttribute("myPageForm")) {
             model.addAttribute("myPageForm", toForm(member));
         }
-        applyPageAttributes(model, member, success, resolveGoogleLinkSuccessMessage(googleLinkStatus), resolveGoogleLinkErrorMessage(googleLinkStatus));
+        applyPageAttributes(
+                model,
+                member,
+                success,
+                resolveGoogleLinkSuccessMessage(googleLinkStatus),
+                resolveGoogleLinkErrorMessage(googleLinkStatus),
+                resolveKakaoLinkSuccessMessage(kakaoLinkStatus),
+                resolveKakaoLinkErrorMessage(kakaoLinkStatus)
+        );
         return "main";
     }
 
@@ -77,7 +88,7 @@ public class MyPageController {
         validateMyPageForm(myPageForm, bindingResult);
         Member member = memberOptional.get();
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, member, false, null, null);
+            applyPageAttributes(model, member, false, null, null, null, null);
             return "main";
         }
 
@@ -108,18 +119,18 @@ public class MyPageController {
         }
 
         if (!googleAuthService.isEnabled()) {
-            applyPageAttributes(model, member, false, null, "Google 연동 설정이 아직 완료되지 않았습니다.");
+            applyPageAttributes(model, member, false, null, "Google 연동 설정이 아직 완료되지 않았습니다.", null, null);
             return "main";
         }
 
         if (!isValidGoogleCsrf(csrfCookie, csrfToken)) {
-            applyPageAttributes(model, member, false, null, "Google 연동 요청 검증에 실패했습니다. 다시 시도해 주세요.");
+            applyPageAttributes(model, member, false, null, "Google 연동 요청 검증에 실패했습니다. 다시 시도해 주세요.", null, null);
             return "main";
         }
 
         GoogleUserProfile googleUserProfile = googleAuthService.verifyCredential(credential).orElse(null);
         if (googleUserProfile == null) {
-            applyPageAttributes(model, member, false, null, "Google 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+            applyPageAttributes(model, member, false, null, "Google 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.", null, null);
             return "main";
         }
 
@@ -127,17 +138,47 @@ public class MyPageController {
             memberService.linkGoogleAccount(loginMember.getMemberId(), googleUserProfile);
             return "redirect:/mypage?googleLinkStatus=success";
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            applyPageAttributes(model, member, false, null, exception.getMessage());
+            applyPageAttributes(model, member, false, null, exception.getMessage(), null, null);
             return "main";
         }
+    }
+
+    @GetMapping("/mypage/link/kakao")
+    public String linkKakaoAccount(HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return "redirect:/login";
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return "redirect:/login";
+        }
+
+        if (!kakaoAuthService.isEnabled()) {
+            return "redirect:/mypage?kakaoLinkStatus=config-error";
+        }
+
+        session.setAttribute(AuthController.PENDING_KAKAO_LINK_MEMBER_ID, loginMember.getMemberId());
+        String kakaoAuthorizationUrl = kakaoAuthService.prepareAuthorizationUrl(session);
+        if (!StringUtils.hasText(kakaoAuthorizationUrl)) {
+            session.removeAttribute(AuthController.PENDING_KAKAO_LINK_MEMBER_ID);
+            return "redirect:/mypage?kakaoLinkStatus=config-error";
+        }
+
+        return "redirect:" + kakaoAuthorizationUrl;
     }
 
     private void applyPageAttributes(Model model,
                                      Member member,
                                      boolean success,
                                      String googleLinkSuccessMessage,
-                                     String googleLinkErrorMessage) {
+                                     String googleLinkErrorMessage,
+                                     String kakaoLinkSuccessMessage,
+                                     String kakaoLinkErrorMessage) {
         Optional<SocialAccount> googleAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE);
+        Optional<SocialAccount> kakaoAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO);
 
         model.addAttribute("pageTitle", "마이페이지");
         model.addAttribute("centerFragment", "fragments/center-mypage :: centerMyPage");
@@ -156,6 +197,14 @@ public class MyPageController {
         model.addAttribute("googleLastLoginAt", googleAccount.map(SocialAccount::getLastLoginAt).orElse(null));
         model.addAttribute("googleLinkSuccessMessage", googleLinkSuccessMessage);
         model.addAttribute("googleLinkErrorMessage", googleLinkErrorMessage);
+        model.addAttribute("kakaoAuthEnabled", kakaoAuthService.isEnabled());
+        model.addAttribute("kakaoLinkUrl", "/mypage/link/kakao");
+        model.addAttribute("kakaoLinked", kakaoAccount.isPresent());
+        model.addAttribute("kakaoLinkedEmail", kakaoAccount.map(SocialAccount::getProviderEmail).orElse(null));
+        model.addAttribute("kakaoLinkedAt", kakaoAccount.map(SocialAccount::getConnectedAt).orElse(null));
+        model.addAttribute("kakaoLastLoginAt", kakaoAccount.map(SocialAccount::getLastLoginAt).orElse(null));
+        model.addAttribute("kakaoLinkSuccessMessage", kakaoLinkSuccessMessage);
+        model.addAttribute("kakaoLinkErrorMessage", kakaoLinkErrorMessage);
     }
 
     private MyPageForm toForm(Member member) {
@@ -219,10 +268,7 @@ public class MyPageController {
         if (!StringUtils.hasText(googleLinkStatus)) {
             return null;
         }
-        return switch (googleLinkStatus) {
-            case "success" -> "Google 계정이 성공적으로 연동되었습니다.";
-            default -> null;
-        };
+        return "success".equals(googleLinkStatus) ? "Google 계정이 성공적으로 연동되었습니다." : null;
     }
 
     private String resolveGoogleLinkErrorMessage(String googleLinkStatus) {
@@ -233,6 +279,29 @@ public class MyPageController {
             case "already-linked" -> "이미 Google 계정이 연동되어 있습니다.";
             case "linked-other-account" -> "이미 다른 계정에 연결된 Google 계정입니다.";
             default -> null;
+        };
+    }
+
+    private String resolveKakaoLinkSuccessMessage(String kakaoLinkStatus) {
+        if (!StringUtils.hasText(kakaoLinkStatus)) {
+            return null;
+        }
+        return "success".equals(kakaoLinkStatus) ? "카카오 계정이 성공적으로 연동되었습니다." : null;
+    }
+
+    private String resolveKakaoLinkErrorMessage(String kakaoLinkStatus) {
+        if (!StringUtils.hasText(kakaoLinkStatus)) {
+            return null;
+        }
+        return switch (kakaoLinkStatus) {
+            case "config-error" -> "카카오 연동 설정이 아직 완료되지 않았습니다.";
+            case "state-failed" -> "카카오 연동 요청 검증에 실패했습니다. 다시 시도해 주세요.";
+            case "auth-failed" -> "카카오 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+            case "access-denied" -> "카카오 연동 동의가 취소되었습니다. 다시 시도해 주세요.";
+            case "already-linked" -> "이미 카카오 계정이 연동되어 있습니다.";
+            case "linked-other-account" -> "이미 다른 계정에 연결된 카카오 계정입니다.";
+            case "member-not-found" -> "회원 정보를 찾을 수 없어 카카오 연동을 진행할 수 없습니다.";
+            default -> "카카오 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
         };
     }
 

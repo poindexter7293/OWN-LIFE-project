@@ -337,6 +337,35 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("마이페이지에서 현재 로그인한 계정에 카카오 계정을 연동할 수 있다")
+    void linkKakaoAccountFromMyPage() {
+        SignupForm localSignupForm = new SignupForm();
+        localSignupForm.setUsername("mypagekakao01");
+        localSignupForm.setPassword("Password123!");
+        localSignupForm.setNickname("카카오연동회원");
+        localSignupForm.setEmail("local-kakao-link@example.com");
+
+        Member member = memberService.register(localSignupForm);
+
+        KakaoUserProfile kakaoUserProfile = new KakaoUserProfile(
+                "kakao-mypage-link-id",
+                "different-kakao@example.com",
+                "카카오연동대상",
+                "https://example.com/kakao-linked.png",
+                true
+        );
+
+        Member linkedMember = memberService.linkKakaoAccount(member.getMemberId(), kakaoUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertEquals(member.getMemberId(), linkedMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals(1, socialAccountHandler.storage.size());
+        SocialAccount socialAccount = socialAccountHandler.storage.values().iterator().next();
+        org.junit.jupiter.api.Assertions.assertEquals("kakao-mypage-link-id", socialAccount.getProviderUserId());
+        org.junit.jupiter.api.Assertions.assertEquals(member.getMemberId(), socialAccount.getMember().getMemberId());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO).isPresent());
+    }
+
+    @Test
     @DisplayName("이미 다른 회원에게 연결된 Google 계정은 마이페이지에서 다시 연동할 수 없다")
     void linkGoogleAccountFailsWhenLinkedToAnotherMember() {
         SignupForm firstForm = new SignupForm();
@@ -366,6 +395,38 @@ class MemberServiceTest {
 
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                 () -> memberService.linkGoogleAccount(secondMember.getMemberId(), googleUserProfile));
+    }
+
+    @Test
+    @DisplayName("이미 다른 회원에게 연결된 카카오 계정은 마이페이지에서 다시 연동할 수 없다")
+    void linkKakaoAccountFailsWhenLinkedToAnotherMember() {
+        SignupForm firstForm = new SignupForm();
+        firstForm.setUsername("firstkakao01");
+        firstForm.setPassword("Password123!");
+        firstForm.setNickname("첫카카오회원");
+        firstForm.setEmail("first-kakao@example.com");
+
+        SignupForm secondForm = new SignupForm();
+        secondForm.setUsername("secondkakao01");
+        secondForm.setPassword("Password123!");
+        secondForm.setNickname("둘째카카오회원");
+        secondForm.setEmail("second-kakao@example.com");
+
+        Member firstMember = memberService.register(firstForm);
+        Member secondMember = memberService.register(secondForm);
+
+        KakaoUserProfile kakaoUserProfile = new KakaoUserProfile(
+                "shared-kakao-id",
+                "shared-kakao-social@example.com",
+                "공유카카오",
+                null,
+                true
+        );
+
+        memberService.linkKakaoAccount(firstMember.getMemberId(), kakaoUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> memberService.linkKakaoAccount(secondMember.getMemberId(), kakaoUserProfile));
     }
 
     private static class InMemoryMemberRepositoryHandler implements InvocationHandler {

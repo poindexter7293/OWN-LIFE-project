@@ -225,6 +225,39 @@ public class MemberService {
         return memberRepository.saveAndFlush(member);
     }
 
+    public Member linkKakaoAccount(Long memberId, KakaoUserProfile kakaoUserProfile) {
+        if (kakaoUserProfile == null) {
+            throw new IllegalArgumentException("카카오 인증 정보가 올바르지 않습니다.");
+        }
+        if (!kakaoUserProfile.isEmailVerified()) {
+            throw new IllegalArgumentException("이메일 인증이 완료된 카카오 계정만 연동할 수 있습니다.");
+        }
+
+        Member member = findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        Optional<SocialAccount> linkedByProviderUserId = socialAccountRepository
+                .findByProviderAndProviderUserId(SocialAccount.Provider.KAKAO, kakaoUserProfile.getId());
+        if (linkedByProviderUserId.isPresent()) {
+            SocialAccount socialAccount = linkedByProviderUserId.get();
+            if (!socialAccount.getMember().getMemberId().equals(member.getMemberId())) {
+                throw new IllegalStateException("이미 다른 계정에 연결된 카카오 계정입니다.");
+            }
+            upsertKakaoSocialAccount(member, kakaoUserProfile);
+            return memberRepository.saveAndFlush(member);
+        }
+
+        Optional<SocialAccount> existingKakaoAccount = socialAccountRepository
+                .findByMemberMemberIdAndProvider(member.getMemberId(), SocialAccount.Provider.KAKAO);
+        if (existingKakaoAccount.isPresent()) {
+            throw new IllegalStateException("이미 카카오 계정이 연동되어 있습니다.");
+        }
+
+        applyKakaoProfileDefaultsForLinkedMember(member, kakaoUserProfile);
+        upsertKakaoSocialAccount(member, kakaoUserProfile);
+        return memberRepository.saveAndFlush(member);
+    }
+
     public Optional<Member> findKakaoMemberForLogin(KakaoUserProfile kakaoUserProfile) {
         if (kakaoUserProfile == null) {
             throw new IllegalArgumentException("카카오 인증 정보가 올바르지 않습니다.");
@@ -413,6 +446,24 @@ public class MemberService {
         }
         if (!StringUtils.hasText(member.getProfileImageUrl())) {
             member.setProfileImageUrl(trimToNull(googleUserProfile.getPictureUrl()));
+        }
+    }
+
+    private void applyKakaoProfileDefaultsForLinkedMember(Member member, KakaoUserProfile kakaoUserProfile) {
+        if (!StringUtils.hasText(member.getEmail())) {
+            member.setEmail(normalizeIdentity(kakaoUserProfile.getEmail()));
+        }
+        if (member.getLoginType() == null) {
+            member.setLoginType(Member.LoginType.KAKAO);
+        }
+        if (!StringUtils.hasText(member.getSocialProvider())) {
+            member.setSocialProvider("KAKAO");
+        }
+        if (!StringUtils.hasText(member.getSocialProviderId())) {
+            member.setSocialProviderId(kakaoUserProfile.getId());
+        }
+        if (!StringUtils.hasText(member.getProfileImageUrl())) {
+            member.setProfileImageUrl(trimToNull(kakaoUserProfile.getProfileImageUrl()));
         }
     }
 
