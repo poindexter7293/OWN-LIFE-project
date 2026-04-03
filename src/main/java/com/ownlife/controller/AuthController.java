@@ -32,6 +32,7 @@ public class AuthController {
     public static final String LOGIN_MEMBER = "loginMember";
     public static final String PENDING_GOOGLE_SIGNUP = "pendingGoogleSignup";
     public static final String PENDING_KAKAO_SIGNUP = "pendingKakaoSignup";
+    public static final String PENDING_KAKAO_LINK_MEMBER_ID = "pendingKakaoLinkMemberId";
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]{3,49}$");
 
     private final MemberService memberService;
@@ -120,21 +121,51 @@ public class AuthController {
                              @RequestParam(value = "error_description", required = false) String errorDescription,
                              Model model,
                              HttpSession session) {
+        Long pendingKakaoLinkMemberId = getPendingKakaoLinkMemberId(session);
+
         if (!kakaoAuthService.isEnabled()) {
+            if (pendingKakaoLinkMemberId != null) {
+                clearPendingKakaoLink(session);
+                return "redirect:/mypage?kakaoLinkStatus=config-error";
+            }
             return renderKakaoLoginError(model, session, "카카오 로그인 설정이 아직 완료되지 않았습니다.");
         }
 
         if (StringUtils.hasText(error)) {
+            if (pendingKakaoLinkMemberId != null) {
+                clearPendingKakaoLink(session);
+                return "redirect:/mypage?kakaoLinkStatus=" + resolveKakaoLinkErrorStatus(error);
+            }
             return renderKakaoLoginError(model, session, resolveKakaoOauthErrorMessage(error, errorDescription));
         }
 
         if (!kakaoAuthService.isValidState(session, state)) {
+            if (pendingKakaoLinkMemberId != null) {
+                clearPendingKakaoLink(session);
+                return "redirect:/mypage?kakaoLinkStatus=state-failed";
+            }
             return renderKakaoLoginError(model, session, "카카오 로그인 요청 검증에 실패했습니다. 다시 시도해 주세요.");
         }
 
         KakaoUserProfile kakaoUserProfile = kakaoAuthService.requestUserProfile(code).orElse(null);
         if (kakaoUserProfile == null) {
+            if (pendingKakaoLinkMemberId != null) {
+                clearPendingKakaoLink(session);
+                return "redirect:/mypage?kakaoLinkStatus=auth-failed";
+            }
             return renderKakaoLoginError(model, session, "카카오 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        if (pendingKakaoLinkMemberId != null) {
+            clearPendingKakaoLink(session);
+            try {
+                memberService.linkKakaoAccount(pendingKakaoLinkMemberId, kakaoUserProfile);
+                return "redirect:/mypage?kakaoLinkStatus=success";
+            } catch (IllegalArgumentException exception) {
+                return "redirect:/mypage?kakaoLinkStatus=member-not-found";
+            } catch (IllegalStateException exception) {
+                return "redirect:/mypage?kakaoLinkStatus=" + resolveKakaoLinkFailureStatus(exception.getMessage());
+            }
         }
 
         try {
@@ -266,6 +297,37 @@ public class AuthController {
             return errorDescription;
         }
         return "카카오 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.";
+    }
+
+    private Long getPendingKakaoLinkMemberId(HttpSession session) {
+        if (session == null) {
+            return null;
+        }
+        Object attribute = session.getAttribute(PENDING_KAKAO_LINK_MEMBER_ID);
+        return attribute instanceof Long longValue ? longValue : null;
+    }
+
+    private void clearPendingKakaoLink(HttpSession session) {
+        if (session != null) {
+            session.removeAttribute(PENDING_KAKAO_LINK_MEMBER_ID);
+        }
+    }
+
+    private String resolveKakaoLinkErrorStatus(String error) {
+        if ("access_denied".equals(error)) {
+            return "access-denied";
+        }
+        return "oauth-error";
+    }
+
+    private String resolveKakaoLinkFailureStatus(String message) {
+        if ("이미 카카오 계정이 연동되어 있습니다.".equals(message)) {
+            return "already-linked";
+        }
+        if ("이미 다른 계정에 연결된 카카오 계정입니다.".equals(message)) {
+            return "linked-other-account";
+        }
+        return "failed";
     }
 
     private SessionMember toSessionMember(Member member) {

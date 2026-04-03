@@ -94,7 +94,14 @@
                     <div class="mypage-alert mypage-alert-error" th:if="${googleLinkErrorMessage != null}" th:text="${googleLinkErrorMessage}">
                         Google 계정 연동 중 오류가 발생했습니다.
                     </div>
+                    <div class="mypage-alert mypage-alert-success" th:if="${kakaoLinkSuccessMessage != null}" th:text="${kakaoLinkSuccessMessage}">
+                        카카오 계정이 성공적으로 연동되었습니다.
+                    </div>
+                    <div class="mypage-alert mypage-alert-error" th:if="${kakaoLinkErrorMessage != null}" th:text="${kakaoLinkErrorMessage}">
+                        카카오 계정 연동 중 오류가 발생했습니다.
+                    </div>
 
+                    <div class="mypage-social-card-list">
                     <div class="mypage-social-card">
                         <div class="mypage-social-card__info">
                             <div>
@@ -126,6 +133,32 @@
                                  data-width="320">
                             </div>
                         </div>
+                    </div>
+
+                    <div class="mypage-social-card mypage-social-card--kakao">
+                        <div class="mypage-social-card__info">
+                            <div>
+                                <strong>카카오 계정</strong>
+                                <p th:if="${kakaoLinked}">현재 계정에 카카오 로그인을 연결해 두었습니다.</p>
+                                <p th:if="${!kakaoLinked}">연동하면 기존 계정으로 카카오 로그인을 함께 사용할 수 있어요.</p>
+                            </div>
+                            <span class="mypage-social-badge" th:classappend="${kakaoLinked} ? ' is-linked' : ' is-unlinked'"
+                                  th:text="${kakaoLinked} ? '연동 완료' : '미연동'">미연동</span>
+                        </div>
+
+                        <div class="mypage-social-meta" th:if="${kakaoLinked}">
+                            <span th:text="|연동 이메일: ${kakaoLinkedEmail != null ? kakaoLinkedEmail : '정보 없음'}|">연동 이메일</span>
+                            <span th:text="${kakaoLinkedAt != null ? '연동일: ' + #temporals.format(kakaoLinkedAt, 'yyyy.MM.dd HH:mm') : '연동일 정보 없음'}">연동일</span>
+                            <span th:text="${kakaoLastLoginAt != null ? '마지막 카카오 로그인: ' + #temporals.format(kakaoLastLoginAt, 'yyyy.MM.dd HH:mm') : '카카오 로그인 기록 없음'}">마지막 로그인</span>
+                        </div>
+
+                        <div class="mypage-social-actions" th:if="${kakaoAuthEnabled and !kakaoLinked}">
+                            <a th:href="${kakaoLinkUrl}" class="mypage-social-link-button mypage-social-link-button--kakao">
+                                <span class="mypage-social-link-button__badge">K</span>
+                                <span>카카오 계정 연동하기</span>
+                            </a>
+                        </div>
+                    </div>
                     </div>
                 </div>
             </article>
