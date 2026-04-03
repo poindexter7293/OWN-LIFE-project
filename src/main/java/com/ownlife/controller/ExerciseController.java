@@ -41,6 +41,21 @@ public class ExerciseController {
         return "main";
     }
 
+    @GetMapping("/chart")
+    @ResponseBody
+    public ExerciseService.ExerciseChartData chartData(
+            @RequestParam(value = "date", required = false) LocalDate date,
+            @RequestParam(value = "period", defaultValue = "WEEK") ExerciseService.ChartPeriod period,
+            HttpSession session
+    ) {
+        SessionMember loginMember = (SessionMember) session.getAttribute(AuthController.LOGIN_MEMBER);
+        if (loginMember == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        return exerciseService.getChartData(loginMember.getMemberId(), date, period);
+    }
+
     @PostMapping("/direct")
     public String addDirect(@RequestParam("exerciseDate") LocalDate exerciseDate,
                             @RequestParam("exerciseName") String exerciseName,

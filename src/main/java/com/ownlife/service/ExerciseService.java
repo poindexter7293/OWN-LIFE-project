@@ -3,8 +3,10 @@ package com.ownlife.service;
 import com.ownlife.entity.ExerciseLog;
 import com.ownlife.entity.ExerciseType;
 import com.ownlife.entity.Member;
+import com.ownlife.entity.MemberGoalHistory;
 import com.ownlife.repository.ExerciseLogRepository;
 import com.ownlife.repository.ExerciseTypeRepository;
+import com.ownlife.repository.MemberGoalHistoryRepository;
 import com.ownlife.repository.MemberRepository;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,13 +18,10 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,10 +30,12 @@ import java.util.stream.Collectors;
 public class ExerciseService {
 
     private static final DateTimeFormatter LABEL_FORMATTER = DateTimeFormatter.ofPattern("M/d", Locale.KOREA);
+    private static final DateTimeFormatter MONTH_LABEL_FORMATTER = DateTimeFormatter.ofPattern("yy.MM", Locale.KOREA);
 
     private final ExerciseLogRepository exerciseLogRepository;
     private final ExerciseTypeRepository exerciseTypeRepository;
     private final MemberRepository memberRepository;
+    private final MemberGoalHistoryRepository memberGoalHistoryRepository;
 
     @Transactional(readOnly = true)
     public ExercisePageData getPageData(Long memberId, LocalDate baseDate) {
@@ -61,8 +62,7 @@ public class ExerciseService {
         for (ExerciseLog log : weekLogs) {
             LocalDate exerciseDate = log.getExerciseDate();
             if (exerciseDate != null && dailyMap.containsKey(exerciseDate)) {
-                dailyMap.put(exerciseDate,
-                        dailyMap.get(exerciseDate).add(safeDecimal(log.getBurnedKcal())));
+                dailyMap.put(exerciseDate, dailyMap.get(exerciseDate).add(safeDecimal(log.getBurnedKcal())));
             }
         }
 
@@ -102,6 +102,179 @@ public class ExerciseService {
                 .weekValues(values)
                 .todayExercises(items)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public ExerciseChartData getChartData(Long memberId, LocalDate baseDate, ChartPeriod period) {
+        LocalDate selectedDate = baseDate == null ? LocalDate.now() : baseDate;
+        Member member = getMember(memberId);
+
+        if (period == null) {
+            period = ChartPeriod.WEEK;
+        }
+
+        return switch (period) {
+            case WEEK -> buildDailyChart(member, selectedDate.minusDays(6), selectedDate, period);
+            case MONTH -> buildDailyChart(member, selectedDate.minusDays(29), selectedDate, period);
+            case YEAR -> buildMonthlyChart(member, YearMonth.from(selectedDate).minusMonths(11), YearMonth.from(selectedDate), period);
+        };
+    }
+
+    private ExerciseChartData buildDailyChart(Member member, LocalDate startDate, LocalDate endDate, ChartPeriod period) {
+        Long memberId = member.getMemberId();
+
+        List<ExerciseLog> logs = exerciseLogRepository
+                .findByMember_MemberIdAndExerciseDateBetweenOrderByExerciseDateAscCreatedAtAsc(memberId, startDate, endDate);
+
+        List<MemberGoalHistory> histories = memberGoalHistoryRepository
+                .findByMember_MemberIdAndChangedAtLessThanEqualOrderByChangedAtAsc(memberId, endDate.atTime(23, 59, 59));
+
+        Map<LocalDate, Integer> burnedMap = new LinkedHashMap<>();
+        Map<LocalDate, Integer> goalMap = new LinkedHashMap<>();
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            burnedMap.put(date, 0);
+            goalMap.put(date, resolveGoalBurnedKcalForDate(member, histories, date));
+        }
+
+        for (ExerciseLog log : logs) {
+            LocalDate exerciseDate = log.getExerciseDate();
+            if (exerciseDate != null && burnedMap.containsKey(exerciseDate)) {
+                int current = burnedMap.get(exerciseDate);
+                int add = safeDecimal(log.getBurnedKcal()).setScale(0, RoundingMode.HALF_UP).intValue();
+                burnedMap.put(exerciseDate, current + add);
+            }
+        }
+
+        List<String> labels = burnedMap.keySet().stream()
+                .map(LABEL_FORMATTER::format)
+                .toList();
+
+        List<Integer> burnedValues = new ArrayList<>(burnedMap.values());
+        List<Integer> goalValues = new ArrayList<>(goalMap.values());
+
+        return ExerciseChartData.builder()
+                .period(period.name())
+                .labels(labels)
+                .burnedValues(burnedValues)
+                .goalValues(goalValues)
+                .build();
+    }
+
+    private ExerciseChartData buildMonthlyChart(Member member, YearMonth startMonth, YearMonth endMonth, ChartPeriod period) {
+        Long memberId = member.getMemberId();
+
+        LocalDate startDate = startMonth.atDay(1);
+        LocalDate endDate = endMonth.atEndOfMonth();
+
+        List<ExerciseLog> logs = exerciseLogRepository
+                .findByMember_MemberIdAndExerciseDateBetweenOrderByExerciseDateAscCreatedAtAsc(memberId, startDate, endDate);
+
+        List<MemberGoalHistory> histories = memberGoalHistoryRepository
+                .findByMember_MemberIdAndChangedAtLessThanEqualOrderByChangedAtAsc(memberId, endDate.atTime(23, 59, 59));
+
+        Map<YearMonth, Integer> monthlyTotalMap = new LinkedHashMap<>();
+        Map<YearMonth, Integer> burnedMap = new LinkedHashMap<>();
+        Map<YearMonth, Integer> goalMap = new LinkedHashMap<>();
+
+        for (YearMonth ym = startMonth; !ym.isAfter(endMonth); ym = ym.plusMonths(1)) {
+            monthlyTotalMap.put(ym, 0);
+            burnedMap.put(ym, 0);
+            goalMap.put(ym, resolveGoalBurnedKcalForMonth(member, histories, ym));
+        }
+
+        for (ExerciseLog log : logs) {
+            if (log.getExerciseDate() == null) {
+                continue;
+            }
+
+            YearMonth ym = YearMonth.from(log.getExerciseDate());
+            if (monthlyTotalMap.containsKey(ym)) {
+                int current = monthlyTotalMap.get(ym);
+                int add = safeDecimal(log.getBurnedKcal()).setScale(0, RoundingMode.HALF_UP).intValue();
+                monthlyTotalMap.put(ym, current + add);
+            }
+        }
+
+        for (Map.Entry<YearMonth, Integer> entry : monthlyTotalMap.entrySet()) {
+            YearMonth ym = entry.getKey();
+            int monthlyTotal = entry.getValue();
+
+            long activeDays = logs.stream()
+                    .filter(log -> log.getExerciseDate() != null)
+                    .filter(log -> YearMonth.from(log.getExerciseDate()).equals(ym))
+                    .map(ExerciseLog::getExerciseDate)
+                    .distinct()
+                    .count();
+
+            int averagePerDay = activeDays > 0
+                    ? (int) Math.round(monthlyTotal / (double) activeDays)
+                    : 0;
+
+            burnedMap.put(ym, averagePerDay);
+        }
+
+        List<String> labels = burnedMap.keySet().stream()
+                .map(MONTH_LABEL_FORMATTER::format)
+                .toList();
+
+        List<Integer> burnedValues = new ArrayList<>(burnedMap.values());
+        List<Integer> goalValues = new ArrayList<>(goalMap.values());
+
+        return ExerciseChartData.builder()
+                .period(period.name())
+                .labels(labels)
+                .burnedValues(burnedValues)
+                .goalValues(goalValues)
+                .build();
+    }
+
+    private int resolveGoalBurnedKcalForDate(Member member, List<MemberGoalHistory> histories, LocalDate date) {
+        LocalDateTime target = date.atTime(23, 59, 59);
+
+        Integer latestGoal = null;
+        for (MemberGoalHistory history : histories) {
+            if (history.getChangedAt() == null || history.getChangedAt().isAfter(target)) {
+                break;
+            }
+            if (history.getGoalBurnedKcal() != null) {
+                latestGoal = history.getGoalBurnedKcal();
+            }
+        }
+
+        if (latestGoal != null) {
+            return latestGoal;
+        }
+
+        if (!histories.isEmpty() && histories.get(0).getGoalBurnedKcal() != null) {
+            return histories.get(0).getGoalBurnedKcal();
+        }
+
+        return safeInteger(member.getGoalBurnedKcal());
+    }
+
+    private int resolveGoalBurnedKcalForMonth(Member member, List<MemberGoalHistory> histories, YearMonth month) {
+        LocalDateTime target = month.atEndOfMonth().atTime(23, 59, 59);
+
+        Integer latestGoal = null;
+        for (MemberGoalHistory history : histories) {
+            if (history.getChangedAt() == null || history.getChangedAt().isAfter(target)) {
+                break;
+            }
+            if (history.getGoalBurnedKcal() != null) {
+                latestGoal = history.getGoalBurnedKcal();
+            }
+        }
+
+        if (latestGoal != null) {
+            return latestGoal;
+        }
+
+        if (!histories.isEmpty() && histories.get(0).getGoalBurnedKcal() != null) {
+            return histories.get(0).getGoalBurnedKcal();
+        }
+
+        return safeInteger(member.getGoalBurnedKcal());
     }
 
     public void addDirectExercise(Long memberId, LocalDate exerciseDate, String exerciseName, Integer burnedKcal) {
@@ -307,6 +480,10 @@ public class ExerciseService {
         return StringUtils.hasText(value) ? value.trim() : fallback;
     }
 
+    public enum ChartPeriod {
+        WEEK, MONTH, YEAR
+    }
+
     @Getter
     @Builder
     public static class ExercisePageData {
@@ -320,6 +497,15 @@ public class ExerciseService {
         private List<String> weekLabels;
         private List<Integer> weekValues;
         private List<ExerciseItem> todayExercises;
+    }
+
+    @Getter
+    @Builder
+    public static class ExerciseChartData {
+        private String period;
+        private List<String> labels;
+        private List<Integer> burnedValues;
+        private List<Integer> goalValues;
     }
 
     @Getter

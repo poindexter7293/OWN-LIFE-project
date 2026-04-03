@@ -1,8 +1,11 @@
+let exerciseBurnedChartInstance = null;
+let currentExercisePeriod = 'WEEK';
+
 document.addEventListener('DOMContentLoaded', function () {
     initCountUp();
     initExerciseModeTabs();
     initQuickTabs();
-    initExerciseWeekChart();
+    initExercisePeriodChart();
     initSummaryCardActions();
 });
 
@@ -72,60 +75,188 @@ function initQuickTabs() {
     });
 }
 
-function initExerciseWeekChart() {
+function initExercisePeriodChart() {
     if (typeof Chart === 'undefined' || !window.exercisePageData) {
         return;
     }
 
-    const chartElement = document.getElementById('exerciseWeekChart');
+    const chartElement = document.getElementById('exerciseBurnedChart');
     if (!chartElement) {
         return;
     }
 
-    const labels = window.exercisePageData.weekLabels || [];
-    const values = window.exercisePageData.weekValues || [];
-    const goalBurnedKcal = Number(window.exercisePageData.goalBurnedKcal || 0);
+    const periodTabs = document.querySelectorAll('.exercise-period-tab');
+    currentExercisePeriod = window.exercisePageData.initialPeriod || 'WEEK';
+
+    periodTabs.forEach((tab) => {
+        tab.addEventListener('click', function () {
+            const nextPeriod = this.dataset.period;
+            if (!nextPeriod || nextPeriod === currentExercisePeriod) {
+                return;
+            }
+
+            setActivePeriodTab(nextPeriod);
+            loadExerciseChart(nextPeriod);
+        });
+    });
+
+    setActivePeriodTab(currentExercisePeriod);
+    loadExerciseChart(currentExercisePeriod);
+}
+
+function setActivePeriodTab(period) {
+    currentExercisePeriod = period;
+
+    const periodTabs = document.querySelectorAll('.exercise-period-tab');
+    periodTabs.forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.period === period);
+    });
+
+    const rangeLabel = document.getElementById('exerciseChartRangeLabel');
+    if (rangeLabel) {
+        if (period === 'WEEK') {
+            rangeLabel.textContent = '최근 7일 기준';
+        } else if (period === 'MONTH') {
+            rangeLabel.textContent = '최근 30일 기준';
+        } else if (period === 'YEAR') {
+            rangeLabel.textContent = '최근 12개월 기준';
+        }
+    }
+}
+
+async function loadExerciseChart(period) {
+    const loadingElement = document.getElementById('exerciseChartLoading');
+    const chartApiUrl = window.exercisePageData.chartApiUrl || '/exercise/chart';
+    const selectedDate = window.exercisePageData.selectedDate;
+    const chartWrap = document.querySelector('.exercise-chart-wrap');
+
+    try {
+        if (chartWrap) {
+            chartWrap.classList.remove('is-ready');
+        }
+
+        setChartLoading(true);
+
+        const url = new URL(chartApiUrl, window.location.origin);
+        if (selectedDate) {
+            url.searchParams.set('date', selectedDate);
+        }
+        url.searchParams.set('period', period);
+
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('차트 데이터를 불러오지 못했습니다.');
+        }
+
+        const chartData = await response.json();
+        renderExerciseChart(chartData);
+    } catch (error) {
+        console.error(error);
+
+        if (exerciseBurnedChartInstance) {
+            exerciseBurnedChartInstance.destroy();
+            exerciseBurnedChartInstance = null;
+        }
+
+        const canvas = document.getElementById('exerciseBurnedChart');
+        const container = canvas ? canvas.parentElement : null;
+
+        if (container) {
+            let errorNode = container.querySelector('.exercise-chart-error');
+            if (!errorNode) {
+                errorNode = document.createElement('div');
+                errorNode.className = 'exercise-chart-error';
+                container.appendChild(errorNode);
+            }
+            errorNode.textContent = '그래프 데이터를 불러오지 못했습니다.';
+        }
+    } finally {
+        setChartLoading(false);
+    }
+
+    function setChartLoading(isLoading) {
+        if (!loadingElement) {
+            return;
+        }
+        loadingElement.hidden = !isLoading;
+    }
+}
+
+function renderExerciseChart(chartData) {
+    const chartElement = document.getElementById('exerciseBurnedChart');
+    if (!chartElement) {
+        return;
+    }
+
+    const chartWrap = chartElement.parentElement;
+    const oldError = chartWrap ? chartWrap.querySelector('.exercise-chart-error') : null;
+    if (oldError) {
+        oldError.remove();
+    }
+
+    const labels = Array.isArray(chartData.labels) ? chartData.labels : [];
+    const burnedValues = Array.isArray(chartData.burnedValues) ? chartData.burnedValues : [];
+    const goalValues = Array.isArray(chartData.goalValues) ? chartData.goalValues : [];
+
+    if (exerciseBurnedChartInstance) {
+        exerciseBurnedChartInstance.destroy();
+        exerciseBurnedChartInstance = null;
+    }
+
+    const hasGoalLine = goalValues.some(value => Number(value) > 0);
+    const maxBurned = burnedValues.length ? Math.max(...burnedValues) : 0;
+    const maxGoal = goalValues.length ? Math.max(...goalValues) : 0;
+    const suggestedMax = Math.max(maxBurned, maxGoal, 100) * 1.15;
+
+    const totalBarDuration = 700;
+    const totalLineDuration = 900;
+    const barDelay = burnedValues.length ? Math.max(28, Math.floor(totalBarDuration / burnedValues.length)) : 0;
+    const lineDelay = goalValues.length ? Math.max(36, Math.floor(totalLineDuration / goalValues.length)) : 0;
 
     const datasets = [
         {
             id: 'burnedBar',
             type: 'bar',
-            label: '일일 소모 칼로리',
-            data: values,
-            backgroundColor: [
-                'rgba(34, 197, 94, 0.12)',
-                'rgba(34, 197, 94, 0.12)',
-                'rgba(34, 197, 94, 0.12)',
-                'rgba(34, 197, 94, 0.12)',
-                'rgba(34, 197, 94, 0.12)',
-                'rgba(34, 197, 94, 0.20)',
-                'rgba(34, 197, 94, 1)'
-            ],
-            borderRadius: 8,
+            label: getBurnedLabel(chartData.period),
+            data: burnedValues,
+            backgroundColor: burnedValues.map((_, index) => {
+                return index === burnedValues.length - 1
+                    ? 'rgba(34, 197, 94, 1)'
+                    : 'rgba(34, 197, 94, 0.18)';
+            }),
+            borderRadius: 10,
             borderSkipped: false,
-            barPercentage: 0.62,
-            categoryPercentage: 0.7
+            barPercentage: chartData.period === 'YEAR' ? 0.5 : 0.62,
+            categoryPercentage: chartData.period === 'YEAR' ? 0.62 : 0.72
         }
     ];
 
-    if (goalBurnedKcal > 0) {
+    if (hasGoalLine) {
         datasets.push({
             id: 'goalLine',
             type: 'line',
             label: '목표 소모 칼로리',
-            data: Array(labels.length).fill(goalBurnedKcal),
+            data: goalValues,
             borderColor: 'rgba(249, 115, 22, 0.95)',
-            borderWidth: 2,
+            backgroundColor: 'rgba(249, 115, 22, 0.12)',
+            borderWidth: 2.5,
             borderDash: [6, 6],
             pointRadius: 0,
-            pointHoverRadius: 0,
-            pointHitRadius: 8,
+            pointHoverRadius: 4,
+            pointHitRadius: 10,
             fill: false,
-            tension: 0
+            tension: 0,
+            stepped: 'before'
         });
     }
 
-    new Chart(chartElement, {
+    exerciseBurnedChartInstance = new Chart(chartElement, {
         data: {
             labels: labels,
             datasets: datasets
@@ -133,81 +264,164 @@ function initExerciseWeekChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: {
-                duration: 0
+            interaction: {
+                mode: 'index',
+                intersect: false
             },
-
             plugins: {
                 legend: {
-                    display: goalBurnedKcal > 0
+                    display: hasGoalLine
                 },
                 tooltip: {
                     enabled: true,
                     callbacks: {
+                        label: function (context) {
+                            const datasetLabel = context.dataset.label || '';
+                            const value = Number(context.raw || 0);
+
+                            if (context.dataset.id === 'burnedBar' && currentExercisePeriod === 'YEAR') {
+                                return datasetLabel + ': ' + value + ' kcal/일';
+                            }
+
+                            return datasetLabel + ': ' + value + ' kcal';
+                        },
                         afterBody: function (tooltipItems) {
-                            if (goalBurnedKcal <= 0 || !tooltipItems || !tooltipItems.length) {
+                            if (!hasGoalLine || !tooltipItems || !tooltipItems.length) {
                                 return [];
                             }
 
-                            const barItem = tooltipItems.find(item => item.dataset.type === 'bar') || tooltipItems[0];
-                            const currentValue = Number(barItem.raw || 0);
-                            const rate = Math.round((currentValue * 100) / goalBurnedKcal);
+                            const index = tooltipItems[0].dataIndex;
+                            const burned = Number(burnedValues[index] || 0);
+                            const goal = Number(goalValues[index] || 0);
 
-                            return ['해당일 목표 달성률: ' + rate + '%'];
+                            if (goal <= 0) {
+                                return [];
+                            }
+
+                            const rate = Math.round((burned * 100) / goal);
+                            return ['목표 달성률: ' + rate + '%'];
                         }
                     }
                 }
             },
-
             scales: {
                 x: {
-                    grid: { display: false },
-                    ticks: { color: '#6b7280' }
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b7280',
+                        maxRotation: 0,
+                        autoSkip: true
+                    }
                 },
                 y: {
                     beginAtZero: true,
-                    suggestedMax: Math.max(...values, goalBurnedKcal, 100) * 1.15,
-                    grid: { color: '#eef0f5' },
-                    ticks: { color: '#6b7280' }
+                    suggestedMax: suggestedMax,
+                    grid: {
+                        color: '#eef0f5'
+                    },
+                    ticks: {
+                        color: '#6b7280'
+                    }
                 }
             },
-
             animations: {
-                y: {
-                    type: 'number',
-                    easing: 'easeOutQuart',
-                    duration: function (ctx) {
-                        return ctx.dataset && ctx.dataset.id === 'burnedBar' ? 900 : 0;
-                    },
-                    from: function (ctx) {
-                        if (ctx.dataset && ctx.dataset.id === 'burnedBar' && ctx.chart?.scales?.y) {
-                            return ctx.chart.scales.y.getPixelForValue(0);
-                        }
-                        return undefined;
-                    }
-                },
-
                 x: {
                     type: 'number',
                     easing: 'linear',
                     duration: function (ctx) {
-                        return ctx.dataset && ctx.dataset.id === 'goalLine' ? 220 : 0;
+                        return ctx.dataset && ctx.dataset.id === 'goalLine' ? lineDelay : 0;
+                    },
+                    from: NaN,
+                    delay: function (ctx) {
+                        if (
+                            !ctx.dataset ||
+                            ctx.dataset.id !== 'goalLine' ||
+                            ctx.type !== 'data' ||
+                            ctx.mode !== 'default'
+                        ) {
+                            return 0;
+                        }
+
+                        if (ctx.xStarted) {
+                            return 0;
+                        }
+
+                        ctx.xStarted = true;
+                        return ctx.dataIndex * lineDelay;
+                    }
+                },
+                y: {
+                    type: 'number',
+                    easing: function (ctx) {
+                        return ctx.dataset && ctx.dataset.id === 'burnedBar'
+                            ? 'easeOutQuart'
+                            : 'linear';
+                    },
+                    duration: function (ctx) {
+                        if (!ctx.dataset) {
+                            return 0;
+                        }
+
+                        if (ctx.dataset.id === 'burnedBar') {
+                            return 620;
+                        }
+
+                        if (ctx.dataset.id === 'goalLine') {
+                            return 0;
+                        }
+
+                        return 0;
+                    },
+                    from: function (ctx) {
+                        if (!ctx.dataset || !ctx.chart || !ctx.chart.scales || !ctx.chart.scales.y) {
+                            return undefined;
+                        }
+
+                        if (ctx.dataset.id === 'burnedBar') {
+                            return ctx.chart.scales.y.getPixelForValue(0);
+                        }
+
+                        return undefined;
                     },
                     delay: function (ctx) {
                         if (
-                            ctx.dataset &&
-                            ctx.dataset.id === 'goalLine' &&
-                            ctx.type === 'data' &&
-                            ctx.dataIndex != null
+                            !ctx.dataset ||
+                            ctx.dataset.id !== 'burnedBar' ||
+                            ctx.type !== 'data' ||
+                            ctx.mode !== 'default'
                         ) {
-                            return ctx.dataIndex * 180;
+                            return 0;
                         }
-                        return 0;
+
+                        if (ctx.yStarted) {
+                            return 0;
+                        }
+
+                        ctx.yStarted = true;
+                        return ctx.dataIndex * barDelay;
                     }
                 }
             }
         }
     });
+
+    if (chartWrap) {
+        requestAnimationFrame(() => {
+            chartWrap.classList.add('is-ready');
+        });
+    }
+}
+
+function getBurnedLabel(period) {
+    if (period === 'MONTH') {
+        return '일일 소모 칼로리';
+    }
+    if (period === 'YEAR') {
+        return '월 평균 소모 칼로리';
+    }
+    return '일일 소모 칼로리';
 }
 
 function initSummaryCardActions() {

@@ -182,13 +182,27 @@
             </div>
         </article>
         <article class="exercise-panel exercise-panel--chart">
-            <div class="exercise-panel__title">칼로리 소모</div>
+            <div class="exercise-panel__head">
+                <div class="exercise-panel__title">칼로리 소모</div>
+
+                <div class="exercise-period-tabs" id="exercisePeriodTabs">
+                    <button type="button"
+                            class="exercise-period-tab active"
+                            data-period="WEEK">주간</button>
+                    <button type="button"
+                            class="exercise-period-tab"
+                            data-period="MONTH">월간</button>
+                    <button type="button"
+                            class="exercise-period-tab"
+                            data-period="YEAR">연간</button>
+                </div>
+            </div>
 
             <div class="exercise-chart-summary">
                 <div class="exercise-chart-summary__line"
                      th:if="${exerciseData.goalBurnedKcal > 0}">
-                    <span><strong> 오늘의 목표 </strong></span>
-                    <br>
+                    <span class="exercise-chart-summary__label">오늘 목표</span>
+
                     <span>소모 칼로리</span>
                     <strong class="count-up-int"
                             th:data-target="${exerciseData.todayBurnedKcal}"
@@ -201,24 +215,24 @@
 
                     <span class="exercise-chart-summary__divider">·</span>
 
-                    <span>kcal · 달성률</span>
+                    <span>달성률</span>
                     <strong>
-                    <span class="count-up-int"
-                          th:data-target="${exerciseData.goalAchievementRate}"
-                          th:text="${exerciseData.goalAchievementRate}">0</span><span>%</span>
+                <span class="count-up-int"
+                      th:data-target="${exerciseData.goalAchievementRate}"
+                      th:text="${exerciseData.goalAchievementRate}">0</span><span>%</span>
                     </strong>
-
-
                 </div>
 
                 <div class="exercise-chart-summary__line exercise-chart-summary__line--muted"
                      th:if="${exerciseData.goalBurnedKcal == 0}">
                     목표 소모 칼로리가 설정되지 않았습니다.
                 </div>
+
             </div>
 
             <div class="exercise-chart-wrap">
-                <canvas id="exerciseWeekChart"></canvas>
+                <div class="exercise-chart-loading" id="exerciseChartLoading" hidden>그래프 불러오는 중...</div>
+                <canvas id="exerciseBurnedChart"></canvas>
             </div>
         </article>
     </section>
@@ -253,12 +267,13 @@
 
     <script th:inline="javascript">
         window.exercisePageData = {
-            weekLabels: /*[[${exerciseData.weekLabels}]]*/ [],
-            weekValues: /*[[${exerciseData.weekValues}]]*/ [],
+            selectedDate: /*[[${exerciseData.selectedDate}]]*/ null,
             todayBurnedKcal: /*[[${exerciseData.todayBurnedKcal}]]*/ 0,
             goalBurnedKcal: /*[[${exerciseData.goalBurnedKcal}]]*/ 0,
             goalAchievementRate: /*[[${exerciseData.goalAchievementRate}]]*/ 0,
-            myPageUrl: /*[[@{/mypage}]]*/ '/mypage'
+            myPageUrl: /*[[@{/mypage}]]*/ '/mypage',
+            chartApiUrl: /*[[@{/exercise/chart}]]*/ '/exercise/chart',
+            initialPeriod: 'WEEK'
         };
     </script>
 </div>
