@@ -427,6 +427,44 @@ public class ExerciseService {
         exerciseLogRepository.save(log);
     }
 
+
+    public void addQuickRouteExercise(Long memberId, LocalDate exerciseDate, Long exerciseTypeId, BigDecimal distanceKm) {
+        if (exerciseTypeId == null) {
+            throw new IllegalArgumentException("운동 종류를 선택해 주세요.");
+        }
+        if (distanceKm == null || distanceKm.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("운동 거리는 0km보다 커야 합니다.");
+        }
+
+        Member member = getMember(memberId);
+        ExerciseType exerciseType = getExerciseType(exerciseTypeId);
+
+        if (exerciseType.getCategory() != ExerciseType.Category.ROUTE) {
+            throw new IllegalArgumentException("거리형 운동만 추가할 수 있습니다.");
+        }
+        if (exerciseType.getKcalPerKm() == null) {
+            throw new IllegalArgumentException("km당 칼로리 정보가 없습니다.");
+        }
+
+        BigDecimal normalizedDistanceKm = distanceKm.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal burnedKcal = exerciseType.getKcalPerKm()
+                .multiply(normalizedDistanceKm)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        ExerciseLog log = new ExerciseLog();
+        log.setMember(member);
+        log.setExerciseType(exerciseType);
+        log.setExerciseDate(defaultDate(exerciseDate));
+        log.setDurationMin(null);
+        log.setSetsCount(null);
+        log.setRepsCount(null);
+        log.setDistanceKm(normalizedDistanceKm);
+        log.setBurnedKcal(burnedKcal);
+        log.setMemo(null);
+
+        exerciseLogRepository.save(log);
+    }
+
     public void deleteExercise(Long memberId, Long exerciseLogId) {
         if (exerciseLogId == null) {
             throw new IllegalArgumentException("삭제할 운동 기록이 없습니다.");
@@ -481,6 +519,8 @@ public class ExerciseService {
         String detail = "";
         if (exerciseType != null && exerciseType.getCategory() == ExerciseType.Category.COUNT_SET) {
             detail = safeInteger(log.getSetsCount()) + "세트 · " + safeInteger(log.getRepsCount()) + "회";
+        } else if (log.getDistanceKm() != null && log.getDistanceKm().compareTo(BigDecimal.ZERO) > 0) {
+            detail = log.getDistanceKm().stripTrailingZeros().toPlainString() + "km";
         } else if (safeInteger(log.getDurationMin()) > 0) {
             detail = safeInteger(log.getDurationMin()) + "분";
         }
