@@ -80,8 +80,13 @@
 
                 <div id="selectModeFields">
                     <div class="form-row">
+                        <label for="foodSearchKeyword">음식 검색</label>
+                        <input type="text"
+                               id="foodSearchKeyword"
+                               placeholder="예: 닭가슴살, 바나나, 라떼">
+
                         <label for="foodId">음식</label>
-                        <select id="foodId" name="foodId">
+                        <select id="foodId" name="foodId" size="5">
                             <option value="">음식 선택</option>
                             <option th:each="food : ${foodList}"
                                     th:value="${food.foodId}"
@@ -94,6 +99,10 @@
                                 음식명
                             </option>
                         </select>
+
+                        <small id="foodSearchResultText" class="food-search-result-text">
+                            검색어를 입력하면 목록이 줄어듭니다.
+                        </small>
                     </div>
 
                     <div class="select-food-preview-grid">
