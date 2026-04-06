@@ -16,63 +16,35 @@
         </form>
     </section>
 
-    <section class="diet-goal-card">
-        <h3>오늘 목표 관리</h3>
-        <div class="goal-grid">
-            <div class="goal-item">
+    <section class="diet-dashboard-card">
+        <h3>오늘 상태</h3>
+
+        <div class="dashboard-grid">
+            <div class="dashboard-item" id="goal-card">
                 <span class="label">목표 칼로리</span>
-                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['goalKcal'], 1, 1)}">0.0</strong>
+                <strong class="kcal-goal count-up"
+                        th:attr="data-value=${dietGoalSummary['goalKcal']}">0.0</strong>
                 <span class="unit">kcal</span>
             </div>
 
-            <div class="goal-item">
+            <div class="dashboard-item" id="intake-card">
                 <span class="label">현재 섭취</span>
-                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['totalKcal'], 1, 1)}">0.0</strong>
+                <strong class="kcal-intake count-up"
+                        th:attr="data-value=${dietGoalSummary['totalKcal']}">0.0</strong>
                 <span class="unit">kcal</span>
             </div>
 
-            <div class="goal-item">
+            <div class="dashboard-item">
                 <span class="label">남은 칼로리</span>
-                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['remainingKcal'], 1, 1)}">0.0</strong>
-                <span class="unit">kcal</span>
-            </div>
-
-            <div class="goal-item" th:if="${dietGoalSummary['exceededKcal'] > 0}">
-                <span class="label">초과 칼로리</span>
-                <strong th:text="${#numbers.formatDecimal(dietGoalSummary['exceededKcal'], 1, 1)}">0.0</strong>
+                <strong class="kcal-remaining count-up"
+                        th:classappend="${dietGoalSummary['remainingKcal']} < 0 ? ' kcal-over' : ''"
+                        th:attr="data-value=${dietGoalSummary['remainingKcal']}">0.0</strong>
                 <span class="unit">kcal</span>
             </div>
         </div>
     </section>
 
-    <section class="diet-summary-card">
-        <h3>오늘 섭취 요약</h3>
-        <div class="summary-grid">
-            <div class="summary-item">
-                <span class="label">칼로리</span>
-                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['kcal'] : 0, 1, 1)}">0.0</strong>
-                <span class="unit">kcal</span>
-            </div>
-            <div class="summary-item">
-                <span class="label">탄수화물</span>
-                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['carb'] : 0, 1, 1)}">0.0</strong>
-                <span class="unit">g</span>
-            </div>
-            <div class="summary-item">
-                <span class="label">단백질</span>
-                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['protein'] : 0, 1, 1)}">0.0</strong>
-                <span class="unit">g</span>
-            </div>
-            <div class="summary-item">
-                <span class="label">지방</span>
-                <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['fat'] : 0, 1, 1)}">0.0</strong>
-                <span class="unit">g</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- 식단 추가 카드만 남김 -->
-    <section class="diet-content-grid">
+    <section class="diet-content-grid" id="diet-input-box">
         <section class="diet-form-card">
             <h3>식단 추가</h3>
 
@@ -115,10 +87,10 @@
                                     th:value="${food.foodId}"
                                     th:text="${food.foodName}"
                                     th:attr="data-base-amount=${food.baseAmountG},
-                                             data-calories=${food.caloriesKcal},
-                                             data-carb=${food.carbG},
-                                             data-protein=${food.proteinG},
-                                             data-fat=${food.fatG}">
+                                         data-calories=${food.caloriesKcal},
+                                         data-carb=${food.carbG},
+                                         data-protein=${food.proteinG},
+                                         data-fat=${food.fatG}">
                                 음식명
                             </option>
                         </select>
@@ -194,49 +166,81 @@
                 </div>
             </form>
         </section>
+
+        <section class="diet-visual-card">
+            <div class="visual-section">
+                <h3 id="dietChartTitle">최근 7일 섭취량</h3>
+
+                <div class="chart-tabs" id="dietChartTabs">
+                    <button type="button" class="chart-tab active" data-period="day">일</button>
+                    <button type="button" class="chart-tab" data-period="week">주</button>
+                    <button type="button" class="chart-tab" data-period="month">월</button>
+                    <button type="button" class="chart-tab" data-period="year">년</button>
+                </div>
+
+                <p class="chart-sub-text" id="dietChartSubText">선택한 기간 기준 섭취 칼로리를 보여줍니다.</p>
+
+                <div class="chart-box intake-chart-box">
+                    <canvas id="dietIntakeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="visual-section">
+                <h3>탄단지 비율</h3>
+                <div class="chart-box macro-chart-box">
+                    <canvas id="macroRatioChart"></canvas>
+                </div>
+
+                <div class="macro-legend">
+                    <div class="macro-item">
+                        <span class="dot carb"></span>
+                        <span>탄수화물</span>
+                        <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['carb'] : 0, 1, 1)} + 'g'">0.0g</strong>
+                    </div>
+                    <div class="macro-item">
+                        <span class="dot protein"></span>
+                        <span>단백질</span>
+                        <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['protein'] : 0, 1, 1)} + 'g'">0.0g</strong>
+                    </div>
+                    <div class="macro-item">
+                        <span class="dot fat"></span>
+                        <span>지방</span>
+                        <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['fat'] : 0, 1, 1)} + 'g'">0.0g</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
     </section>
 
-    <!-- 그래프는 단독 카드 -->
-    <section class="diet-chart-card">
-        <h3>
-            <span th:if="${period == 'day'}">최근 7일 섭취량</span>
-            <span th:if="${period == 'week'}">최근 주간 섭취량</span>
-            <span th:if="${period == 'month'}">최근 월간 섭취량</span>
-            <span th:if="${period == 'year'}">연간 섭취량</span>
-        </h3>
-
-        <div class="chart-tabs">
-            <a th:href="@{/diet(date=${selectedDate}, period='day')}"
-               th:classappend="${period == 'day'} ? 'active'">
-                일
-            </a>
-            <a th:href="@{/diet(date=${selectedDate}, period='week')}"
-               th:classappend="${period == 'week'} ? 'active'">
-                주
-            </a>
-            <a th:href="@{/diet(date=${selectedDate}, period='month')}"
-               th:classappend="${period == 'month'} ? 'active'">
-                월
-            </a>
-            <a th:href="@{/diet(date=${selectedDate}, period='year')}"
-               th:classappend="${period == 'year'} ? 'active'">
-                년
-            </a>
-        </div>
-
-        <p class="chart-sub-text">선택한 기간 기준 섭취 칼로리를 보여줍니다.</p>
-
-        <div class="chart-box">
-            <canvas id="dietIntakeChart"></canvas>
-        </div>
-    </section>
 
     <script th:inline="javascript">
-        window.weeklyIntakeData = {
-            labels: /*[[${weeklyIntakeSummary.labels}]]*/ [],
-            calories: /*[[${weeklyIntakeSummary.calories}]]*/ [],
-            colors: /*[[${weeklyIntakeSummary.colors}]]*/ [],
-            goalKcal: /*[[${weeklyIntakeSummary.goalKcal}]]*/ 0
+        window.dietChartDataMap = {
+            day: {
+                labels: /*[[${dietDayChart.labels}]]*/ [],
+                calories: /*[[${dietDayChart.calories}]]*/ [],
+                goalKcal: /*[[${dietDayChart.goalKcal}]]*/ 0
+            },
+            week: {
+                labels: /*[[${dietWeekChart.labels}]]*/ [],
+                calories: /*[[${dietWeekChart.calories}]]*/ [],
+                goalKcal: /*[[${dietWeekChart.goalKcal}]]*/ 0
+            },
+            month: {
+                labels: /*[[${dietMonthChart.labels}]]*/ [],
+                calories: /*[[${dietMonthChart.calories}]]*/ [],
+                goalKcal: /*[[${dietMonthChart.goalKcal}]]*/ 0
+            },
+            year: {
+                labels: /*[[${dietYearChart.labels}]]*/ [],
+                calories: /*[[${dietYearChart.calories}]]*/ [],
+                goalKcal: /*[[${dietYearChart.goalKcal}]]*/ 0
+            }
+        };
+
+        window.macroRatioData = {
+            carb: /*[[${dailySummary != null ? dailySummary['carb'] : 0}]]*/ 0,
+            protein: /*[[${dailySummary != null ? dailySummary['protein'] : 0}]]*/ 0,
+            fat: /*[[${dailySummary != null ? dailySummary['fat'] : 0}]]*/ 0
         };
     </script>
 

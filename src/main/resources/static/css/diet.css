@@ -1,14 +1,21 @@
+/* =========================
+   OWN LIFE - DIET PAGE UI
+   ========================= */
+
 .diet-page {
     display: flex;
     flex-direction: column;
     gap: 24px;
 }
 
+/* =========================
+   카드 공통
+   ========================= */
 .diet-header-card,
-.diet-summary-card,
 .diet-form-card,
-.diet-guide-card,
-.diet-list-card {
+.diet-list-card,
+.diet-dashboard-card,
+.diet-visual-card {
     background: #ffffff;
     border: 1px solid #e9eef5;
     border-radius: 20px;
@@ -16,408 +23,345 @@
     box-shadow: 0 10px 30px rgba(31, 79, 163, 0.06);
 }
 
+/* =========================
+   헤더
+   ========================= */
 .diet-header-card {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 20px;
 }
 
 .diet-header-left h2 {
-    margin: 0 0 8px;
-    font-size: 32px;
+    margin: 0;
+    font-size: 30px;
     font-weight: 800;
     color: #203864;
 }
 
 .diet-header-left p {
-    margin: 0;
+    margin-top: 6px;
     color: #6f7d95;
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .diet-date-form {
     display: flex;
-    align-items: center;
     gap: 10px;
 }
 
-.diet-date-form input[type="date"] {
+.diet-date-form input {
     border: 1px solid #d7dfeb;
-    border-radius: 12px;
-    padding: 10px 14px;
-    font-size: 14px;
-    background: #fff;
+    border-radius: 10px;
+    padding: 10px;
 }
 
-.diet-date-form button,
-.submit-btn,
-.delete-btn {
+.diet-date-form button {
     border: none;
-    border-radius: 12px;
-    padding: 10px 16px;
-    font-size: 14px;
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #6a5cff, #8b5cf6);
+    color: white;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
 }
 
-.diet-date-form button,
-.submit-btn {
-    background: linear-gradient(135deg, #73a7ff, #5b8def);
-    color: #fff;
-}
+/* =========================
+   상단 대시보드
+   ========================= */
 
-.diet-date-form button:hover,
-.submit-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(91, 141, 239, 0.25);
-}
-
-.diet-summary-card h3,
-.diet-form-card h3,
-.diet-guide-card h3,
-.diet-list-card h3 {
-    margin: 0 0 18px;
-    font-size: 20px;
-    font-weight: 800;
-    color: #203864;
-}
-
-.summary-grid {
+.dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
 }
 
-.summary-item {
-    background: #f8fbff;
-    border: 1px solid #e4edf9;
+.dashboard-item {
+    background: #ffffff;
     border-radius: 16px;
     padding: 20px;
     text-align: center;
+    border: 1px solid #eef1f6;
+    transition: all 0.2s ease;
 }
 
-.summary-item .label {
+.dashboard-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+.dashboard-item .label {
     display: block;
-    margin-bottom: 10px;
-    color: #6f7d95;
     font-size: 14px;
-    font-weight: 600;
+    color: #6f7d95;
+    margin-bottom: 8px;
 }
 
-.summary-item strong {
+.dashboard-item strong {
     font-size: 28px;
-    font-weight: 800;
-    color: #203864;
+    font-weight: 700;
 }
 
-.summary-item .unit {
-    margin-left: 6px;
-    color: #6f7d95;
+/* 카드별 숫자 색 */
+.dashboard-item strong.kcal-goal {
+    color: #6a5cff;   /* 목표 = 보라 */
+}
+
+.dashboard-item strong.kcal-intake {
+    color: #22c55e;   /* 현재 섭취 = 초록 */
+}
+
+.dashboard-item strong.kcal-remaining {
+    color: #22c55e;   /* 남은 칼로리 기본 = 초록 */
+}
+
+.dashboard-item strong.kcal-remaining.kcal-over {
+    color: #ef4444;   /* 초과 시 = 빨강 */
+}
+
+.dashboard-item .unit {
     font-size: 14px;
-    font-weight: 600;
+    color: #8c9bb3;
+    margin-left: 4px;
 }
 
-.diet-content-grid {
-    display: block;
+.diet-dashboard-card {
+    padding: 24px;
 }
+
+.dashboard-grid {
+    gap: 24px;  /* 기존 20 → 24 */
+}
+
+
+/* =========================
+   메인 좌우 레이아웃
+   ========================= */
+.diet-content-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+}
+
+/* =========================
+   식단 추가 폼
+   ========================= */
 .diet-form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
 
 .form-row {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .form-row label {
-    font-size: 14px;
     font-weight: 700;
-    color: #31496f;
+    font-size: 14px;
 }
 
 .form-row input,
 .form-row select {
-    width: 100%;
     border: 1px solid #d7dfeb;
-    border-radius: 12px;
-    padding: 12px 14px;
+    border-radius: 10px;
+    padding: 10px;
     font-size: 14px;
-    background: #fff;
-    box-sizing: border-box;
-}
-
-.guide-list {
-    margin: 0;
-    padding-left: 18px;
-    color: #51627f;
-    line-height: 1.8;
-    font-size: 14px;
-}
-
-.diet-table {
-    width: 100%;
-    border-collapse: collapse;
-    overflow: hidden;
-    border-radius: 14px;
-}
-
-.diet-table thead th {
-    background: #f4f8fd;
-    color: #31496f;
-    font-size: 14px;
-    font-weight: 800;
-    padding: 14px 10px;
-    text-align: center;
-    border-bottom: 1px solid #e4edf9;
-}
-
-.diet-table tbody td {
-    padding: 14px 10px;
-    text-align: center;
-    border-bottom: 1px solid #eef3f9;
-    font-size: 14px;
-    color: #334766;
-}
-
-.diet-table tbody tr:hover {
-    background: #fbfdff;
-}
-
-.meal-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 58px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: #eaf2ff;
-    color: #3767c7;
-    font-size: 13px;
-    font-weight: 800;
-}
-
-.delete-btn {
-    background: #ffe8ea;
-    color: #d14b5a;
-}
-
-.delete-btn:hover {
-    background: #ffd9de;
-}
-
-.empty-box {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 120px;
-    border: 1px dashed #d9e3f0;
-    border-radius: 16px;
-    color: #7b8aa5;
-    background: #fafcff;
-    font-size: 15px;
-    font-weight: 600;
 }
 
 .input-mode-box {
     display: flex;
-    gap: 18px;
-    align-items: center;
-    padding: 6px 0;
+    gap: 14px;
 }
 
-.radio-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #31496f;
-}
-
-.checkbox-row {
-    margin-bottom: 8px;
-}
-
+.radio-label,
 .checkbox-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     font-size: 14px;
     font-weight: 700;
-    color: #31496f;
-    cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    margin: 0;
 }
 
 .select-food-preview-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-top: 12px;
+    gap: 10px;
 }
 
-.select-food-preview-grid input[readonly] {
-    background: #f7faff;
-    color: #4a5b78;
-    font-weight: 600;
+.submit-btn {
+    margin-top: 10px;
+    background: linear-gradient(135deg, #6a5cff, #8b5cf6);
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
 }
 
-.diet-goal-card {
-    background: #ffffff;
-    border: 1px solid #e9eef5;
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 10px 30px rgba(31, 79, 163, 0.06);
+/* =========================
+   오른쪽 시각화 영역
+   ========================= */
+.diet-visual-card {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-.diet-goal-card h3 {
-    margin: 0 0 18px;
-    font-size: 20px;
-    font-weight: 800;
-    color: #203864;
-}
-
-.goal-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-}
-
-.goal-item {
-    background: #f8fbff;
-    border: 1px solid #e4edf9;
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-}
-
-.goal-item .label {
-    display: block;
-    margin-bottom: 10px;
-    color: #6f7d95;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.goal-item strong {
-    font-size: 28px;
-    font-weight: 800;
-    color: #203864;
-}
-
-.goal-item .unit {
-    margin-left: 6px;
-    color: #6f7d95;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.diet-chart-card {
-    background: #ffffff;
-    border: 1px solid #e9eef5;
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 10px 30px rgba(31, 79, 163, 0.06);
-}
-
-.diet-chart-card h3 {
-    margin: 0 0 8px;
-    font-size: 20px;
-    font-weight: 800;
-    color: #203864;
-}
-
-.chart-sub-text {
-    margin: 0 0 18px;
-    font-size: 14px;
-    color: #6f7d95;
-}
-
-.chart-box {
-    position: relative;
-    width: 100%;
-    height: 340px;
-}
-
+/* 탭 */
 .chart-tabs {
     display: flex;
     gap: 8px;
-    margin-bottom: 10px;
 }
 
-.chart-tabs a {
-    padding: 6px 14px;
-    border-radius: 20px;
+.chart-tab {
+    padding: 6px 12px;
+    border-radius: 999px;
     background: #f1f3f5;
-    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
     color: #555;
-    font-size: 14px;
-    font-weight: 500;
+    border: none;
+    cursor: pointer;
 }
 
-.chart-tabs a.active {
-    background: #4c6ef5;
+.chart-tab.active {
+    background: linear-gradient(135deg, #6a5cff, #8b5cf6);
     color: white;
 }
 
+/* 그래프 */
+.chart-box {
+    width: 100%;
+}
 
-/* ===== Responsive ===== */
+.intake-chart-box {
+    height: 250px;
+}
+
+.macro-chart-box {
+    height: 220px;
+}
+
+/* =========================
+   탄단지 카드형
+   ========================= */
+.macro-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.macro-item {
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border-radius: 12px;
+    background: #f9fbff;
+    border: 1px solid #edf2fa;
+}
+
+.macro-item strong {
+    font-size: 16px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dot.carb { background: #22c55e; }
+.dot.protein { background: #6a5cff; }
+.dot.fat { background: #c4b5fd; }
+/* =========================
+   테이블
+   ========================= */
+.diet-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.diet-table th {
+    background: #f4f8fd;
+    padding: 12px;
+    font-size: 13px;
+}
+
+.diet-table td {
+    padding: 12px;
+    text-align: center;
+}
+
+.diet-table tr:hover {
+    background: #f9fbff;
+}
+
+.delete-btn {
+    background: #ffe8ea;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: #d14b5a;
+    cursor: pointer;
+}
+
+input:focus,
+select:focus {
+    border-color: #6a5cff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(106,92,255,0.1);
+}
+
+/* =========================
+   빈 상태
+   ========================= */
+.empty-box {
+    text-align: center;
+    padding: 40px;
+    color: #7b8aa5;
+}
+
+.dashboard-item {
+    transition: all 0.2s ease;
+}
+
+.dashboard-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.diet-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.diet-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+#goal-card,
+#intake-card {
+    cursor: pointer;
+}
+
+#goal-card:hover,
+#intake-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* =========================
+   반응형
+   ========================= */
 @media (max-width: 1024px) {
-    .summary-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
     .diet-content-grid {
         grid-template-columns: 1fr;
     }
-}
-
-@media (max-width: 1024px) {
-    .goal-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
-    .diet-header-card {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .diet-date-form {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .summary-grid {
+    .dashboard-grid {
         grid-template-columns: 1fr;
     }
-
-    .diet-table {
-        display: block;
-        overflow-x: auto;
-    }
-}
-
-@media (max-width: 768px) {
-    .select-food-preview-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .goal-grid {
-        grid-template-columns: 1fr;
-    }
-
 }
