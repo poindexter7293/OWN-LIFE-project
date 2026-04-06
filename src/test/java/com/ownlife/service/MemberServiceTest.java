@@ -3,6 +3,7 @@ package com.ownlife.service;
 import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.MyPageForm;
+import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
@@ -366,6 +367,191 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("로컬 로그인 수단이 있는 회원은 Google 연동을 해제할 수 있다")
+    void unlinkGoogleAccountFromLocalMember() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setUsername("unlinkgoogle01");
+        signupForm.setPassword("Password123!");
+        signupForm.setNickname("구글해제회원");
+        signupForm.setEmail("unlink-google@example.com");
+
+        Member member = memberService.register(signupForm);
+        memberService.linkGoogleAccount(member.getMemberId(), new GoogleUserProfile(
+                "unlink-google-subject",
+                "unlink-google-social@example.com",
+                "구글연동",
+                null,
+                true
+        ));
+
+        Member updatedMember = memberService.unlinkGoogleAccount(member.getMemberId());
+
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isEmpty());
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.LOCAL, updatedMember.getLoginType());
+        org.junit.jupiter.api.Assertions.assertNull(updatedMember.getSocialProvider());
+        org.junit.jupiter.api.Assertions.assertNull(updatedMember.getSocialProviderId());
+    }
+
+    @Test
+    @DisplayName("로컬 로그인 수단이 있는 회원은 카카오 연동을 해제할 수 있다")
+    void unlinkKakaoAccountFromLocalMember() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setUsername("unlinkkakao01");
+        signupForm.setPassword("Password123!");
+        signupForm.setNickname("카카오해제회원");
+        signupForm.setEmail("unlink-kakao@example.com");
+
+        Member member = memberService.register(signupForm);
+        memberService.linkKakaoAccount(member.getMemberId(), new KakaoUserProfile(
+                "unlink-kakao-id",
+                "unlink-kakao-social@example.com",
+                "카카오연동",
+                null,
+                true
+        ));
+
+        Member updatedMember = memberService.unlinkKakaoAccount(member.getMemberId());
+
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO).isEmpty());
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.LOCAL, updatedMember.getLoginType());
+        org.junit.jupiter.api.Assertions.assertNull(updatedMember.getSocialProvider());
+        org.junit.jupiter.api.Assertions.assertNull(updatedMember.getSocialProviderId());
+    }
+
+    @Test
+    @DisplayName("다른 로그인 수단이 없는 Google 전용 회원은 연동을 해제할 수 없다")
+    void unlinkGoogleAccountFailsWhenItIsLastLoginMethod() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("구글전용회원");
+        signupForm.setGender(Member.Gender.M);
+        signupForm.setHeightCm(new BigDecimal("175.0"));
+        signupForm.setWeightKg(new BigDecimal("70.0"));
+
+        Member member = memberService.registerGoogleMember(signupForm, new GoogleUserProfile(
+                "google-only-subject",
+                "google-only@example.com",
+                "구글전용회원",
+                null,
+                true
+        ));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> memberService.unlinkGoogleAccount(member.getMemberId()));
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isPresent());
+    }
+
+    @Test
+    @DisplayName("Google 전용 회원이 카카오도 연결한 뒤 Google 연동을 해제하면 카카오 로그인으로 유지된다")
+    void unlinkGoogleAccountFallsBackToRemainingSocialLogin() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("복수소셜회원");
+        signupForm.setGender(Member.Gender.F);
+        signupForm.setHeightCm(new BigDecimal("164.0"));
+        signupForm.setWeightKg(new BigDecimal("55.0"));
+
+        Member member = memberService.registerGoogleMember(signupForm, new GoogleUserProfile(
+                "multi-social-google",
+                "multi-social@example.com",
+                "복수소셜회원",
+                null,
+                true
+        ));
+
+        memberService.linkKakaoAccount(member.getMemberId(), new KakaoUserProfile(
+                "multi-social-kakao",
+                "multi-social-kakao@example.com",
+                "복수카카오",
+                null,
+                true
+        ));
+
+        Member updatedMember = memberService.unlinkGoogleAccount(member.getMemberId());
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.KAKAO, updatedMember.getLoginType());
+        org.junit.jupiter.api.Assertions.assertEquals("KAKAO", updatedMember.getSocialProvider());
+        org.junit.jupiter.api.Assertions.assertEquals("multi-social-kakao", updatedMember.getSocialProviderId());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isEmpty());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO).isPresent());
+    }
+
+    @Test
+    @DisplayName("이미 연동된 네이버 계정은 기존 회원으로 로그인한다")
+    void findNaverMemberForLogin() {
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-user-1",
+                "naver@example.com",
+                "네이버사용자",
+                "네이버닉네임",
+                "https://example.com/naver-profile.png",
+                true
+        );
+
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("네이버사용자");
+        signupForm.setGender(Member.Gender.M);
+        signupForm.setHeightCm(new BigDecimal("175.0"));
+        signupForm.setWeightKg(new BigDecimal("70.0"));
+
+        Member createdMember = memberService.registerNaverMember(signupForm, naverUserProfile);
+        Member loggedInMember = memberService.findNaverMemberForLogin(naverUserProfile).orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.NAVER, createdMember.getLoginType());
+        org.junit.jupiter.api.Assertions.assertEquals(createdMember.getMemberId(), loggedInMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals(1, socialAccountHandler.storage.size());
+    }
+
+    @Test
+    @DisplayName("마이페이지에서 현재 로그인한 계정에 네이버 계정을 연동할 수 있다")
+    void linkNaverAccountFromMyPage() {
+        SignupForm localSignupForm = new SignupForm();
+        localSignupForm.setUsername("mypagenaver01");
+        localSignupForm.setPassword("Password123!");
+        localSignupForm.setNickname("네이버연동회원");
+        localSignupForm.setEmail("local-naver-link@example.com");
+
+        Member member = memberService.register(localSignupForm);
+
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-mypage-link-id",
+                "different-naver@example.com",
+                "네이버연동대상",
+                "네이버닉네임",
+                "https://example.com/naver-linked.png",
+                true
+        );
+
+        Member linkedMember = memberService.linkNaverAccount(member.getMemberId(), naverUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertEquals(member.getMemberId(), linkedMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER).isPresent());
+    }
+
+    @Test
+    @DisplayName("로컬 로그인 수단이 있는 회원은 네이버 연동을 해제할 수 있다")
+    void unlinkNaverAccountFromLocalMember() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setUsername("unlinknaver01");
+        signupForm.setPassword("Password123!");
+        signupForm.setNickname("네이버해제회원");
+        signupForm.setEmail("unlink-naver@example.com");
+
+        Member member = memberService.register(signupForm);
+        memberService.linkNaverAccount(member.getMemberId(), new NaverUserProfile(
+                "unlink-naver-id",
+                "unlink-naver-social@example.com",
+                "네이버연동",
+                "네이버닉네임",
+                null,
+                true
+        ));
+
+        Member updatedMember = memberService.unlinkNaverAccount(member.getMemberId());
+
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER).isEmpty());
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.LOCAL, updatedMember.getLoginType());
+    }
+
+    @Test
     @DisplayName("이미 다른 회원에게 연결된 Google 계정은 마이페이지에서 다시 연동할 수 없다")
     void linkGoogleAccountFailsWhenLinkedToAnotherMember() {
         SignupForm firstForm = new SignupForm();
@@ -483,6 +669,10 @@ class MemberServiceTest {
                         .filter(account -> account.getProvider() == args[1])
                         .findFirst();
                 case "saveAndFlush", "save" -> saveSocialAccount((SocialAccount) args[0]);
+                case "delete" -> {
+                    storage.remove(((SocialAccount) args[0]).getSocialAccountId());
+                    yield null;
+                }
                 case "toString" -> "InMemorySocialAccountRepository";
                 case "hashCode" -> System.identityHashCode(proxy);
                 case "equals" -> proxy == args[0];

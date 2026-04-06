@@ -100,6 +100,12 @@
                     <div class="mypage-alert mypage-alert-error" th:if="${kakaoLinkErrorMessage != null}" th:text="${kakaoLinkErrorMessage}">
                         카카오 계정 연동 중 오류가 발생했습니다.
                     </div>
+                    <div class="mypage-alert mypage-alert-success" th:if="${naverLinkSuccessMessage != null}" th:text="${naverLinkSuccessMessage}">
+                        네이버 계정이 성공적으로 연동되었습니다.
+                    </div>
+                    <div class="mypage-alert mypage-alert-error" th:if="${naverLinkErrorMessage != null}" th:text="${naverLinkErrorMessage}">
+                        네이버 계정 연동 중 오류가 발생했습니다.
+                    </div>
 
                     <div class="mypage-social-card-list">
                     <div class="mypage-social-card">
@@ -119,6 +125,10 @@
                             <span th:text="${googleLastLoginAt != null ? '마지막 Google 로그인: ' + #temporals.format(googleLastLoginAt, 'yyyy.MM.dd HH:mm') : 'Google 로그인 기록 없음'}">마지막 로그인</span>
                         </div>
 
+                        <p class="mypage-social-help" th:if="${googleLinked}">
+                            연동을 해제하면 현재 계정에서 Google 간편로그인을 사용할 수 없어요.
+                        </p>
+
                         <div class="mypage-social-actions" th:if="${googleAuthEnabled and !googleLinked}">
                             <div id="g_id_onload"
                                  th:attr="data-client_id=${googleClientId},data-login_uri=${googleLinkUrl},data-ux_mode='redirect',data-auto_prompt='false',data-context='use'">
@@ -132,6 +142,15 @@
                                  data-logo_alignment="left"
                                  data-width="320">
                             </div>
+                        </div>
+
+                        <div class="mypage-social-actions" th:if="${googleLinked}">
+                            <form th:action="${googleUnlinkUrl}" method="post" class="mypage-social-action-form"
+                                  onsubmit="return confirm('Google 계정 연동을 해제할까요?');">
+                                <button type="submit" class="mypage-social-link-button mypage-social-link-button--unlink">
+                                    Google 연동 해제
+                                </button>
+                            </form>
                         </div>
                     </div>
 
@@ -152,11 +171,62 @@
                             <span th:text="${kakaoLastLoginAt != null ? '마지막 카카오 로그인: ' + #temporals.format(kakaoLastLoginAt, 'yyyy.MM.dd HH:mm') : '카카오 로그인 기록 없음'}">마지막 로그인</span>
                         </div>
 
+                        <p class="mypage-social-help" th:if="${kakaoLinked}">
+                            연동을 해제하면 현재 계정에서 카카오 간편로그인을 사용할 수 없어요.
+                        </p>
+
                         <div class="mypage-social-actions" th:if="${kakaoAuthEnabled and !kakaoLinked}">
                             <a th:href="${kakaoLinkUrl}" class="mypage-social-link-button mypage-social-link-button--kakao">
                                 <span class="mypage-social-link-button__badge">K</span>
                                 <span>카카오 계정 연동하기</span>
                             </a>
+                        </div>
+
+                        <div class="mypage-social-actions" th:if="${kakaoLinked}">
+                            <form th:action="${kakaoUnlinkUrl}" method="post" class="mypage-social-action-form"
+                                  onsubmit="return confirm('카카오 계정 연동을 해제할까요?');">
+                                <button type="submit" class="mypage-social-link-button mypage-social-link-button--unlink mypage-social-link-button--kakao-unlink">
+                                    카카오 연동 해제
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="mypage-social-card mypage-social-card--naver">
+                        <div class="mypage-social-card__info">
+                            <div>
+                                <strong>네이버 계정</strong>
+                                <p th:if="${naverLinked}">현재 계정에 네이버 로그인을 연결해 두었습니다.</p>
+                                <p th:if="${!naverLinked}">연동하면 기존 계정으로 네이버 로그인을 함께 사용할 수 있어요.</p>
+                            </div>
+                            <span class="mypage-social-badge" th:classappend="${naverLinked} ? ' is-linked' : ' is-unlinked'"
+                                  th:text="${naverLinked} ? '연동 완료' : '미연동'">미연동</span>
+                        </div>
+
+                        <div class="mypage-social-meta" th:if="${naverLinked}">
+                            <span th:text="|연동 이메일: ${naverLinkedEmail != null ? naverLinkedEmail : '정보 없음'}|">연동 이메일</span>
+                            <span th:text="${naverLinkedAt != null ? '연동일: ' + #temporals.format(naverLinkedAt, 'yyyy.MM.dd HH:mm') : '연동일 정보 없음'}">연동일</span>
+                            <span th:text="${naverLastLoginAt != null ? '마지막 네이버 로그인: ' + #temporals.format(naverLastLoginAt, 'yyyy.MM.dd HH:mm') : '네이버 로그인 기록 없음'}">마지막 로그인</span>
+                        </div>
+
+                        <p class="mypage-social-help" th:if="${naverLinked}">
+                            연동을 해제하면 현재 계정에서 네이버 간편로그인을 사용할 수 없어요.
+                        </p>
+
+                        <div class="mypage-social-actions" th:if="${naverAuthEnabled and !naverLinked}">
+                            <a th:href="${naverLinkUrl}" class="mypage-social-link-button mypage-social-link-button--naver">
+                                <span class="mypage-social-link-button__badge mypage-social-link-button__badge--naver">N</span>
+                                <span>네이버 계정 연동하기</span>
+                            </a>
+                        </div>
+
+                        <div class="mypage-social-actions" th:if="${naverLinked}">
+                            <form th:action="${naverUnlinkUrl}" method="post" class="mypage-social-action-form"
+                                  onsubmit="return confirm('네이버 계정 연동을 해제할까요?');">
+                                <button type="submit" class="mypage-social-link-button mypage-social-link-button--unlink mypage-social-link-button--naver-unlink">
+                                    네이버 연동 해제
+                                </button>
+                            </form>
                         </div>
                     </div>
                     </div>

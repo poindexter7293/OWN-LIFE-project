@@ -5,11 +5,14 @@ import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.LoginForm;
 import com.ownlife.dto.PendingKakaoSignup;
 import com.ownlife.dto.PendingGoogleSignup;
+import com.ownlife.dto.PendingNaverSignup;
+import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
+import com.ownlife.service.NaverAuthService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -32,23 +35,28 @@ public class AuthController {
     public static final String LOGIN_MEMBER = "loginMember";
     public static final String PENDING_GOOGLE_SIGNUP = "pendingGoogleSignup";
     public static final String PENDING_KAKAO_SIGNUP = "pendingKakaoSignup";
+    public static final String PENDING_NAVER_SIGNUP = "pendingNaverSignup";
     public static final String PENDING_KAKAO_LINK_MEMBER_ID = "pendingKakaoLinkMemberId";
+    public static final String PENDING_NAVER_LINK_MEMBER_ID = "pendingNaverLinkMemberId";
+    public static final String NAVER_LINK_ERROR_MESSAGE = "naverLinkErrorMessage";
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]{3,49}$");
 
     private final MemberService memberService;
     private final GoogleAuthService googleAuthService;
     private final KakaoAuthService kakaoAuthService;
+    private final NaverAuthService naverAuthService;
 
     @GetMapping("/login")
     public String loginForm(@RequestParam(value = "logoutSuccess", defaultValue = "false") boolean logoutSuccess,
                             @RequestParam(value = "googleError", required = false) String googleError,
-                             @RequestParam(value = "kakaoError", required = false) String kakaoError,
-                             HttpSession session,
+                            @RequestParam(value = "kakaoError", required = false) String kakaoError,
+                            @RequestParam(value = "naverError", required = false) String naverError,
+                            HttpSession session,
                             Model model) {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, logoutSuccess, resolveGoogleErrorMessage(googleError), resolveKakaoErrorMessage(kakaoError), session);
+        applyPageAttributes(model, logoutSuccess, resolveGoogleErrorMessage(googleError), resolveKakaoErrorMessage(kakaoError), resolveNaverErrorMessage(naverError), session);
         return "main";
     }
 
@@ -61,7 +69,7 @@ public class AuthController {
         validateLoginForm(loginForm, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, false, null, null, session);
+            applyPageAttributes(model, false, null, null, null, session);
             return "main";
         }
 
@@ -73,7 +81,7 @@ public class AuthController {
                 })
                 .orElseGet(() -> {
                     bindingResult.reject("loginFailed", "아이디 또는 비밀번호가 올바르지 않습니다.");
-                    applyPageAttributes(model, false, null, null, session);
+                    applyPageAttributes(model, false, null, null, null, session);
                     return "main";
                 });
     }
@@ -184,6 +192,79 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/login/naver/auth")
+    public String naverLogin(@RequestParam(value = "code", required = false) String code,
+                             @RequestParam(value = "state", required = false) String state,
+                             @RequestParam(value = "error", required = false) String error,
+                             @RequestParam(value = "error_description", required = false) String errorDescription,
+                             Model model,
+                             HttpSession session) {
+        Long pendingNaverLinkMemberId = getPendingNaverLinkMemberId(session);
+
+        if (!naverAuthService.isEnabled()) {
+            if (pendingNaverLinkMemberId != null) {
+                clearPendingNaverLink(session);
+                return "redirect:/mypage?naverLinkStatus=config-error";
+            }
+            return renderNaverLoginError(model, session, "네이버 로그인 설정이 아직 완료되지 않았습니다.");
+        }
+
+        if (StringUtils.hasText(error)) {
+            if (pendingNaverLinkMemberId != null) {
+                clearPendingNaverLink(session);
+                return "redirect:/mypage?naverLinkStatus=" + resolveNaverLinkErrorStatus(error);
+            }
+            return renderNaverLoginError(model, session, resolveNaverOauthErrorMessage(error, errorDescription));
+        }
+
+        if (!naverAuthService.isValidState(session, state)) {
+            if (pendingNaverLinkMemberId != null) {
+                clearPendingNaverLink(session);
+                return "redirect:/mypage?naverLinkStatus=state-failed";
+            }
+            return renderNaverLoginError(model, session, "네이버 로그인 요청 검증에 실패했습니다. 다시 시도해 주세요.");
+        }
+
+        NaverUserProfile naverUserProfile;
+        try {
+            naverUserProfile = naverAuthService.requestUserProfileOrThrow(code, state);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            if (pendingNaverLinkMemberId != null) {
+                session.setAttribute(NAVER_LINK_ERROR_MESSAGE, exception.getMessage());
+                clearPendingNaverLink(session);
+                return "redirect:/mypage?naverLinkStatus=auth-failed";
+            }
+            return renderNaverLoginError(model, session, exception.getMessage());
+        }
+
+        if (pendingNaverLinkMemberId != null) {
+            clearPendingNaverLink(session);
+            try {
+                memberService.linkNaverAccount(pendingNaverLinkMemberId, naverUserProfile);
+                return "redirect:/mypage?naverLinkStatus=success";
+            } catch (IllegalArgumentException exception) {
+                return "redirect:/mypage?naverLinkStatus=member-not-found";
+            } catch (IllegalStateException exception) {
+                return "redirect:/mypage?naverLinkStatus=" + resolveNaverLinkFailureStatus(exception.getMessage());
+            }
+        }
+
+        try {
+            return memberService.findNaverMemberForLogin(naverUserProfile)
+                    .map(member -> {
+                        session.removeAttribute(PENDING_NAVER_SIGNUP);
+                        session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
+                        return "redirect:/main";
+                    })
+                    .orElseGet(() -> {
+                        session.setAttribute(PENDING_NAVER_SIGNUP, PendingNaverSignup.from(naverUserProfile));
+                        return "redirect:/signup/naver";
+                    });
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return renderNaverLoginError(model, session, exception.getMessage());
+        }
+    }
+
     @PostMapping("/logout")
     public String logout(HttpSession session) {
         session.invalidate();
@@ -194,7 +275,7 @@ public class AuthController {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, false, errorMessage, null, session);
+        applyPageAttributes(model, false, errorMessage, null, null, session);
         return "main";
     }
 
@@ -202,7 +283,15 @@ public class AuthController {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, false, null, errorMessage, session);
+        applyPageAttributes(model, false, null, errorMessage, null, session);
+        return "main";
+    }
+
+    private String renderNaverLoginError(Model model, HttpSession session, String errorMessage) {
+        if (!model.containsAttribute("loginForm")) {
+            model.addAttribute("loginForm", new LoginForm());
+        }
+        applyPageAttributes(model, false, null, null, errorMessage, session);
         return "main";
     }
 
@@ -210,6 +299,7 @@ public class AuthController {
                                      boolean logoutSuccess,
                                      String googleErrorMessage,
                                      String kakaoErrorMessage,
+                                     String naverErrorMessage,
                                      HttpSession session) {
         model.addAttribute("pageTitle", "로그인");
         model.addAttribute("centerFragment", "fragments/center-login :: centerLogin");
@@ -221,8 +311,11 @@ public class AuthController {
         model.addAttribute("googleRedirectUrl", googleAuthService.getGoogleRedirectUrl());
         model.addAttribute("kakaoAuthEnabled", kakaoAuthService.isEnabled());
         model.addAttribute("kakaoLoginUrl", kakaoAuthService.prepareAuthorizationUrl(session));
+        model.addAttribute("naverAuthEnabled", naverAuthService.isEnabled());
+        model.addAttribute("naverLoginUrl", naverAuthService.prepareAuthorizationUrl(session));
         model.addAttribute("googleErrorMessage", googleErrorMessage);
         model.addAttribute("kakaoErrorMessage", kakaoErrorMessage);
+        model.addAttribute("naverErrorMessage", naverErrorMessage);
     }
 
     private void normalizeForm(LoginForm loginForm) {
@@ -285,6 +378,16 @@ public class AuthController {
         };
     }
 
+    private String resolveNaverErrorMessage(String naverError) {
+        if (!StringUtils.hasText(naverError)) {
+            return null;
+        }
+        return switch (naverError) {
+            case "signup-session-expired" -> "네이버 추가 회원가입 세션이 만료되었습니다. 다시 로그인해 주세요.";
+            default -> naverError;
+        };
+    }
+
     private String resolveKakaoOauthErrorMessage(String error, String errorDescription) {
         if (!StringUtils.hasText(error)) {
             return null;
@@ -299,11 +402,33 @@ public class AuthController {
         return "카카오 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.";
     }
 
+    private String resolveNaverOauthErrorMessage(String error, String errorDescription) {
+        if (!StringUtils.hasText(error)) {
+            return null;
+        }
+
+        if ("access_denied".equals(error)) {
+            return "네이버 로그인 동의가 취소되었습니다. 다시 시도해 주세요.";
+        }
+        if (StringUtils.hasText(errorDescription)) {
+            return errorDescription;
+        }
+        return "네이버 로그인 중 오류가 발생했습니다. 다시 시도해 주세요.";
+    }
+
     private Long getPendingKakaoLinkMemberId(HttpSession session) {
         if (session == null) {
             return null;
         }
         Object attribute = session.getAttribute(PENDING_KAKAO_LINK_MEMBER_ID);
+        return attribute instanceof Long longValue ? longValue : null;
+    }
+
+    private Long getPendingNaverLinkMemberId(HttpSession session) {
+        if (session == null) {
+            return null;
+        }
+        Object attribute = session.getAttribute(PENDING_NAVER_LINK_MEMBER_ID);
         return attribute instanceof Long longValue ? longValue : null;
     }
 
@@ -313,7 +438,20 @@ public class AuthController {
         }
     }
 
+    private void clearPendingNaverLink(HttpSession session) {
+        if (session != null) {
+            session.removeAttribute(PENDING_NAVER_LINK_MEMBER_ID);
+        }
+    }
+
     private String resolveKakaoLinkErrorStatus(String error) {
+        if ("access_denied".equals(error)) {
+            return "access-denied";
+        }
+        return "oauth-error";
+    }
+
+    private String resolveNaverLinkErrorStatus(String error) {
         if ("access_denied".equals(error)) {
             return "access-denied";
         }
@@ -325,6 +463,16 @@ public class AuthController {
             return "already-linked";
         }
         if ("이미 다른 계정에 연결된 카카오 계정입니다.".equals(message)) {
+            return "linked-other-account";
+        }
+        return "failed";
+    }
+
+    private String resolveNaverLinkFailureStatus(String message) {
+        if ("이미 네이버 계정이 연동되어 있습니다.".equals(message)) {
+            return "already-linked";
+        }
+        if ("이미 다른 계정에 연결된 네이버 계정입니다.".equals(message)) {
             return "linked-other-account";
         }
         return "failed";

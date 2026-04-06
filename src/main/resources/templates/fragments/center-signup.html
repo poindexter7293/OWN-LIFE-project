@@ -14,9 +14,9 @@
                 회원가입이 완료되었습니다. 이제 메인 화면에서 다음 기능 연결을 이어갈 수 있어요.
             </div>
 
-            <div class="signup-social-panel" th:if="${(googleAuthEnabled or kakaoAuthEnabled) and !socialSignupMode}">
+            <div class="signup-social-panel" th:if="${(googleAuthEnabled or kakaoAuthEnabled or naverAuthEnabled) and !socialSignupMode}">
                 <div class="signup-social-divider"><span>3초 만에 시작하기</span></div>
-                <p class="signup-social-description">Google 또는 카카오 계정으로 바로 가입하고 OWN LIFE를 시작해 보세요.</p>
+                <p class="signup-social-description">Google, 카카오 또는 네이버 계정으로 바로 가입하고 OWN LIFE를 시작해 보세요.</p>
                 <div class="signup-social-actions">
                     <div th:if="${googleAuthEnabled}">
                         <div id="g_id_onload"
@@ -37,6 +37,12 @@
                        th:href="${kakaoLoginUrl}">
                         <span class="signup-social-button__badge">K</span>
                         <span>카카오로 3초 가입</span>
+                    </a>
+                    <a class="signup-social-button signup-social-button--naver"
+                       th:if="${naverAuthEnabled}"
+                       th:href="${naverLoginUrl}">
+                        <span class="signup-social-button__badge signup-social-button__badge--naver">N</span>
+                        <span>네이버로 3초 가입</span>
                     </a>
                 </div>
             </div>

@@ -2,12 +2,14 @@ package com.ownlife.controller;
 
 import com.ownlife.dto.PendingGoogleSignup;
 import com.ownlife.dto.PendingKakaoSignup;
+import com.ownlife.dto.PendingNaverSignup;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
+import com.ownlife.service.NaverAuthService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -38,6 +40,7 @@ public class MemberController {
     private final MemberService memberService;
     private final GoogleAuthService googleAuthService;
     private final KakaoAuthService kakaoAuthService;
+    private final NaverAuthService naverAuthService;
 
     @ModelAttribute("genderOptions")
     public Member.Gender[] genderOptions() {
@@ -84,6 +87,22 @@ public class MemberController {
             model.addAttribute("signupForm", signupForm);
         }
         applyPageAttributes(model, false, "kakao", session);
+        return "main";
+    }
+
+    @GetMapping("/signup/naver")
+    public String naverSignupForm(Model model, HttpSession session) {
+        PendingNaverSignup pendingNaverSignup = getPendingNaverSignup(session);
+        if (pendingNaverSignup == null) {
+            return "redirect:/login?naverError=signup-session-expired";
+        }
+
+        if (!model.containsAttribute("signupForm")) {
+            SignupForm signupForm = new SignupForm();
+            applyNaverPrefill(signupForm, pendingNaverSignup, true);
+            model.addAttribute("signupForm", signupForm);
+        }
+        applyPageAttributes(model, false, "naver", session);
         return "main";
     }
 
@@ -229,11 +248,43 @@ public class MemberController {
         return "redirect:/main";
     }
 
+    @PostMapping("/signup/naver")
+    public String naverSignup(@ModelAttribute("signupForm") SignupForm signupForm,
+                              BindingResult bindingResult,
+                              Model model,
+                              HttpSession session) {
+        PendingNaverSignup pendingNaverSignup = getPendingNaverSignup(session);
+        if (pendingNaverSignup == null) {
+            return "redirect:/login?naverError=signup-session-expired";
+        }
+
+        normalizeNaverSignupForm(signupForm, pendingNaverSignup);
+        validateNaverSignupForm(signupForm, bindingResult);
+
+        if (bindingResult.hasErrors()) {
+            applyPageAttributes(model, false, "naver", session);
+            return "main";
+        }
+
+        Member member;
+        try {
+            member = memberService.registerNaverMember(signupForm, pendingNaverSignup.toNaverUserProfile());
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            bindingResult.reject("naverSignupFailed", exception.getMessage());
+            applyPageAttributes(model, false, "naver", session);
+            return "main";
+        }
+        session.removeAttribute(AuthController.PENDING_NAVER_SIGNUP);
+        session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
+        return "redirect:/main";
+    }
+
     private void applyPageAttributes(Model model, boolean success, String socialSignupProvider, HttpSession session) {
         boolean googleSignupMode = "google".equals(socialSignupProvider);
         boolean kakaoSignupMode = "kakao".equals(socialSignupProvider);
-        boolean socialSignupMode = googleSignupMode || kakaoSignupMode;
-        String socialProviderLabel = googleSignupMode ? "Google" : (kakaoSignupMode ? "카카오" : null);
+        boolean naverSignupMode = "naver".equals(socialSignupProvider);
+        boolean socialSignupMode = googleSignupMode || kakaoSignupMode || naverSignupMode;
+        String socialProviderLabel = googleSignupMode ? "Google" : (kakaoSignupMode ? "카카오" : (naverSignupMode ? "네이버" : null));
 
         model.addAttribute("pageTitle", socialSignupMode ? socialProviderLabel + " 추가 회원가입" : "회원가입");
         model.addAttribute("centerFragment", "fragments/center-signup :: centerSignup");
@@ -242,9 +293,10 @@ public class MemberController {
         model.addAttribute("signupSuccess", success);
         model.addAttribute("googleSignupMode", googleSignupMode);
         model.addAttribute("kakaoSignupMode", kakaoSignupMode);
+        model.addAttribute("naverSignupMode", naverSignupMode);
         model.addAttribute("socialSignupMode", socialSignupMode);
         model.addAttribute("socialProviderLabel", socialProviderLabel);
-        model.addAttribute("signupAction", googleSignupMode ? "/signup/google" : (kakaoSignupMode ? "/signup/kakao" : "/signup"));
+        model.addAttribute("signupAction", googleSignupMode ? "/signup/google" : (kakaoSignupMode ? "/signup/kakao" : (naverSignupMode ? "/signup/naver" : "/signup")));
         model.addAttribute("signupHeading", socialSignupMode ? socialProviderLabel + " 계정 추가 정보 입력" : "건강한 루틴을 위한 회원가입");
         model.addAttribute("signupDescriptionText", socialSignupMode
                 ? socialProviderLabel + " 인증은 완료되었어요. 닉네임, 성별, 키, 체중 같은 기본 정보를 입력하면 가입이 완료됩니다."
@@ -255,6 +307,8 @@ public class MemberController {
         model.addAttribute("googleRedirectUrl", googleAuthService.getGoogleRedirectUrl());
         model.addAttribute("kakaoAuthEnabled", kakaoAuthService.isEnabled());
         model.addAttribute("kakaoLoginUrl", kakaoAuthService.prepareAuthorizationUrl(session));
+        model.addAttribute("naverAuthEnabled", naverAuthService.isEnabled());
+        model.addAttribute("naverLoginUrl", naverAuthService.prepareAuthorizationUrl(session));
     }
 
     private void normalizeForm(SignupForm signupForm) {
@@ -277,6 +331,14 @@ public class MemberController {
         signupForm.setPasswordConfirm(null);
         signupForm.setNickname(trimToNull(signupForm.getNickname()));
         signupForm.setEmail(normalizeIdentity(pendingKakaoSignup.getEmail()));
+    }
+
+    private void normalizeNaverSignupForm(SignupForm signupForm, PendingNaverSignup pendingNaverSignup) {
+        signupForm.setUsername(null);
+        signupForm.setPassword(null);
+        signupForm.setPasswordConfirm(null);
+        signupForm.setNickname(trimToNull(signupForm.getNickname()));
+        signupForm.setEmail(normalizeIdentity(pendingNaverSignup.getEmail()));
     }
 
     private void validateSignupForm(SignupForm signupForm, BindingResult bindingResult) {
@@ -302,6 +364,10 @@ public class MemberController {
     }
 
     private void validateKakaoSignupForm(SignupForm signupForm, BindingResult bindingResult) {
+        validateGoogleSignupForm(signupForm, bindingResult);
+    }
+
+    private void validateNaverSignupForm(SignupForm signupForm, BindingResult bindingResult) {
         validateGoogleSignupForm(signupForm, bindingResult);
     }
 
@@ -453,6 +519,11 @@ public class MemberController {
         return attribute instanceof PendingKakaoSignup ? (PendingKakaoSignup) attribute : null;
     }
 
+    private PendingNaverSignup getPendingNaverSignup(HttpSession session) {
+        Object attribute = session.getAttribute(AuthController.PENDING_NAVER_SIGNUP);
+        return attribute instanceof PendingNaverSignup ? (PendingNaverSignup) attribute : null;
+    }
+
     private void applyGooglePrefill(SignupForm signupForm, PendingGoogleSignup pendingGoogleSignup, boolean fillNicknameIfEmpty) {
         signupForm.setEmail(normalizeIdentity(pendingGoogleSignup.getEmail()));
         if (fillNicknameIfEmpty && !StringUtils.hasText(signupForm.getNickname())) {
@@ -464,6 +535,17 @@ public class MemberController {
         signupForm.setEmail(normalizeIdentity(pendingKakaoSignup.getEmail()));
         if (fillNicknameIfEmpty && !StringUtils.hasText(signupForm.getNickname())) {
             signupForm.setNickname(trimToNull(pendingKakaoSignup.getNickname()));
+        }
+    }
+
+    private void applyNaverPrefill(SignupForm signupForm, PendingNaverSignup pendingNaverSignup, boolean fillNicknameIfEmpty) {
+        signupForm.setEmail(normalizeIdentity(pendingNaverSignup.getEmail()));
+        if (fillNicknameIfEmpty && !StringUtils.hasText(signupForm.getNickname())) {
+            String preferredNickname = trimToNull(pendingNaverSignup.getNickname());
+            if (!StringUtils.hasText(preferredNickname)) {
+                preferredNickname = trimToNull(pendingNaverSignup.getName());
+            }
+            signupForm.setNickname(preferredNickname);
         }
     }
 
