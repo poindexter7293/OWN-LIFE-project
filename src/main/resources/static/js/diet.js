@@ -5,6 +5,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const form = document.querySelector(".diet-form");
 
     const foodSelect = document.getElementById("foodId");
+    const foodSearchKeyword = document.getElementById("foodSearchKeyword");
+    const foodSearchResultText = document.getElementById("foodSearchResultText");
+
     const selectedBaseAmountG = document.getElementById("selectedBaseAmountG");
     const selectedCaloriesKcal = document.getElementById("selectedCaloriesKcal");
     const selectedCarbG = document.getElementById("selectedCarbG");
@@ -300,6 +303,10 @@ document.addEventListener("DOMContentLoaded", function () {
         foodSelect.addEventListener("change", fillSelectedFoodInfo);
     }
 
+    if (foodSearchKeyword) {
+        foodSearchKeyword.addEventListener("input", filterFoodOptions);
+    }
+
     form.addEventListener("submit", function (e) {
         const mode = document.querySelector('input[name="inputMode"]:checked')?.value;
 
@@ -351,8 +358,60 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function filterFoodOptions() {
+        if (!foodSelect || !foodSearchKeyword) return;
+
+        const keyword = foodSearchKeyword.value.trim().toLowerCase();
+        const options = Array.from(foodSelect.options);
+
+        let visibleCount = 0;
+        let firstMatchedOption = null;
+
+        options.forEach((option, index) => {
+            if (index === 0) {
+                option.hidden = false;
+                return;
+            }
+
+            const foodName = (option.textContent || "").toLowerCase();
+            const isMatch = keyword === "" || foodName.includes(keyword);
+
+            option.hidden = !isMatch;
+
+            if (isMatch) {
+                visibleCount++;
+                if (!firstMatchedOption) {
+                    firstMatchedOption = option;
+                }
+            }
+        });
+
+        if (keyword !== "") {
+            if (visibleCount > 0 && firstMatchedOption) {
+                foodSelect.value = firstMatchedOption.value;
+                fillSelectedFoodInfo();
+                if (foodSearchResultText) {
+                    foodSearchResultText.textContent = `${visibleCount}개 검색됨`;
+                }
+            } else {
+                foodSelect.value = "";
+                fillSelectedFoodInfo();
+                if (foodSearchResultText) {
+                    foodSearchResultText.textContent = "검색 결과가 없습니다.";
+                }
+            }
+        } else {
+            foodSelect.value = "";
+            fillSelectedFoodInfo();
+            if (foodSearchResultText) {
+                foodSearchResultText.textContent = "검색어를 입력하면 목록이 줄어듭니다.";
+            }
+        }
+    }
+
     toggleDietInputMode();
     fillSelectedFoodInfo();
+    filterFoodOptions();
     animateCountUp();
     renderDietIntakeChart();
     renderMacroRatioChart();

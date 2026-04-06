@@ -354,6 +354,29 @@ select:focus {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
+#foodSearchKeyword {
+    margin-bottom: 10px;
+}
+
+#foodId {
+    min-height: 160px;
+}
+
+#foodId option:hover {
+    background-color: #f1f5ff;
+}
+
+.food-search-result-text {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6f7d95;
+}
+
+#foodId option {
+    padding: 8px;
+}
+
 /* =========================
    반응형
    ========================= */
