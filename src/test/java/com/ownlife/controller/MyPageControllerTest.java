@@ -127,6 +127,29 @@ class MyPageControllerTest {
     }
 
     @Test
+    @DisplayName("마이페이지에서 Google 연동해제 성공 시 성공 메시지와 함께 리다이렉트한다")
+    void unlinkGoogleAccountSuccess() throws Exception {
+        memberService.googleLinked = true;
+
+        mockMvc.perform(post("/mypage/unlink/google").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mypage?googleUnlinkStatus=success"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.unlinkGoogleCallCount);
+    }
+
+    @Test
+    @DisplayName("마이페이지에서 마지막 로그인 수단인 Google 계정은 연동해제할 수 없다")
+    void unlinkGoogleAccountFailsWhenLastLoginMethod() throws Exception {
+        memberService.googleLinked = true;
+        memberService.failGoogleUnlinkWithLastLoginMethod = true;
+
+        mockMvc.perform(post("/mypage/unlink/google").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mypage?googleUnlinkStatus=last-login-method"));
+    }
+
+    @Test
     @DisplayName("마이페이지에서 카카오 연동을 시작하면 카카오 인증 페이지로 이동한다")
     void linkKakaoAccountRedirectsToAuthorizationPage() throws Exception {
         mockMvc.perform(get("/mypage/link/kakao").session(session))
@@ -136,12 +159,40 @@ class MyPageControllerTest {
         org.junit.jupiter.api.Assertions.assertEquals(1L, session.getAttribute(AuthController.PENDING_KAKAO_LINK_MEMBER_ID));
     }
 
+    @Test
+    @DisplayName("마이페이지에서 카카오 연동해제 성공 시 성공 메시지와 함께 리다이렉트한다")
+    void unlinkKakaoAccountSuccess() throws Exception {
+        memberService.kakaoLinked = true;
+
+        mockMvc.perform(post("/mypage/unlink/kakao").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mypage?kakaoUnlinkStatus=success"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.unlinkKakaoCallCount);
+    }
+
+    @Test
+    @DisplayName("마이페이지에서 마지막 로그인 수단인 카카오 계정은 연동해제할 수 없다")
+    void unlinkKakaoAccountFailsWhenLastLoginMethod() throws Exception {
+        memberService.kakaoLinked = true;
+        memberService.failKakaoUnlinkWithLastLoginMethod = true;
+
+        mockMvc.perform(post("/mypage/unlink/kakao").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mypage?kakaoUnlinkStatus=last-login-method"));
+    }
+
     private static class StubMemberService extends MemberService {
 
         private final Member member;
         private int updateCallCount;
         private int linkGoogleCallCount;
+        private int unlinkGoogleCallCount;
+        private int unlinkKakaoCallCount;
         private boolean googleLinked;
+        private boolean kakaoLinked;
+        private boolean failGoogleUnlinkWithLastLoginMethod;
+        private boolean failKakaoUnlinkWithLastLoginMethod;
 
         StubMemberService() {
             super(null, null, null);
@@ -175,6 +226,13 @@ class MyPageControllerTest {
                 socialAccount.setProviderEmail("linked@gmail.com");
                 return Optional.of(socialAccount);
             }
+            if (kakaoLinked && memberId != null && memberId.equals(member.getMemberId()) && provider == SocialAccount.Provider.KAKAO) {
+                SocialAccount socialAccount = new SocialAccount();
+                socialAccount.setMember(member);
+                socialAccount.setProvider(SocialAccount.Provider.KAKAO);
+                socialAccount.setProviderEmail("linked@kakao.com");
+                return Optional.of(socialAccount);
+            }
             return Optional.empty();
         }
 
@@ -195,6 +253,32 @@ class MyPageControllerTest {
             }
             linkGoogleCallCount++;
             googleLinked = true;
+            return member;
+        }
+
+        @Override
+        public Member unlinkGoogleAccount(Long memberId) {
+            if (!googleLinked) {
+                throw new IllegalStateException("연동된 Google 계정이 없습니다.");
+            }
+            if (failGoogleUnlinkWithLastLoginMethod) {
+                throw new IllegalStateException("마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.");
+            }
+            unlinkGoogleCallCount++;
+            googleLinked = false;
+            return member;
+        }
+
+        @Override
+        public Member unlinkKakaoAccount(Long memberId) {
+            if (!kakaoLinked) {
+                throw new IllegalStateException("연동된 카카오 계정이 없습니다.");
+            }
+            if (failKakaoUnlinkWithLastLoginMethod) {
+                throw new IllegalStateException("마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.");
+            }
+            unlinkKakaoCallCount++;
+            kakaoLinked = false;
             return member;
         }
     }

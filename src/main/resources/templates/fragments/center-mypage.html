@@ -119,6 +119,10 @@
                             <span th:text="${googleLastLoginAt != null ? '마지막 Google 로그인: ' + #temporals.format(googleLastLoginAt, 'yyyy.MM.dd HH:mm') : 'Google 로그인 기록 없음'}">마지막 로그인</span>
                         </div>
 
+                        <p class="mypage-social-help" th:if="${googleLinked}">
+                            연동을 해제하면 현재 계정에서 Google 간편로그인을 사용할 수 없어요.
+                        </p>
+
                         <div class="mypage-social-actions" th:if="${googleAuthEnabled and !googleLinked}">
                             <div id="g_id_onload"
                                  th:attr="data-client_id=${googleClientId},data-login_uri=${googleLinkUrl},data-ux_mode='redirect',data-auto_prompt='false',data-context='use'">
@@ -132,6 +136,15 @@
                                  data-logo_alignment="left"
                                  data-width="320">
                             </div>
+                        </div>
+
+                        <div class="mypage-social-actions" th:if="${googleLinked}">
+                            <form th:action="${googleUnlinkUrl}" method="post" class="mypage-social-action-form"
+                                  onsubmit="return confirm('Google 계정 연동을 해제할까요?');">
+                                <button type="submit" class="mypage-social-link-button mypage-social-link-button--unlink">
+                                    Google 연동 해제
+                                </button>
+                            </form>
                         </div>
                     </div>
 
@@ -152,11 +165,24 @@
                             <span th:text="${kakaoLastLoginAt != null ? '마지막 카카오 로그인: ' + #temporals.format(kakaoLastLoginAt, 'yyyy.MM.dd HH:mm') : '카카오 로그인 기록 없음'}">마지막 로그인</span>
                         </div>
 
+                        <p class="mypage-social-help" th:if="${kakaoLinked}">
+                            연동을 해제하면 현재 계정에서 카카오 간편로그인을 사용할 수 없어요.
+                        </p>
+
                         <div class="mypage-social-actions" th:if="${kakaoAuthEnabled and !kakaoLinked}">
                             <a th:href="${kakaoLinkUrl}" class="mypage-social-link-button mypage-social-link-button--kakao">
                                 <span class="mypage-social-link-button__badge">K</span>
                                 <span>카카오 계정 연동하기</span>
                             </a>
+                        </div>
+
+                        <div class="mypage-social-actions" th:if="${kakaoLinked}">
+                            <form th:action="${kakaoUnlinkUrl}" method="post" class="mypage-social-action-form"
+                                  onsubmit="return confirm('카카오 계정 연동을 해제할까요?');">
+                                <button type="submit" class="mypage-social-link-button mypage-social-link-button--unlink mypage-social-link-button--kakao-unlink">
+                                    카카오 연동 해제
+                                </button>
+                            </form>
                         </div>
                     </div>
                     </div>

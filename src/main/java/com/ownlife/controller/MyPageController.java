@@ -39,7 +39,9 @@ public class MyPageController {
     @GetMapping("/mypage")
     public String myPage(@RequestParam(value = "success", defaultValue = "false") boolean success,
                          @RequestParam(value = "googleLinkStatus", required = false) String googleLinkStatus,
+                         @RequestParam(value = "googleUnlinkStatus", required = false) String googleUnlinkStatus,
                          @RequestParam(value = "kakaoLinkStatus", required = false) String kakaoLinkStatus,
+                         @RequestParam(value = "kakaoUnlinkStatus", required = false) String kakaoUnlinkStatus,
                          Model model,
                          HttpSession session) {
         SessionMember loginMember = getLoginMember(session);
@@ -61,10 +63,10 @@ public class MyPageController {
                 model,
                 member,
                 success,
-                resolveGoogleLinkSuccessMessage(googleLinkStatus),
-                resolveGoogleLinkErrorMessage(googleLinkStatus),
-                resolveKakaoLinkSuccessMessage(kakaoLinkStatus),
-                resolveKakaoLinkErrorMessage(kakaoLinkStatus)
+                resolveGoogleSuccessMessage(googleLinkStatus, googleUnlinkStatus),
+                resolveGoogleErrorMessage(googleLinkStatus, googleUnlinkStatus),
+                resolveKakaoSuccessMessage(kakaoLinkStatus, kakaoUnlinkStatus),
+                resolveKakaoErrorMessage(kakaoLinkStatus, kakaoUnlinkStatus)
         );
         return "main";
     }
@@ -170,6 +172,48 @@ public class MyPageController {
         return "redirect:" + kakaoAuthorizationUrl;
     }
 
+    @PostMapping("/mypage/unlink/google")
+    public String unlinkGoogleAccount(HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return "redirect:/login";
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return "redirect:/login";
+        }
+
+        try {
+            memberService.unlinkGoogleAccount(loginMember.getMemberId());
+            return "redirect:/mypage?googleUnlinkStatus=success";
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return "redirect:/mypage?googleUnlinkStatus=" + resolveGoogleUnlinkFailureStatus(exception.getMessage());
+        }
+    }
+
+    @PostMapping("/mypage/unlink/kakao")
+    public String unlinkKakaoAccount(HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return "redirect:/login";
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return "redirect:/login";
+        }
+
+        try {
+            memberService.unlinkKakaoAccount(loginMember.getMemberId());
+            return "redirect:/mypage?kakaoUnlinkStatus=success";
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return "redirect:/mypage?kakaoUnlinkStatus=" + resolveKakaoUnlinkFailureStatus(exception.getMessage());
+        }
+    }
+
     private void applyPageAttributes(Model model,
                                      Member member,
                                      boolean success,
@@ -191,6 +235,7 @@ public class MyPageController {
         model.addAttribute("googleAuthEnabled", googleAuthService.isEnabled());
         model.addAttribute("googleClientId", googleAuthService.getGoogleClientId());
         model.addAttribute("googleLinkUrl", "/mypage/link/google");
+        model.addAttribute("googleUnlinkUrl", "/mypage/unlink/google");
         model.addAttribute("googleLinked", googleAccount.isPresent());
         model.addAttribute("googleLinkedEmail", googleAccount.map(SocialAccount::getProviderEmail).orElse(null));
         model.addAttribute("googleLinkedAt", googleAccount.map(SocialAccount::getConnectedAt).orElse(null));
@@ -199,6 +244,7 @@ public class MyPageController {
         model.addAttribute("googleLinkErrorMessage", googleLinkErrorMessage);
         model.addAttribute("kakaoAuthEnabled", kakaoAuthService.isEnabled());
         model.addAttribute("kakaoLinkUrl", "/mypage/link/kakao");
+        model.addAttribute("kakaoUnlinkUrl", "/mypage/unlink/kakao");
         model.addAttribute("kakaoLinked", kakaoAccount.isPresent());
         model.addAttribute("kakaoLinkedEmail", kakaoAccount.map(SocialAccount::getProviderEmail).orElse(null));
         model.addAttribute("kakaoLinkedAt", kakaoAccount.map(SocialAccount::getConnectedAt).orElse(null));
@@ -264,6 +310,16 @@ public class MyPageController {
         return StringUtils.hasText(csrfCookie) && csrfCookie.equals(csrfToken);
     }
 
+    private String resolveGoogleSuccessMessage(String googleLinkStatus, String googleUnlinkStatus) {
+        String unlinkSuccessMessage = resolveGoogleUnlinkSuccessMessage(googleUnlinkStatus);
+        return unlinkSuccessMessage != null ? unlinkSuccessMessage : resolveGoogleLinkSuccessMessage(googleLinkStatus);
+    }
+
+    private String resolveGoogleErrorMessage(String googleLinkStatus, String googleUnlinkStatus) {
+        String unlinkErrorMessage = resolveGoogleUnlinkErrorMessage(googleUnlinkStatus);
+        return unlinkErrorMessage != null ? unlinkErrorMessage : resolveGoogleLinkErrorMessage(googleLinkStatus);
+    }
+
     private String resolveGoogleLinkSuccessMessage(String googleLinkStatus) {
         if (!StringUtils.hasText(googleLinkStatus)) {
             return null;
@@ -280,6 +336,44 @@ public class MyPageController {
             case "linked-other-account" -> "이미 다른 계정에 연결된 Google 계정입니다.";
             default -> null;
         };
+    }
+
+    private String resolveGoogleUnlinkSuccessMessage(String googleUnlinkStatus) {
+        if (!StringUtils.hasText(googleUnlinkStatus)) {
+            return null;
+        }
+        return "success".equals(googleUnlinkStatus) ? "Google 계정 연동이 해제되었습니다." : null;
+    }
+
+    private String resolveGoogleUnlinkErrorMessage(String googleUnlinkStatus) {
+        if (!StringUtils.hasText(googleUnlinkStatus)) {
+            return null;
+        }
+        return switch (googleUnlinkStatus) {
+            case "not-linked" -> "연동된 Google 계정이 없습니다.";
+            case "last-login-method" -> "마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.";
+            default -> "Google 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+        };
+    }
+
+    private String resolveGoogleUnlinkFailureStatus(String message) {
+        if ("연동된 Google 계정이 없습니다.".equals(message)) {
+            return "not-linked";
+        }
+        if ("마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.".equals(message)) {
+            return "last-login-method";
+        }
+        return "failed";
+    }
+
+    private String resolveKakaoSuccessMessage(String kakaoLinkStatus, String kakaoUnlinkStatus) {
+        String unlinkSuccessMessage = resolveKakaoUnlinkSuccessMessage(kakaoUnlinkStatus);
+        return unlinkSuccessMessage != null ? unlinkSuccessMessage : resolveKakaoLinkSuccessMessage(kakaoLinkStatus);
+    }
+
+    private String resolveKakaoErrorMessage(String kakaoLinkStatus, String kakaoUnlinkStatus) {
+        String unlinkErrorMessage = resolveKakaoUnlinkErrorMessage(kakaoUnlinkStatus);
+        return unlinkErrorMessage != null ? unlinkErrorMessage : resolveKakaoLinkErrorMessage(kakaoLinkStatus);
     }
 
     private String resolveKakaoLinkSuccessMessage(String kakaoLinkStatus) {
@@ -303,6 +397,34 @@ public class MyPageController {
             case "member-not-found" -> "회원 정보를 찾을 수 없어 카카오 연동을 진행할 수 없습니다.";
             default -> "카카오 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
         };
+    }
+
+    private String resolveKakaoUnlinkSuccessMessage(String kakaoUnlinkStatus) {
+        if (!StringUtils.hasText(kakaoUnlinkStatus)) {
+            return null;
+        }
+        return "success".equals(kakaoUnlinkStatus) ? "카카오 계정 연동이 해제되었습니다." : null;
+    }
+
+    private String resolveKakaoUnlinkErrorMessage(String kakaoUnlinkStatus) {
+        if (!StringUtils.hasText(kakaoUnlinkStatus)) {
+            return null;
+        }
+        return switch (kakaoUnlinkStatus) {
+            case "not-linked" -> "연동된 카카오 계정이 없습니다.";
+            case "last-login-method" -> "마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.";
+            default -> "카카오 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+        };
+    }
+
+    private String resolveKakaoUnlinkFailureStatus(String message) {
+        if ("연동된 카카오 계정이 없습니다.".equals(message)) {
+            return "not-linked";
+        }
+        if ("마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.".equals(message)) {
+            return "last-login-method";
+        }
+        return "failed";
     }
 
     private String formatGender(Member.Gender gender) {

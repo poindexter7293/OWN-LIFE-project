@@ -258,6 +258,14 @@ public class MemberService {
         return memberRepository.saveAndFlush(member);
     }
 
+    public Member unlinkGoogleAccount(Long memberId) {
+        return unlinkSocialAccount(memberId, SocialAccount.Provider.GOOGLE, "Google");
+    }
+
+    public Member unlinkKakaoAccount(Long memberId) {
+        return unlinkSocialAccount(memberId, SocialAccount.Provider.KAKAO, "카카오");
+    }
+
     public Optional<Member> findKakaoMemberForLogin(KakaoUserProfile kakaoUserProfile) {
         if (kakaoUserProfile == null) {
             throw new IllegalArgumentException("카카오 인증 정보가 올바르지 않습니다.");
@@ -351,6 +359,71 @@ public class MemberService {
         if (member.getStatus() != Member.Status.ACTIVE) {
             throw new IllegalStateException("비활성화된 계정은 로그인할 수 없습니다.");
         }
+    }
+
+    private Member unlinkSocialAccount(Long memberId, SocialAccount.Provider provider, String providerLabel) {
+        Member member = findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        SocialAccount socialAccount = socialAccountRepository.findByMemberMemberIdAndProvider(member.getMemberId(), provider)
+                .orElseThrow(() -> new IllegalStateException("연동된 " + providerLabel + " 계정이 없습니다."));
+
+        if (!hasAlternativeLoginMethod(member, provider)) {
+            throw new IllegalStateException("마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.");
+        }
+
+        socialAccountRepository.delete(socialAccount);
+        updateLoginMetadataAfterUnlink(member, provider);
+        return memberRepository.saveAndFlush(member);
+    }
+
+    private boolean hasAlternativeLoginMethod(Member member, SocialAccount.Provider providerToRemove) {
+        return StringUtils.hasText(member.getPasswordHash())
+                || findAnotherLinkedSocialAccount(member.getMemberId(), providerToRemove).isPresent();
+    }
+
+    private Optional<SocialAccount> findAnotherLinkedSocialAccount(Long memberId, SocialAccount.Provider excludedProvider) {
+        for (SocialAccount.Provider provider : SocialAccount.Provider.values()) {
+            if (provider == excludedProvider) {
+                continue;
+            }
+
+            Optional<SocialAccount> socialAccount = socialAccountRepository.findByMemberMemberIdAndProvider(memberId, provider);
+            if (socialAccount.isPresent()) {
+                return socialAccount;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private void updateLoginMetadataAfterUnlink(Member member, SocialAccount.Provider removedProvider) {
+        if (StringUtils.hasText(member.getPasswordHash())) {
+            member.setLoginType(Member.LoginType.LOCAL);
+            member.setSocialProvider(null);
+            member.setSocialProviderId(null);
+            return;
+        }
+
+        Optional<SocialAccount> remainingSocialAccount = findAnotherLinkedSocialAccount(member.getMemberId(), removedProvider);
+        if (remainingSocialAccount.isPresent()) {
+            SocialAccount socialAccount = remainingSocialAccount.get();
+            member.setLoginType(toLoginType(socialAccount.getProvider()));
+            member.setSocialProvider(socialAccount.getProvider().name());
+            member.setSocialProviderId(socialAccount.getProviderUserId());
+            return;
+        }
+
+        member.setLoginType(Member.LoginType.LOCAL);
+        member.setSocialProvider(null);
+        member.setSocialProviderId(null);
+    }
+
+    private Member.LoginType toLoginType(SocialAccount.Provider provider) {
+        return switch (provider) {
+            case NAVER -> Member.LoginType.NAVER;
+            case KAKAO -> Member.LoginType.KAKAO;
+            case GOOGLE -> Member.LoginType.GOOGLE;
+        };
     }
 
     private void refreshGoogleProfile(Member member, GoogleUserProfile googleUserProfile) {
