@@ -147,6 +147,11 @@
     border-color: rgba(133, 110, 9, 0.14);
 }
 
+.mypage-social-card--naver {
+    background: linear-gradient(180deg, rgba(3, 199, 90, 0.08), rgba(171, 246, 205, 0.16));
+    border-color: rgba(18, 126, 66, 0.14);
+}
+
 .mypage-social-card__info {
     display: flex;
     align-items: flex-start;
@@ -245,6 +250,12 @@
     box-shadow: 0 10px 20px rgba(254, 229, 0, 0.28);
 }
 
+.mypage-social-link-button--naver {
+    background: #03c75a;
+    color: #ffffff;
+    box-shadow: 0 10px 20px rgba(3, 199, 90, 0.24);
+}
+
 .mypage-social-link-button--unlink {
     background: rgba(255, 255, 255, 0.95);
     color: #9b4254;
@@ -259,6 +270,13 @@
     box-shadow: 0 10px 18px rgba(180, 145, 8, 0.12);
 }
 
+.mypage-social-link-button--naver-unlink {
+    background: rgba(226, 250, 236, 0.95);
+    color: #167446;
+    border-color: rgba(21, 145, 81, 0.24);
+    box-shadow: 0 10px 18px rgba(21, 145, 81, 0.12);
+}
+
 .mypage-social-link-button__badge {
     display: inline-flex;
     align-items: center;
@@ -270,6 +288,11 @@
     color: #fee500;
     font-size: 0.95rem;
     font-weight: 900;
+}
+
+.mypage-social-link-button__badge--naver {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
 }
 
 .mypage-alert {

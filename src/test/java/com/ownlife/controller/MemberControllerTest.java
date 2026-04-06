@@ -4,11 +4,14 @@ import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.PendingGoogleSignup;
 import com.ownlife.dto.PendingKakaoSignup;
+import com.ownlife.dto.PendingNaverSignup;
+import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
+import com.ownlife.service.NaverAuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +39,8 @@ class MemberControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(new MemberController(
                 memberService,
                 new GoogleAuthService("test-client-id", "http://localhost:8081/login/google/auth"),
-                new KakaoAuthService("test-kakao-key", "http://localhost:8081/login/kakao/auth")
+                new KakaoAuthService("test-kakao-key", "http://localhost:8081/login/kakao/auth"),
+                new NaverAuthService("test-naver-id", "test-naver-secret", "http://localhost:8081/login/naver/auth")
         )).build();
     }
 
@@ -50,7 +54,8 @@ class MemberControllerTest {
                 .andExpect(model().attribute("pageTitle", "회원가입"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-signup :: centerSignup"))
                 .andExpect(model().attribute("googleAuthEnabled", true))
-                .andExpect(model().attribute("kakaoAuthEnabled", true));
+                .andExpect(model().attribute("kakaoAuthEnabled", true))
+                .andExpect(model().attribute("naverAuthEnabled", true));
     }
 
     @Test
@@ -233,6 +238,41 @@ class MemberControllerTest {
         org.junit.jupiter.api.Assertions.assertNotNull(session.getAttribute(AuthController.LOGIN_MEMBER));
     }
 
+    @Test
+    @DisplayName("네이버 추가정보 회원가입 페이지는 세션의 이메일과 닉네임을 미리 채워 보여준다")
+    void naverSignupPage() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AuthController.PENDING_NAVER_SIGNUP, new PendingNaverSignup("naver-user-1", "naver@example.com", "네이버이름", "네이버닉네임", null));
+
+        mockMvc.perform(get("/signup/naver").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("naverSignupMode", true))
+                .andExpect(model().attribute("socialSignupMode", true))
+                .andExpect(model().attribute("signupAction", "/signup/naver"))
+                .andExpect(model().attributeExists("signupForm"));
+    }
+
+    @Test
+    @DisplayName("네이버 추가정보 회원가입 완료 시 회원을 생성하고 로그인 세션을 저장한다")
+    void naverSignupSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AuthController.PENDING_NAVER_SIGNUP, new PendingNaverSignup("naver-user-1", "naver@example.com", "네이버이름", "네이버닉네임", null));
+
+        mockMvc.perform(post("/signup/naver")
+                        .session(session)
+                        .param("nickname", "네이버헬서")
+                        .param("email", "tampered@example.com")
+                        .param("gender", "F")
+                        .param("heightCm", "164.5")
+                        .param("weightKg", "55.0"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/main"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.naverRegisterCallCount);
+        org.junit.jupiter.api.Assertions.assertNotNull(session.getAttribute(AuthController.LOGIN_MEMBER));
+    }
+
     private static class StubMemberService extends MemberService {
 
         private String duplicateUsername;
@@ -241,6 +281,7 @@ class MemberControllerTest {
         private int registerCallCount;
         private int googleRegisterCallCount;
         private int kakaoRegisterCallCount;
+        private int naverRegisterCallCount;
 
         StubMemberService() {
             super(null, null, null);
@@ -290,6 +331,19 @@ class MemberControllerTest {
             member.setRole(Member.Role.USER);
             member.setEmail(kakaoUserProfile.getEmail());
             member.setLoginType(Member.LoginType.KAKAO);
+            return member;
+        }
+
+        @Override
+        public Member registerNaverMember(SignupForm signupForm, NaverUserProfile naverUserProfile) {
+            naverRegisterCallCount++;
+            Member member = new Member();
+            member.setMemberId(101L);
+            member.setUsername("naver_generated_101");
+            member.setNickname(signupForm.getNickname());
+            member.setRole(Member.Role.USER);
+            member.setEmail(naverUserProfile.getEmail());
+            member.setLoginType(Member.LoginType.NAVER);
             return member;
         }
     }

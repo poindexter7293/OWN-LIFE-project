@@ -8,6 +8,7 @@ import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
+import com.ownlife.service.NaverAuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,8 @@ class MyPageControllerTest {
         memberService = new StubMemberService();
         StubGoogleAuthService googleAuthService = new StubGoogleAuthService();
         StubKakaoAuthService kakaoAuthService = new StubKakaoAuthService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService)).build();
+        StubNaverAuthService naverAuthService = new StubNaverAuthService();
+        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService, naverAuthService)).build();
         session = new MockHttpSession();
         session.setAttribute(AuthController.LOGIN_MEMBER, new SessionMember(1L, "tester01", "테스터", Member.Role.USER));
     }
@@ -59,7 +61,8 @@ class MyPageControllerTest {
                 .andExpect(model().attribute("pageTitle", "마이페이지"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-mypage :: centerMyPage"))
                 .andExpect(model().attribute("googleLinked", false))
-                .andExpect(model().attribute("kakaoLinked", false));
+                .andExpect(model().attribute("kakaoLinked", false))
+                .andExpect(model().attribute("naverLinked", false));
     }
 
     @Test
@@ -182,6 +185,28 @@ class MyPageControllerTest {
                 .andExpect(redirectedUrl("/mypage?kakaoUnlinkStatus=last-login-method"));
     }
 
+    @Test
+    @DisplayName("마이페이지에서 네이버 연동을 시작하면 네이버 인증 페이지로 이동한다")
+    void linkNaverAccountRedirectsToAuthorizationPage() throws Exception {
+        mockMvc.perform(get("/mypage/link/naver").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=test-naver-id&redirect_uri=http%3A%2F%2Flocalhost%3A8081%2Flogin%2Fnaver%2Fauth&state=test-naver-state"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1L, session.getAttribute(AuthController.PENDING_NAVER_LINK_MEMBER_ID));
+    }
+
+    @Test
+    @DisplayName("마이페이지에서 네이버 연동해제 성공 시 성공 메시지와 함께 리다이렉트한다")
+    void unlinkNaverAccountSuccess() throws Exception {
+        memberService.naverLinked = true;
+
+        mockMvc.perform(post("/mypage/unlink/naver").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mypage?naverUnlinkStatus=success"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.unlinkNaverCallCount);
+    }
+
     private static class StubMemberService extends MemberService {
 
         private final Member member;
@@ -189,8 +214,10 @@ class MyPageControllerTest {
         private int linkGoogleCallCount;
         private int unlinkGoogleCallCount;
         private int unlinkKakaoCallCount;
+        private int unlinkNaverCallCount;
         private boolean googleLinked;
         private boolean kakaoLinked;
+        private boolean naverLinked;
         private boolean failGoogleUnlinkWithLastLoginMethod;
         private boolean failKakaoUnlinkWithLastLoginMethod;
 
@@ -231,6 +258,13 @@ class MyPageControllerTest {
                 socialAccount.setMember(member);
                 socialAccount.setProvider(SocialAccount.Provider.KAKAO);
                 socialAccount.setProviderEmail("linked@kakao.com");
+                return Optional.of(socialAccount);
+            }
+            if (naverLinked && memberId != null && memberId.equals(member.getMemberId()) && provider == SocialAccount.Provider.NAVER) {
+                SocialAccount socialAccount = new SocialAccount();
+                socialAccount.setMember(member);
+                socialAccount.setProvider(SocialAccount.Provider.NAVER);
+                socialAccount.setProviderEmail("linked@naver.com");
                 return Optional.of(socialAccount);
             }
             return Optional.empty();
@@ -281,6 +315,16 @@ class MyPageControllerTest {
             kakaoLinked = false;
             return member;
         }
+
+        @Override
+        public Member unlinkNaverAccount(Long memberId) {
+            if (!naverLinked) {
+                throw new IllegalStateException("연동된 네이버 계정이 없습니다.");
+            }
+            unlinkNaverCallCount++;
+            naverLinked = false;
+            return member;
+        }
     }
 
     private static class StubGoogleAuthService extends GoogleAuthService {
@@ -314,6 +358,19 @@ class MyPageControllerTest {
         public String prepareAuthorizationUrl(jakarta.servlet.http.HttpSession session) {
             session.setAttribute("kakaoOauthState", "test-kakao-state");
             return "https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=test-kakao-key&redirect_uri=http%3A%2F%2Flocalhost%3A8081%2Flogin%2Fkakao%2Fauth&scope=account_email+profile_nickname+profile_image&state=test-kakao-state";
+        }
+    }
+
+    private static class StubNaverAuthService extends NaverAuthService {
+
+        StubNaverAuthService() {
+            super("test-naver-id", "test-naver-secret", "http://localhost:8081/login/naver/auth");
+        }
+
+        @Override
+        public String prepareAuthorizationUrl(jakarta.servlet.http.HttpSession session) {
+            session.setAttribute("naverOauthState", "test-naver-state");
+            return "https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=test-naver-id&redirect_uri=http%3A%2F%2Flocalhost%3A8081%2Flogin%2Fnaver%2Fauth&state=test-naver-state";
         }
     }
 }

@@ -8,6 +8,7 @@ import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
+import com.ownlife.service.NaverAuthService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -35,6 +36,7 @@ public class MyPageController {
     private final MemberService memberService;
     private final GoogleAuthService googleAuthService;
     private final KakaoAuthService kakaoAuthService;
+    private final NaverAuthService naverAuthService;
 
     @GetMapping("/mypage")
     public String myPage(@RequestParam(value = "success", defaultValue = "false") boolean success,
@@ -42,6 +44,8 @@ public class MyPageController {
                          @RequestParam(value = "googleUnlinkStatus", required = false) String googleUnlinkStatus,
                          @RequestParam(value = "kakaoLinkStatus", required = false) String kakaoLinkStatus,
                          @RequestParam(value = "kakaoUnlinkStatus", required = false) String kakaoUnlinkStatus,
+                         @RequestParam(value = "naverLinkStatus", required = false) String naverLinkStatus,
+                         @RequestParam(value = "naverUnlinkStatus", required = false) String naverUnlinkStatus,
                          Model model,
                          HttpSession session) {
         SessionMember loginMember = getLoginMember(session);
@@ -56,6 +60,7 @@ public class MyPageController {
         }
 
         Member member = memberOptional.get();
+        String naverLinkErrorMessage = consumeSessionString(session, AuthController.NAVER_LINK_ERROR_MESSAGE);
         if (!model.containsAttribute("myPageForm")) {
             model.addAttribute("myPageForm", toForm(member));
         }
@@ -66,7 +71,9 @@ public class MyPageController {
                 resolveGoogleSuccessMessage(googleLinkStatus, googleUnlinkStatus),
                 resolveGoogleErrorMessage(googleLinkStatus, googleUnlinkStatus),
                 resolveKakaoSuccessMessage(kakaoLinkStatus, kakaoUnlinkStatus),
-                resolveKakaoErrorMessage(kakaoLinkStatus, kakaoUnlinkStatus)
+                resolveKakaoErrorMessage(kakaoLinkStatus, kakaoUnlinkStatus),
+                resolveNaverSuccessMessage(naverLinkStatus, naverUnlinkStatus),
+                resolveNaverErrorMessage(naverLinkStatus, naverUnlinkStatus, naverLinkErrorMessage)
         );
         return "main";
     }
@@ -90,7 +97,7 @@ public class MyPageController {
         validateMyPageForm(myPageForm, bindingResult);
         Member member = memberOptional.get();
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, member, false, null, null, null, null);
+            applyPageAttributes(model, member, false, null, null, null, null, null, null);
             return "main";
         }
 
@@ -121,18 +128,18 @@ public class MyPageController {
         }
 
         if (!googleAuthService.isEnabled()) {
-            applyPageAttributes(model, member, false, null, "Google 연동 설정이 아직 완료되지 않았습니다.", null, null);
+            applyPageAttributes(model, member, false, null, "Google 연동 설정이 아직 완료되지 않았습니다.", null, null, null, null);
             return "main";
         }
 
         if (!isValidGoogleCsrf(csrfCookie, csrfToken)) {
-            applyPageAttributes(model, member, false, null, "Google 연동 요청 검증에 실패했습니다. 다시 시도해 주세요.", null, null);
+            applyPageAttributes(model, member, false, null, "Google 연동 요청 검증에 실패했습니다. 다시 시도해 주세요.", null, null, null, null);
             return "main";
         }
 
         GoogleUserProfile googleUserProfile = googleAuthService.verifyCredential(credential).orElse(null);
         if (googleUserProfile == null) {
-            applyPageAttributes(model, member, false, null, "Google 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.", null, null);
+            applyPageAttributes(model, member, false, null, "Google 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.", null, null, null, null);
             return "main";
         }
 
@@ -140,7 +147,7 @@ public class MyPageController {
             memberService.linkGoogleAccount(loginMember.getMemberId(), googleUserProfile);
             return "redirect:/mypage?googleLinkStatus=success";
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            applyPageAttributes(model, member, false, null, exception.getMessage(), null, null);
+            applyPageAttributes(model, member, false, null, exception.getMessage(), null, null, null, null);
             return "main";
         }
     }
@@ -214,15 +221,66 @@ public class MyPageController {
         }
     }
 
+    @GetMapping("/mypage/link/naver")
+    public String linkNaverAccount(HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return "redirect:/login";
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return "redirect:/login";
+        }
+
+        if (!naverAuthService.isEnabled()) {
+            return "redirect:/mypage?naverLinkStatus=config-error";
+        }
+
+        session.setAttribute(AuthController.PENDING_NAVER_LINK_MEMBER_ID, loginMember.getMemberId());
+        String naverAuthorizationUrl = naverAuthService.prepareAuthorizationUrl(session);
+        if (!StringUtils.hasText(naverAuthorizationUrl)) {
+            session.removeAttribute(AuthController.PENDING_NAVER_LINK_MEMBER_ID);
+            return "redirect:/mypage?naverLinkStatus=config-error";
+        }
+
+        return "redirect:" + naverAuthorizationUrl;
+    }
+
+    @PostMapping("/mypage/unlink/naver")
+    public String unlinkNaverAccount(HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return "redirect:/login";
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return "redirect:/login";
+        }
+
+        try {
+            memberService.unlinkNaverAccount(loginMember.getMemberId());
+            return "redirect:/mypage?naverUnlinkStatus=success";
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return "redirect:/mypage?naverUnlinkStatus=" + resolveNaverUnlinkFailureStatus(exception.getMessage());
+        }
+    }
+
     private void applyPageAttributes(Model model,
                                      Member member,
                                      boolean success,
                                      String googleLinkSuccessMessage,
                                      String googleLinkErrorMessage,
                                      String kakaoLinkSuccessMessage,
-                                     String kakaoLinkErrorMessage) {
+                                     String kakaoLinkErrorMessage,
+                                     String naverLinkSuccessMessage,
+                                     String naverLinkErrorMessage) {
         Optional<SocialAccount> googleAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE);
         Optional<SocialAccount> kakaoAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO);
+        Optional<SocialAccount> naverAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER);
 
         model.addAttribute("pageTitle", "마이페이지");
         model.addAttribute("centerFragment", "fragments/center-mypage :: centerMyPage");
@@ -251,6 +309,15 @@ public class MyPageController {
         model.addAttribute("kakaoLastLoginAt", kakaoAccount.map(SocialAccount::getLastLoginAt).orElse(null));
         model.addAttribute("kakaoLinkSuccessMessage", kakaoLinkSuccessMessage);
         model.addAttribute("kakaoLinkErrorMessage", kakaoLinkErrorMessage);
+        model.addAttribute("naverAuthEnabled", naverAuthService.isEnabled());
+        model.addAttribute("naverLinkUrl", "/mypage/link/naver");
+        model.addAttribute("naverUnlinkUrl", "/mypage/unlink/naver");
+        model.addAttribute("naverLinked", naverAccount.isPresent());
+        model.addAttribute("naverLinkedEmail", naverAccount.map(SocialAccount::getProviderEmail).orElse(null));
+        model.addAttribute("naverLinkedAt", naverAccount.map(SocialAccount::getConnectedAt).orElse(null));
+        model.addAttribute("naverLastLoginAt", naverAccount.map(SocialAccount::getLastLoginAt).orElse(null));
+        model.addAttribute("naverLinkSuccessMessage", naverLinkSuccessMessage);
+        model.addAttribute("naverLinkErrorMessage", naverLinkErrorMessage);
     }
 
     private MyPageForm toForm(Member member) {
@@ -425,6 +492,79 @@ public class MyPageController {
             return "last-login-method";
         }
         return "failed";
+    }
+
+    private String resolveNaverSuccessMessage(String naverLinkStatus, String naverUnlinkStatus) {
+        String unlinkSuccessMessage = resolveNaverUnlinkSuccessMessage(naverUnlinkStatus);
+        return unlinkSuccessMessage != null ? unlinkSuccessMessage : resolveNaverLinkSuccessMessage(naverLinkStatus);
+    }
+
+    private String resolveNaverErrorMessage(String naverLinkStatus, String naverUnlinkStatus, String sessionErrorMessage) {
+        if (StringUtils.hasText(sessionErrorMessage)) {
+            return sessionErrorMessage;
+        }
+        String unlinkErrorMessage = resolveNaverUnlinkErrorMessage(naverUnlinkStatus);
+        return unlinkErrorMessage != null ? unlinkErrorMessage : resolveNaverLinkErrorMessage(naverLinkStatus);
+    }
+
+    private String resolveNaverLinkSuccessMessage(String naverLinkStatus) {
+        if (!StringUtils.hasText(naverLinkStatus)) {
+            return null;
+        }
+        return "success".equals(naverLinkStatus) ? "네이버 계정이 성공적으로 연동되었습니다." : null;
+    }
+
+    private String resolveNaverLinkErrorMessage(String naverLinkStatus) {
+        if (!StringUtils.hasText(naverLinkStatus)) {
+            return null;
+        }
+        return switch (naverLinkStatus) {
+            case "config-error" -> "네이버 연동 설정이 아직 완료되지 않았습니다.";
+            case "state-failed" -> "네이버 연동 요청 검증에 실패했습니다. 다시 시도해 주세요.";
+            case "auth-failed" -> "네이버 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+            case "access-denied" -> "네이버 연동 동의가 취소되었습니다. 다시 시도해 주세요.";
+            case "already-linked" -> "이미 네이버 계정이 연동되어 있습니다.";
+            case "linked-other-account" -> "이미 다른 계정에 연결된 네이버 계정입니다.";
+            case "member-not-found" -> "회원 정보를 찾을 수 없어 네이버 연동을 진행할 수 없습니다.";
+            default -> "네이버 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
+        };
+    }
+
+    private String resolveNaverUnlinkSuccessMessage(String naverUnlinkStatus) {
+        if (!StringUtils.hasText(naverUnlinkStatus)) {
+            return null;
+        }
+        return "success".equals(naverUnlinkStatus) ? "네이버 계정 연동이 해제되었습니다." : null;
+    }
+
+    private String resolveNaverUnlinkErrorMessage(String naverUnlinkStatus) {
+        if (!StringUtils.hasText(naverUnlinkStatus)) {
+            return null;
+        }
+        return switch (naverUnlinkStatus) {
+            case "not-linked" -> "연동된 네이버 계정이 없습니다.";
+            case "last-login-method" -> "마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.";
+            default -> "네이버 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+        };
+    }
+
+    private String resolveNaverUnlinkFailureStatus(String message) {
+        if ("연동된 네이버 계정이 없습니다.".equals(message)) {
+            return "not-linked";
+        }
+        if ("마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.".equals(message)) {
+            return "last-login-method";
+        }
+        return "failed";
+    }
+
+    private String consumeSessionString(HttpSession session, String attributeName) {
+        if (session == null) {
+            return null;
+        }
+        Object attribute = session.getAttribute(attributeName);
+        session.removeAttribute(attributeName);
+        return attribute instanceof String stringValue && StringUtils.hasText(stringValue) ? stringValue : null;
     }
 
     private String formatGender(Member.Gender gender) {

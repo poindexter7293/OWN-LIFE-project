@@ -270,6 +270,12 @@
     box-shadow: 0 12px 22px rgba(245, 201, 0, 0.22);
 }
 
+.social-login-button--naver {
+    background: #03c75a;
+    color: #ffffff;
+    box-shadow: 0 12px 22px rgba(3, 199, 90, 0.22);
+}
+
 .social-login-button__badge {
     display: inline-flex;
     align-items: center;
@@ -280,6 +286,10 @@
     background: rgba(25, 22, 0, 0.12);
     font-size: 0.95rem;
     font-weight: 900;
+}
+
+.social-login-button__badge--naver {
+    background: rgba(255, 255, 255, 0.18);
 }
 
 @media (max-width: 768px) {

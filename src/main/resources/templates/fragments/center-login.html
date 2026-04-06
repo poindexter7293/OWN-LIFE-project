@@ -22,6 +22,10 @@
                 카카오 로그인 중 오류가 발생했습니다.
             </div>
 
+            <div class="login-alert login-alert-error" th:if="${naverErrorMessage != null}" th:text="${naverErrorMessage}">
+                네이버 로그인 중 오류가 발생했습니다.
+            </div>
+
             <form th:action="@{/login}" method="post" th:object="${loginForm}" class="login-form" data-login-form>
                 <div class="login-alert login-alert-error" th:if="${#fields.hasGlobalErrors()}">
                     아이디 또는 비밀번호가 올바르지 않습니다.
@@ -58,7 +62,7 @@
                 </div>
             </form>
 
-            <div class="social-login-panel" th:if="${googleAuthEnabled or kakaoAuthEnabled}">
+            <div class="social-login-panel" th:if="${googleAuthEnabled or kakaoAuthEnabled or naverAuthEnabled}">
                 <div class="social-login-divider"><span>또는</span></div>
                 <p class="social-login-description">소셜 계정으로 간편하게 회원가입하거나 로그인할 수 있어요.</p>
                 <div class="social-login-actions">
@@ -81,6 +85,12 @@
                        th:href="${kakaoLoginUrl}">
                         <span class="social-login-button__badge">K</span>
                         <span>카카오로 로그인 / 회원가입</span>
+                    </a>
+                    <a class="social-login-button social-login-button--naver"
+                       th:if="${naverAuthEnabled}"
+                       th:href="${naverLoginUrl}">
+                        <span class="social-login-button__badge social-login-button__badge--naver">N</span>
+                        <span>네이버로 로그인 / 회원가입</span>
                     </a>
                 </div>
             </div>

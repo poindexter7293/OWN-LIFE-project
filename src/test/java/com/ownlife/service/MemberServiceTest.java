@@ -3,6 +3,7 @@ package com.ownlife.service;
 import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.MyPageForm;
+import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
@@ -471,6 +472,83 @@ class MemberServiceTest {
         org.junit.jupiter.api.Assertions.assertEquals("multi-social-kakao", updatedMember.getSocialProviderId());
         org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isEmpty());
         org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO).isPresent());
+    }
+
+    @Test
+    @DisplayName("이미 연동된 네이버 계정은 기존 회원으로 로그인한다")
+    void findNaverMemberForLogin() {
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-user-1",
+                "naver@example.com",
+                "네이버사용자",
+                "네이버닉네임",
+                "https://example.com/naver-profile.png",
+                true
+        );
+
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("네이버사용자");
+        signupForm.setGender(Member.Gender.M);
+        signupForm.setHeightCm(new BigDecimal("175.0"));
+        signupForm.setWeightKg(new BigDecimal("70.0"));
+
+        Member createdMember = memberService.registerNaverMember(signupForm, naverUserProfile);
+        Member loggedInMember = memberService.findNaverMemberForLogin(naverUserProfile).orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.NAVER, createdMember.getLoginType());
+        org.junit.jupiter.api.Assertions.assertEquals(createdMember.getMemberId(), loggedInMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals(1, socialAccountHandler.storage.size());
+    }
+
+    @Test
+    @DisplayName("마이페이지에서 현재 로그인한 계정에 네이버 계정을 연동할 수 있다")
+    void linkNaverAccountFromMyPage() {
+        SignupForm localSignupForm = new SignupForm();
+        localSignupForm.setUsername("mypagenaver01");
+        localSignupForm.setPassword("Password123!");
+        localSignupForm.setNickname("네이버연동회원");
+        localSignupForm.setEmail("local-naver-link@example.com");
+
+        Member member = memberService.register(localSignupForm);
+
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-mypage-link-id",
+                "different-naver@example.com",
+                "네이버연동대상",
+                "네이버닉네임",
+                "https://example.com/naver-linked.png",
+                true
+        );
+
+        Member linkedMember = memberService.linkNaverAccount(member.getMemberId(), naverUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertEquals(member.getMemberId(), linkedMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER).isPresent());
+    }
+
+    @Test
+    @DisplayName("로컬 로그인 수단이 있는 회원은 네이버 연동을 해제할 수 있다")
+    void unlinkNaverAccountFromLocalMember() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setUsername("unlinknaver01");
+        signupForm.setPassword("Password123!");
+        signupForm.setNickname("네이버해제회원");
+        signupForm.setEmail("unlink-naver@example.com");
+
+        Member member = memberService.register(signupForm);
+        memberService.linkNaverAccount(member.getMemberId(), new NaverUserProfile(
+                "unlink-naver-id",
+                "unlink-naver-social@example.com",
+                "네이버연동",
+                "네이버닉네임",
+                null,
+                true
+        ));
+
+        Member updatedMember = memberService.unlinkNaverAccount(member.getMemberId());
+
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER).isEmpty());
+        org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.LOCAL, updatedMember.getLoginType());
     }
 
     @Test

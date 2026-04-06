@@ -3,6 +3,7 @@ package com.ownlife.service;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.KakaoUserProfile;
+import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
@@ -258,12 +259,122 @@ public class MemberService {
         return memberRepository.saveAndFlush(member);
     }
 
+    public Member linkNaverAccount(Long memberId, NaverUserProfile naverUserProfile) {
+        if (naverUserProfile == null) {
+            throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
+        }
+        if (!naverUserProfile.isEmailVerified()) {
+            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 연동할 수 있습니다.");
+        }
+
+        Member member = findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        Optional<SocialAccount> linkedByProviderUserId = socialAccountRepository
+                .findByProviderAndProviderUserId(SocialAccount.Provider.NAVER, naverUserProfile.getId());
+        if (linkedByProviderUserId.isPresent()) {
+            SocialAccount socialAccount = linkedByProviderUserId.get();
+            if (!socialAccount.getMember().getMemberId().equals(member.getMemberId())) {
+                throw new IllegalStateException("이미 다른 계정에 연결된 네이버 계정입니다.");
+            }
+            upsertNaverSocialAccount(member, naverUserProfile);
+            return memberRepository.saveAndFlush(member);
+        }
+
+        Optional<SocialAccount> existingNaverAccount = socialAccountRepository
+                .findByMemberMemberIdAndProvider(member.getMemberId(), SocialAccount.Provider.NAVER);
+        if (existingNaverAccount.isPresent()) {
+            throw new IllegalStateException("이미 네이버 계정이 연동되어 있습니다.");
+        }
+
+        applyNaverProfileDefaultsForLinkedMember(member, naverUserProfile);
+        upsertNaverSocialAccount(member, naverUserProfile);
+        return memberRepository.saveAndFlush(member);
+    }
+
     public Member unlinkGoogleAccount(Long memberId) {
         return unlinkSocialAccount(memberId, SocialAccount.Provider.GOOGLE, "Google");
     }
 
     public Member unlinkKakaoAccount(Long memberId) {
         return unlinkSocialAccount(memberId, SocialAccount.Provider.KAKAO, "카카오");
+    }
+
+    public Member unlinkNaverAccount(Long memberId) {
+        return unlinkSocialAccount(memberId, SocialAccount.Provider.NAVER, "네이버");
+    }
+
+    public Optional<Member> findNaverMemberForLogin(NaverUserProfile naverUserProfile) {
+        if (naverUserProfile == null) {
+            throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
+        }
+        if (!naverUserProfile.isEmailVerified()) {
+            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 사용할 수 있습니다.");
+        }
+
+        Optional<SocialAccount> existingSocialAccount = socialAccountRepository.findByProviderAndProviderUserId(SocialAccount.Provider.NAVER, naverUserProfile.getId());
+        if (existingSocialAccount.isPresent()) {
+            Member member = existingSocialAccount.get().getMember();
+            validateActiveMember(member);
+            refreshNaverProfile(member, naverUserProfile);
+            upsertNaverSocialAccount(member, naverUserProfile);
+            return Optional.of(memberRepository.saveAndFlush(member));
+        }
+
+        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        if (existingEmailMember.isPresent()) {
+            Member member = existingEmailMember.get();
+            validateActiveMember(member);
+            refreshNaverProfile(member, naverUserProfile);
+            upsertNaverSocialAccount(member, naverUserProfile);
+            return Optional.of(memberRepository.saveAndFlush(member));
+        }
+
+        return Optional.empty();
+    }
+
+    public Member registerNaverMember(SignupForm signupForm, NaverUserProfile naverUserProfile) {
+        if (signupForm == null) {
+            throw new IllegalArgumentException("회원가입 정보가 올바르지 않습니다.");
+        }
+        if (naverUserProfile == null) {
+            throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
+        }
+        if (!naverUserProfile.isEmailVerified()) {
+            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 사용할 수 있습니다.");
+        }
+
+        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        if (existingEmailMember.isPresent()) {
+            Member existingMember = existingEmailMember.get();
+            validateActiveMember(existingMember);
+            refreshNaverProfile(existingMember, naverUserProfile);
+            existingMember.setNickname(trimToNull(signupForm.getNickname()));
+            existingMember.setGender(signupForm.getGender());
+            existingMember.setBirthDate(signupForm.getBirthDate());
+            existingMember.setHeightCm(signupForm.getHeightCm());
+            existingMember.setWeightKg(signupForm.getWeightKg());
+            upsertNaverSocialAccount(existingMember, naverUserProfile);
+            return memberRepository.saveAndFlush(existingMember);
+        }
+
+        Member member = new Member();
+        member.setUsername(generateNaverUsername(naverUserProfile.getId()));
+        member.setNickname(trimToNull(signupForm.getNickname()));
+        member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        member.setGender(signupForm.getGender());
+        member.setBirthDate(signupForm.getBirthDate());
+        member.setHeightCm(signupForm.getHeightCm());
+        member.setWeightKg(signupForm.getWeightKg());
+        member.setRole(Member.Role.USER);
+        member.setStatus(Member.Status.ACTIVE);
+        member.setLoginType(Member.LoginType.NAVER);
+        member.setSocialProvider("NAVER");
+        member.setSocialProviderId(naverUserProfile.getId());
+        member.setProfileImageUrl(trimToNull(naverUserProfile.getProfileImageUrl()));
+        Member savedMember = memberRepository.saveAndFlush(member);
+        upsertNaverSocialAccount(savedMember, naverUserProfile);
+        return savedMember;
     }
 
     public Optional<Member> findKakaoMemberForLogin(KakaoUserProfile kakaoUserProfile) {
@@ -470,6 +581,28 @@ public class MemberService {
         }
     }
 
+    private void refreshNaverProfile(Member member, NaverUserProfile naverUserProfile) {
+        member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        if (member.getLoginType() == null) {
+            member.setLoginType(Member.LoginType.NAVER);
+        }
+        if (!StringUtils.hasText(member.getSocialProvider())) {
+            member.setSocialProvider("NAVER");
+        }
+        if (!StringUtils.hasText(member.getSocialProviderId())) {
+            member.setSocialProviderId(naverUserProfile.getId());
+        }
+        if (!StringUtils.hasText(member.getNickname())) {
+            member.setNickname(resolveNaverNickname(naverUserProfile));
+        }
+        if (!StringUtils.hasText(member.getProfileImageUrl())) {
+            member.setProfileImageUrl(trimToNull(naverUserProfile.getProfileImageUrl()));
+        }
+        if (!StringUtils.hasText(member.getUsername())) {
+            member.setUsername(generateNaverUsername(naverUserProfile.getId()));
+        }
+    }
+
     private void upsertGoogleSocialAccount(Member member, GoogleUserProfile googleUserProfile) {
         SocialAccount socialAccount = socialAccountRepository
                 .findByProviderAndProviderUserId(SocialAccount.Provider.GOOGLE, googleUserProfile.getSubject())
@@ -500,6 +633,23 @@ public class MemberService {
         socialAccount.setProviderEmail(normalizeIdentity(kakaoUserProfile.getEmail()));
         socialAccount.setProviderName(trimToNull(kakaoUserProfile.getNickname()));
         socialAccount.setProfileImageUrl(trimToNull(kakaoUserProfile.getProfileImageUrl()));
+        socialAccount.setLastLoginAt(LocalDateTime.now());
+        socialAccountRepository.saveAndFlush(socialAccount);
+    }
+
+    private void upsertNaverSocialAccount(Member member, NaverUserProfile naverUserProfile) {
+        SocialAccount socialAccount = socialAccountRepository
+                .findByProviderAndProviderUserId(SocialAccount.Provider.NAVER, naverUserProfile.getId())
+                .orElseGet(() -> socialAccountRepository
+                        .findByMemberMemberIdAndProvider(member.getMemberId(), SocialAccount.Provider.NAVER)
+                        .orElseGet(SocialAccount::new));
+
+        socialAccount.setMember(member);
+        socialAccount.setProvider(SocialAccount.Provider.NAVER);
+        socialAccount.setProviderUserId(naverUserProfile.getId());
+        socialAccount.setProviderEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        socialAccount.setProviderName(trimToNull(naverUserProfile.getName()));
+        socialAccount.setProfileImageUrl(trimToNull(naverUserProfile.getProfileImageUrl()));
         socialAccount.setLastLoginAt(LocalDateTime.now());
         socialAccountRepository.saveAndFlush(socialAccount);
     }
@@ -540,6 +690,24 @@ public class MemberService {
         }
     }
 
+    private void applyNaverProfileDefaultsForLinkedMember(Member member, NaverUserProfile naverUserProfile) {
+        if (!StringUtils.hasText(member.getEmail())) {
+            member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        }
+        if (member.getLoginType() == null) {
+            member.setLoginType(Member.LoginType.NAVER);
+        }
+        if (!StringUtils.hasText(member.getSocialProvider())) {
+            member.setSocialProvider("NAVER");
+        }
+        if (!StringUtils.hasText(member.getSocialProviderId())) {
+            member.setSocialProviderId(naverUserProfile.getId());
+        }
+        if (!StringUtils.hasText(member.getProfileImageUrl())) {
+            member.setProfileImageUrl(trimToNull(naverUserProfile.getProfileImageUrl()));
+        }
+    }
+
     private String resolveKakaoNickname(KakaoUserProfile kakaoUserProfile) {
         String nickname = trimToNull(kakaoUserProfile.getNickname());
         if (nickname != null) {
@@ -549,6 +717,27 @@ public class MemberService {
         String email = normalizeIdentity(kakaoUserProfile.getEmail());
         if (email == null) {
             return "카카오 사용자";
+        }
+
+        int atIndex = email.indexOf('@');
+        String localPart = atIndex > 0 ? email.substring(0, atIndex) : email;
+        return localPart.length() > 50 ? localPart.substring(0, 50) : localPart;
+    }
+
+    private String resolveNaverNickname(NaverUserProfile naverUserProfile) {
+        String nickname = trimToNull(naverUserProfile.getNickname());
+        if (nickname != null) {
+            return nickname.length() > 50 ? nickname.substring(0, 50) : nickname;
+        }
+
+        String name = trimToNull(naverUserProfile.getName());
+        if (name != null) {
+            return name.length() > 50 ? name.substring(0, 50) : name;
+        }
+
+        String email = normalizeIdentity(naverUserProfile.getEmail());
+        if (email == null) {
+            return "네이버 사용자";
         }
 
         int atIndex = email.indexOf('@');
@@ -633,6 +822,30 @@ public class MemberService {
         }
         if (!StringUtils.hasText(candidate) || candidate.length() < 4) {
             candidate = "kakao" + Math.abs(secureRandom.nextInt(100_000));
+        }
+
+        String uniqueCandidate = candidate;
+        int suffix = 1;
+        while (memberRepository.existsByUsername(uniqueCandidate)) {
+            String suffixText = Integer.toString(suffix++);
+            int maxBaseLength = Math.max(1, 50 - suffixText.length());
+            uniqueCandidate = candidate.substring(0, Math.min(candidate.length(), maxBaseLength)) + suffixText;
+        }
+        return uniqueCandidate;
+    }
+
+    private String generateNaverUsername(String id) {
+        String normalizedId = trimToNull(id);
+        if (!StringUtils.hasText(normalizedId)) {
+            normalizedId = Long.toString(Math.abs(secureRandom.nextLong()));
+        }
+
+        String candidate = "naver_" + normalizedId.replaceAll("[^a-zA-Z0-9]", "").toLowerCase(Locale.ROOT);
+        if (candidate.length() > 50) {
+            candidate = candidate.substring(0, 50);
+        }
+        if (!StringUtils.hasText(candidate) || candidate.length() < 4) {
+            candidate = "naver" + Math.abs(secureRandom.nextInt(100_000));
         }
 
         String uniqueCandidate = candidate;

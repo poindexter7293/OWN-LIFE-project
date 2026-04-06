@@ -2,11 +2,13 @@ package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.KakaoUserProfile;
+import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.entity.Member;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.MemberService;
+import com.ownlife.service.NaverAuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,13 +34,15 @@ class AuthControllerTest {
     private StubMemberService memberService;
     private StubGoogleAuthService googleAuthService;
     private StubKakaoAuthService kakaoAuthService;
+    private StubNaverAuthService naverAuthService;
 
     @BeforeEach
     void setUp() {
         memberService = new StubMemberService();
         googleAuthService = new StubGoogleAuthService();
         kakaoAuthService = new StubKakaoAuthService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(memberService, googleAuthService, kakaoAuthService)).build();
+        naverAuthService = new StubNaverAuthService();
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(memberService, googleAuthService, kakaoAuthService, naverAuthService)).build();
     }
 
     @Test
@@ -51,7 +55,8 @@ class AuthControllerTest {
                 .andExpect(model().attribute("pageTitle", "로그인"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-login :: centerLogin"))
                 .andExpect(model().attribute("googleAuthEnabled", true))
-                .andExpect(model().attribute("kakaoAuthEnabled", true));
+                .andExpect(model().attribute("kakaoAuthEnabled", true))
+                .andExpect(model().attribute("naverAuthEnabled", true));
     }
 
     @Test
@@ -197,6 +202,58 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("네이버 로그인 성공 시 세션에 회원 정보를 저장하고 메인으로 이동한다")
+    void naverLoginSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("naverOauthState", "naver-state");
+        memberService.naverLoginMember = memberService.member;
+
+        mockMvc.perform(get("/login/naver/auth")
+                        .session(session)
+                        .param("state", "naver-state")
+                        .param("code", "valid-naver-code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/main"));
+
+        Object loginMember = session.getAttribute(AuthController.LOGIN_MEMBER);
+        assertNotNull(loginMember);
+    }
+
+    @Test
+    @DisplayName("신규 네이버 계정은 추가정보 회원가입 페이지로 이동하고 임시 세션을 저장한다")
+    void naverLoginRedirectsToNaverSignup() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("naverOauthState", "naver-state");
+
+        mockMvc.perform(get("/login/naver/auth")
+                        .session(session)
+                        .param("state", "naver-state")
+                        .param("code", "valid-naver-code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/signup/naver"));
+
+        Object pendingSignup = session.getAttribute(AuthController.PENDING_NAVER_SIGNUP);
+        assertNotNull(pendingSignup);
+    }
+
+    @Test
+    @DisplayName("마이페이지 네이버 연동 콜백이 성공하면 마이페이지로 이동한다")
+    void naverLinkSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("naverOauthState", "naver-state");
+        session.setAttribute(AuthController.PENDING_NAVER_LINK_MEMBER_ID, 1L);
+
+        mockMvc.perform(get("/login/naver/auth")
+                        .session(session)
+                        .param("state", "naver-state")
+                        .param("code", "valid-naver-code"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mypage?naverLinkStatus=success"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.linkNaverCallCount);
+    }
+
+    @Test
     @DisplayName("Kakao 로그인 state 검증이 실패하면 로그인 화면에 오류를 표시한다")
     void kakaoLoginStateFail() throws Exception {
         MockHttpSession session = new MockHttpSession();
@@ -216,7 +273,9 @@ class AuthControllerTest {
         private final Member member;
         private Member googleLoginMember;
         private Member kakaoLoginMember;
+        private Member naverLoginMember;
         private int linkKakaoCallCount;
+        private int linkNaverCallCount;
 
         StubMemberService() {
             super(null, null, null);
@@ -258,10 +317,28 @@ class AuthControllerTest {
         }
 
         @Override
+        public Optional<Member> findNaverMemberForLogin(NaverUserProfile naverUserProfile) {
+            if (naverLoginMember == null) {
+                return Optional.empty();
+            }
+            naverLoginMember.setLoginType(Member.LoginType.NAVER);
+            naverLoginMember.setEmail(naverUserProfile.getEmail());
+            return Optional.of(naverLoginMember);
+        }
+
+        @Override
         public Member linkKakaoAccount(Long memberId, KakaoUserProfile kakaoUserProfile) {
             linkKakaoCallCount++;
             member.setLoginType(Member.LoginType.KAKAO);
             member.setEmail(kakaoUserProfile.getEmail());
+            return member;
+        }
+
+        @Override
+        public Member linkNaverAccount(Long memberId, NaverUserProfile naverUserProfile) {
+            linkNaverCallCount++;
+            member.setLoginType(Member.LoginType.NAVER);
+            member.setEmail(naverUserProfile.getEmail());
             return member;
         }
     }
@@ -305,6 +382,34 @@ class AuthControllerTest {
                 ));
             }
             return Optional.empty();
+        }
+    }
+
+    private static class StubNaverAuthService extends NaverAuthService {
+
+        StubNaverAuthService() {
+            super("test-naver-id", "test-naver-secret", "http://localhost:8081/login/naver/auth");
+        }
+
+        @Override
+        public Optional<NaverUserProfile> requestUserProfile(String code, String state) {
+            if ("valid-naver-code".equals(code) && "naver-state".equals(state)) {
+                return Optional.of(new NaverUserProfile(
+                        "naver-user-1",
+                        "tester@naver.com",
+                        "네이버테스터",
+                        "네이버닉네임",
+                        null,
+                        true
+                ));
+            }
+            return Optional.empty();
+        }
+
+        @Override
+        public NaverUserProfile requestUserProfileOrThrow(String code, String state) {
+            return requestUserProfile(code, state)
+                    .orElseThrow(() -> new IllegalStateException("네이버 계정 인증에 실패했습니다. 잠시 후 다시 시도해 주세요."));
         }
     }
 }
