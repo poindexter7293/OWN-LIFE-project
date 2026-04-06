@@ -45,8 +45,11 @@ public class DietController {
         model.addAttribute("dailySummary", mealService.getDailySummary(memberId, selectedDate));
         model.addAttribute("dietGoalSummary", mealService.getDietGoalSummary(memberId, selectedDate));
 
-        // 일단 day만 연결
-        model.addAttribute("weeklyIntakeSummary", mealService.getWeeklyIntakeSummary(memberId, selectedDate));
+        // 차트용 데이터 4개
+        model.addAttribute("dietDayChart", mealService.getDietDayChart(memberId, selectedDate));
+        model.addAttribute("dietWeekChart", mealService.getDietWeekChart(memberId, selectedDate));
+        model.addAttribute("dietMonthChart", mealService.getDietMonthChart(memberId, selectedDate));
+        model.addAttribute("dietYearChart", mealService.getDietYearChart(memberId, selectedDate));
 
         model.addAttribute("extraCssFiles", List.of("/css/diet.css"));
         model.addAttribute("extraJsFiles", List.of("/js/diet.js"));

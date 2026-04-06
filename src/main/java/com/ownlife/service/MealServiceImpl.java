@@ -269,7 +269,7 @@ public class MealServiceImpl implements MealService {
             if (goalKcal > 0 && totalKcal > goalKcal) {
                 colors.add("#e25555");
             } else {
-                colors.add("#5b8def");
+                colors.add("#22c55e");
             }
         }
 
@@ -277,6 +277,120 @@ public class MealServiceImpl implements MealService {
         result.put("labels", labels);
         result.put("calories", calories);
         result.put("colors", colors);
+        result.put("goalKcal", goalKcal);
+
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getDietDayChart(Long memberId, LocalDate date) {
+        return getWeeklyIntakeSummary(memberId, date);
+    }
+
+    @Override
+    public Map<String, Object> getDietWeekChart(Long memberId, LocalDate date) {
+        List<String> labels = new ArrayList<>();
+        List<Double> calories = new ArrayList<>();
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 없음"));
+
+        double goalKcal = member.getGoalEatKcal() != null ? member.getGoalEatKcal() : 0;
+
+        LocalDate startDate = date.minusWeeks(3);
+        LocalDate endDate = date;
+
+        List<MealLog> allLogs = mealLogRepository.findByMemberIdAndMealDateBetween(memberId, startDate, endDate);
+
+        for (int i = 3; i >= 0; i--) {
+            LocalDate weekStart = date.minusWeeks(i);
+            LocalDate weekEnd = weekStart.plusDays(6);
+
+            double totalKcal = allLogs.stream()
+                    .filter(log -> !log.getMealDate().isBefore(weekStart) && !log.getMealDate().isAfter(weekEnd))
+                    .mapToDouble(MealLog::getCaloriesKcal)
+                    .sum();
+
+            labels.add((4 - i) + "주차");
+            calories.add(totalKcal);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("labels", labels);
+        result.put("calories", calories);
+        result.put("goalKcal", goalKcal);
+
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getDietMonthChart(Long memberId, LocalDate date) {
+        List<String> labels = new ArrayList<>();
+        List<Double> calories = new ArrayList<>();
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 없음"));
+
+        double goalKcal = member.getGoalEatKcal() != null ? member.getGoalEatKcal() : 0;
+
+        LocalDate startDate = date.minusMonths(5).withDayOfMonth(1);
+        LocalDate endDate = date.withDayOfMonth(date.lengthOfMonth());
+
+        List<MealLog> allLogs = mealLogRepository.findByMemberIdAndMealDateBetween(memberId, startDate, endDate);
+
+        for (int i = 5; i >= 0; i--) {
+            LocalDate targetMonth = date.minusMonths(i);
+            int year = targetMonth.getYear();
+            int month = targetMonth.getMonthValue();
+
+            double totalKcal = allLogs.stream()
+                    .filter(log -> log.getMealDate().getYear() == year
+                            && log.getMealDate().getMonthValue() == month)
+                    .mapToDouble(MealLog::getCaloriesKcal)
+                    .sum();
+
+            labels.add(month + "월");
+            calories.add(totalKcal);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("labels", labels);
+        result.put("calories", calories);
+        result.put("goalKcal", goalKcal);
+
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getDietYearChart(Long memberId, LocalDate date) {
+        List<String> labels = new ArrayList<>();
+        List<Double> calories = new ArrayList<>();
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 없음"));
+
+        double goalKcal = member.getGoalEatKcal() != null ? member.getGoalEatKcal() : 0;
+
+        LocalDate startDate = date.minusYears(4).withDayOfYear(1);
+        LocalDate endDate = date.withDayOfYear(date.lengthOfYear());
+
+        List<MealLog> allLogs = mealLogRepository.findByMemberIdAndMealDateBetween(memberId, startDate, endDate);
+
+        for (int i = 4; i >= 0; i--) {
+            int targetYear = date.minusYears(i).getYear();
+
+            double totalKcal = allLogs.stream()
+                    .filter(log -> log.getMealDate().getYear() == targetYear)
+                    .mapToDouble(MealLog::getCaloriesKcal)
+                    .sum();
+
+            labels.add(targetYear + "년");
+            calories.add(totalKcal);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("labels", labels);
+        result.put("calories", calories);
         result.put("goalKcal", goalKcal);
 
         return result;

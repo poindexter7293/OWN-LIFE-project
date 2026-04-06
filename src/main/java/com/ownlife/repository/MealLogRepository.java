@@ -10,4 +10,6 @@ public interface MealLogRepository extends JpaRepository<MealLog, Long> {
 
     List<MealLog> findByMemberIdAndMealDate(Long memberId, LocalDate mealDate);
 
+    List<MealLog> findByMemberIdAndMealDateBetween(Long memberId, LocalDate startDate, LocalDate endDate);
+
 }
