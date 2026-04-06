@@ -9,6 +9,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -87,6 +88,17 @@ public class ExerciseController {
                                RedirectAttributes redirectAttributes) {
         return handleAction(session, redirectAttributes, exerciseDate, () ->
                 exerciseService.addQuickTimeExercise(currentMemberId(session), exerciseDate, exerciseTypeId, durationMin)
+        );
+    }
+
+    @PostMapping("/quick/route")
+    public String addQuickRoute(@RequestParam("exerciseDate") LocalDate exerciseDate,
+                                @RequestParam("exerciseTypeId") Long exerciseTypeId,
+                                @RequestParam("distanceKm") BigDecimal distanceKm,
+                                HttpSession session,
+                                RedirectAttributes redirectAttributes) {
+        return handleAction(session, redirectAttributes, exerciseDate, () ->
+                exerciseService.addQuickRouteExercise(currentMemberId(session), exerciseDate, exerciseTypeId, distanceKm)
         );
     }
 
