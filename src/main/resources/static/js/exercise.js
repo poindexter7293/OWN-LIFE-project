@@ -50,6 +50,13 @@ function initExerciseModeTabs() {
             if (targetPanel) {
                 targetPanel.classList.add('is-active');
             }
+
+            if (targetId === 'quickAddPanel' && window.routeMapInstance) {
+                setTimeout(() => {
+                    window.routeMapInstance.relayout();
+                    window.routeMapInstance.setCenter(new kakao.maps.LatLng(37.5665, 126.9780));
+                }, 120);
+            }
         });
     });
 }
@@ -70,6 +77,10 @@ function initQuickTabs() {
             const targetForm = document.getElementById(targetId);
             if (targetForm) {
                 targetForm.classList.add('is-active');
+            }
+
+            if (targetId === 'routeQuickForm') {
+                initRouteMeasureMap();
             }
         });
     });
@@ -478,4 +489,138 @@ function initSummaryCardActions() {
             }
         });
     }
+}
+
+let routeMapInstance = null;
+let routePolyline = null;
+let routeMarkers = [];
+let routeMarkerPositions = [];
+let routeMapInitialized = false;
+
+function initRouteMeasureMap() {
+    const form = document.getElementById('routeQuickForm');
+    const mapElement = document.getElementById('routeMap');
+    const resetButton = document.getElementById('routeResetButton');
+    const pathInput = document.getElementById('routePathPointsJson');
+    const routeDistanceKmInput = document.getElementById('routeDistanceKmInput');
+    const mapProviderInput = document.getElementById('routeMapProvider');
+
+    if (!form || !mapElement || !resetButton || !routeDistanceKmInput) {
+        return;
+    }
+
+    if (routeMapInitialized) {
+        setTimeout(() => {
+            if (routeMapInstance) {
+                routeMapInstance.relayout();
+                routeMapInstance.setCenter(new kakao.maps.LatLng(37.5665, 126.9780));
+            }
+        }, 80);
+        return;
+    }
+
+    if (typeof window.kakao === 'undefined' || !window.kakao.maps) {
+        mapElement.innerHTML = '<div class="exercise-route-map__fallback">Kakao 지도 스크립트가 로드되지 않았습니다.</div>';
+        return;
+    }
+
+    window.kakao.maps.load(function () {
+        routeMapInstance = new kakao.maps.Map(mapElement, {
+            center: new kakao.maps.LatLng(37.5665, 126.9780),
+            level: 5
+        });
+
+        window.routeMapInstance = routeMapInstance;
+
+        routePolyline = new kakao.maps.Polyline({
+            path: [],
+            strokeWeight: 5,
+            strokeColor: '#5b3df5',
+            strokeOpacity: 0.85,
+            strokeStyle: 'solid'
+        });
+        routePolyline.setMap(routeMapInstance);
+
+        kakao.maps.event.addListener(routeMapInstance, 'click', function (mouseEvent) {
+            const latLng = mouseEvent.latLng;
+            routeMarkerPositions.push(latLng);
+
+            const marker = new kakao.maps.Marker({
+                position: latLng
+            });
+
+            marker.setMap(routeMapInstance);
+            routeMarkers.push(marker);
+
+            routePolyline.setPath(routeMarkerPositions);
+
+            // 2개 이상 점일 때 자동 거리 계산
+            if (routeMarkerPositions.length >= 2) {
+                const meters = Math.round(routePolyline.getLength());
+                const km = meters > 0 ? (meters / 1000).toFixed(2) : '';
+
+                routeDistanceKmInput.value = km;
+
+                const path = routeMarkerPositions.map((point) => ({
+                    lat: Number(point.getLat().toFixed(7)),
+                    lng: Number(point.getLng().toFixed(7))
+                }));
+
+                if (pathInput) {
+                    pathInput.value = JSON.stringify(path);
+                }
+
+                if (mapProviderInput) {
+                    mapProviderInput.value = 'kakao';
+                }
+            }
+        });
+
+
+        resetButton.addEventListener('click', function () {
+            routeMarkerPositions.length = 0;
+            routeMarkers.forEach(marker => marker.setMap(null));
+            routeMarkers.length = 0;
+
+            if (routePolyline) {
+                routePolyline.setPath([]);
+            }
+
+            routeDistanceKmInput.value = '';
+
+            if (pathInput) {
+                pathInput.value = '';
+            }
+
+            if (mapProviderInput) {
+                mapProviderInput.value = 'manual';
+            }
+        });
+
+        form.addEventListener('submit', function (event) {
+            if (!routeDistanceKmInput.value || Number(routeDistanceKmInput.value) <= 0) {
+                event.preventDefault();
+                alert('거리(km)를 입력해 주세요.');
+                return;
+            }
+
+            if (mapProviderInput && !pathInput.value) {
+                mapProviderInput.value = 'manual';
+            }
+        });
+
+        routeMapInitialized = true;
+
+        setTimeout(() => {
+            if (routeMapInstance) {
+                routeMapInstance.relayout();
+                routeMapInstance.setCenter(new kakao.maps.LatLng(37.5665, 126.9780));
+            }
+        }, 80);
+
+        function syncPreview() {
+            const meters = Math.round(routePolyline.getLength());
+            routeDistanceKmInput.value = meters > 0 ? (meters / 1000).toFixed(2) : '';
+        }
+    });
 }

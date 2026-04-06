@@ -94,11 +94,20 @@ public class ExerciseController {
     @PostMapping("/quick/route")
     public String addQuickRoute(@RequestParam("exerciseDate") LocalDate exerciseDate,
                                 @RequestParam("exerciseTypeId") Long exerciseTypeId,
-                                @RequestParam("distanceKm") BigDecimal distanceKm,
+                                @RequestParam("routeDistanceKm") BigDecimal routeDistanceKm,
+                                @RequestParam(value = "pathPointsJson", required = false) String pathPointsJson,
+                                @RequestParam(value = "mapProvider", defaultValue = "manual") String mapProvider,
                                 HttpSession session,
                                 RedirectAttributes redirectAttributes) {
         return handleAction(session, redirectAttributes, exerciseDate, () ->
-                exerciseService.addQuickRouteExercise(currentMemberId(session), exerciseDate, exerciseTypeId, distanceKm)
+                exerciseService.addQuickRouteExercise(
+                        currentMemberId(session),
+                        exerciseDate,
+                        exerciseTypeId,
+                        routeDistanceKm,
+                        pathPointsJson,
+                        mapProvider
+                )
         );
     }
 

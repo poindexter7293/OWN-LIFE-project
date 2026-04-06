@@ -1,9 +1,14 @@
 package com.ownlife.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ownlife.entity.ActivityRouteLog;
 import com.ownlife.entity.ExerciseLog;
 import com.ownlife.entity.ExerciseType;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
+import com.ownlife.repository.ActivityRouteLogRepository;
 import com.ownlife.repository.ExerciseLogRepository;
 import com.ownlife.repository.ExerciseTypeRepository;
 import com.ownlife.repository.MemberGoalHistoryRepository;
@@ -33,9 +38,11 @@ public class ExerciseService {
     private static final DateTimeFormatter MONTH_LABEL_FORMATTER = DateTimeFormatter.ofPattern("yy.MM", Locale.KOREA);
 
     private final ExerciseLogRepository exerciseLogRepository;
+    private final ActivityRouteLogRepository activityRouteLogRepository;
     private final ExerciseTypeRepository exerciseTypeRepository;
     private final MemberRepository memberRepository;
     private final MemberGoalHistoryRepository memberGoalHistoryRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public ExercisePageData getPageData(Long memberId, LocalDate baseDate) {
@@ -390,6 +397,71 @@ public class ExerciseService {
         exerciseLogRepository.save(log);
     }
 
+    public void addQuickRouteExercise(Long memberId,
+                                      LocalDate exerciseDate,
+                                      Long exerciseTypeId,
+                                      BigDecimal routeDistanceKm,
+                                      String pathPointsJson,
+                                      String mapProvider) {
+        if (exerciseTypeId == null) {
+            throw new IllegalArgumentException("운동 종류를 선택해 주세요.");
+        }
+        if (routeDistanceKm == null || routeDistanceKm.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("거리(km)는 0보다 커야 합니다.");
+        }
+
+        Member member = getMember(memberId);
+        ExerciseType exerciseType = getExerciseType(exerciseTypeId);
+
+        if (exerciseType.getCategory() != ExerciseType.Category.ROUTE) {
+            throw new IllegalArgumentException("거리형 운동만 추가할 수 있습니다.");
+        }
+        if (exerciseType.getKcalPerKm() == null) {
+            throw new IllegalArgumentException("km당 칼로리 정보가 없습니다.");
+        }
+
+        BigDecimal normalizedDistanceKm = routeDistanceKm.setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal burnedKcal = exerciseType.getKcalPerKm()
+                .multiply(normalizedDistanceKm)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        ExerciseLog log = new ExerciseLog();
+        log.setMember(member);
+        log.setExerciseType(exerciseType);
+        log.setExerciseDate(defaultDate(exerciseDate));
+        log.setDurationMin(null);
+        log.setSetsCount(null);
+        log.setRepsCount(null);
+        log.setDistanceKm(normalizedDistanceKm);
+        log.setBurnedKcal(burnedKcal);
+        log.setMemo(null);
+
+        ExerciseLog savedLog = exerciseLogRepository.save(log);
+
+        ActivityRouteLog routeLog = new ActivityRouteLog();
+        routeLog.setExerciseLog(savedLog);
+        routeLog.setStartPlace(null);
+        routeLog.setEndPlace(null);
+        routeLog.setRouteDistanceKm(normalizedDistanceKm);
+        routeLog.setRouteDurationMin(null);
+        routeLog.setMapProvider(defaultText(trimToNull(mapProvider), "manual"));
+
+        if (StringUtils.hasText(pathPointsJson)) {
+            List<RoutePoint> routePoints = parseRoutePoints(pathPointsJson);
+            if (!routePoints.isEmpty()) {
+                RoutePoint startPoint = routePoints.get(0);
+                RoutePoint endPoint = routePoints.get(routePoints.size() - 1);
+                routeLog.setStartLat(startPoint.toScaledLat());
+                routeLog.setStartLng(startPoint.toScaledLng());
+                routeLog.setEndLat(endPoint.toScaledLat());
+                routeLog.setEndLng(endPoint.toScaledLng());
+            }
+        }
+
+        activityRouteLogRepository.save(routeLog);
+    }
+
     public void addQuickTimeExercise(Long memberId, LocalDate exerciseDate, Long exerciseTypeId, Integer durationMin) {
         if (exerciseTypeId == null) {
             throw new IllegalArgumentException("운동 종류를 선택해 주세요.");
@@ -421,44 +493,6 @@ public class ExerciseService {
         log.setSetsCount(null);
         log.setRepsCount(null);
         log.setDistanceKm(null);
-        log.setBurnedKcal(burnedKcal);
-        log.setMemo(null);
-
-        exerciseLogRepository.save(log);
-    }
-
-
-    public void addQuickRouteExercise(Long memberId, LocalDate exerciseDate, Long exerciseTypeId, BigDecimal distanceKm) {
-        if (exerciseTypeId == null) {
-            throw new IllegalArgumentException("운동 종류를 선택해 주세요.");
-        }
-        if (distanceKm == null || distanceKm.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("운동 거리는 0km보다 커야 합니다.");
-        }
-
-        Member member = getMember(memberId);
-        ExerciseType exerciseType = getExerciseType(exerciseTypeId);
-
-        if (exerciseType.getCategory() != ExerciseType.Category.ROUTE) {
-            throw new IllegalArgumentException("거리형 운동만 추가할 수 있습니다.");
-        }
-        if (exerciseType.getKcalPerKm() == null) {
-            throw new IllegalArgumentException("km당 칼로리 정보가 없습니다.");
-        }
-
-        BigDecimal normalizedDistanceKm = distanceKm.setScale(2, RoundingMode.HALF_UP);
-        BigDecimal burnedKcal = exerciseType.getKcalPerKm()
-                .multiply(normalizedDistanceKm)
-                .setScale(2, RoundingMode.HALF_UP);
-
-        ExerciseLog log = new ExerciseLog();
-        log.setMember(member);
-        log.setExerciseType(exerciseType);
-        log.setExerciseDate(defaultDate(exerciseDate));
-        log.setDurationMin(null);
-        log.setSetsCount(null);
-        log.setRepsCount(null);
-        log.setDistanceKm(normalizedDistanceKm);
         log.setBurnedKcal(burnedKcal);
         log.setMemo(null);
 
@@ -519,8 +553,10 @@ public class ExerciseService {
         String detail = "";
         if (exerciseType != null && exerciseType.getCategory() == ExerciseType.Category.COUNT_SET) {
             detail = safeInteger(log.getSetsCount()) + "세트 · " + safeInteger(log.getRepsCount()) + "회";
-        } else if (log.getDistanceKm() != null && log.getDistanceKm().compareTo(BigDecimal.ZERO) > 0) {
-            detail = log.getDistanceKm().stripTrailingZeros().toPlainString() + "km";
+        } else if (safeDecimal(log.getDistanceKm()).compareTo(BigDecimal.ZERO) > 0 && safeInteger(log.getDurationMin()) > 0) {
+            detail = safeDecimal(log.getDistanceKm()).stripTrailingZeros().toPlainString() + "km · " + safeInteger(log.getDurationMin()) + "분";
+        } else if (safeDecimal(log.getDistanceKm()).compareTo(BigDecimal.ZERO) > 0) {
+            detail = safeDecimal(log.getDistanceKm()).stripTrailingZeros().toPlainString() + "km";
         } else if (safeInteger(log.getDurationMin()) > 0) {
             detail = safeInteger(log.getDurationMin()) + "분";
         }
@@ -554,6 +590,66 @@ public class ExerciseService {
 
     private LocalDate defaultDate(LocalDate exerciseDate) {
         return exerciseDate == null ? LocalDate.now() : exerciseDate;
+    }
+
+    private List<RoutePoint> parseRoutePoints(String pathPointsJson) {
+        if (!StringUtils.hasText(pathPointsJson)) {
+            throw new IllegalArgumentException("경로 좌표 정보가 없습니다.");
+        }
+
+        try {
+            List<RoutePoint> routePoints = objectMapper.readValue(pathPointsJson, new TypeReference<List<RoutePoint>>() {});
+            return routePoints == null
+                    ? Collections.emptyList()
+                    : routePoints.stream()
+                    .filter(Objects::nonNull)
+                    .filter(RoutePoint::isValid)
+                    .toList();
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("경로 좌표를 해석할 수 없습니다.");
+        }
+    }
+
+    private BigDecimal calculateRouteDistanceKm(List<RoutePoint> routePoints) {
+        double totalMeters = 0.0d;
+
+        for (int i = 1; i < routePoints.size(); i++) {
+            RoutePoint previous = routePoints.get(i - 1);
+            RoutePoint current = routePoints.get(i);
+            totalMeters += haversineMeters(previous.lat(), previous.lng(), current.lat(), current.lng());
+        }
+
+        return BigDecimal.valueOf(totalMeters / 1000.0d).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private double haversineMeters(double startLat, double startLng, double endLat, double endLng) {
+        final double earthRadiusMeters = 6_371_000.0d;
+
+        double latDistance = Math.toRadians(endLat - startLat);
+        double lngDistance = Math.toRadians(endLng - startLng);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(startLat)) * Math.cos(Math.toRadians(endLat))
+                * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusMeters * c;
+    }
+
+    private String trimToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private record RoutePoint(Double lat, Double lng) {
+        private boolean isValid() {
+            return lat != null && lng != null;
+        }
+
+        private BigDecimal toScaledLat() {
+            return BigDecimal.valueOf(lat).setScale(7, RoundingMode.HALF_UP);
+        }
+
+        private BigDecimal toScaledLng() {
+            return BigDecimal.valueOf(lng).setScale(7, RoundingMode.HALF_UP);
+        }
     }
 
     private BigDecimal safeDecimal(BigDecimal value) {
