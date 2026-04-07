@@ -5,6 +5,7 @@ import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
+import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
 import com.ownlife.entity.SocialAccount;
@@ -610,6 +611,68 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("로컬 회원탈퇴 시 개인정보와 소셜 연동이 정리되고 재로그인이 차단된다")
+    void withdrawLocalMemberAnonymizesAccountAndBlocksLogin() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setUsername("withdrawlocal01");
+        signupForm.setPassword("Password123!");
+        signupForm.setNickname("탈퇴예정회원");
+        signupForm.setEmail("withdraw-local@example.com");
+
+        Member member = memberService.register(signupForm);
+        memberService.linkGoogleAccount(member.getMemberId(), new GoogleUserProfile(
+                "withdraw-google-subject",
+                "withdraw-social@example.com",
+                "구글연동",
+                null,
+                true
+        ));
+
+        WithdrawalForm withdrawalForm = new WithdrawalForm();
+        withdrawalForm.setCurrentPassword("Password123!");
+
+        Member withdrawnMember = memberService.withdrawMember(member.getMemberId(), withdrawalForm);
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Status.DELETED, withdrawnMember.getStatus());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getEmail());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getPasswordHash());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getSocialProvider());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getSocialProviderId());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isEmpty());
+        org.junit.jupiter.api.Assertions.assertFalse(memberService.authenticate("withdrawlocal01", "Password123!").isPresent());
+        org.junit.jupiter.api.Assertions.assertFalse(memberService.existsByUsername("withdrawlocal01"));
+        org.junit.jupiter.api.Assertions.assertFalse(memberService.existsByEmail("withdraw-local@example.com"));
+    }
+
+    @Test
+    @DisplayName("소셜 전용 회원탈퇴는 확인 문구로 진행하고 이후 소셜 로그인도 차단된다")
+    void withdrawSocialOnlyMemberBlocksSocialLogin() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("소셜전용회원");
+        signupForm.setGender(Member.Gender.F);
+        signupForm.setHeightCm(new BigDecimal("165.0"));
+        signupForm.setWeightKg(new BigDecimal("56.0"));
+
+        GoogleUserProfile googleUserProfile = new GoogleUserProfile(
+                "withdraw-social-only",
+                "withdraw-social-only@example.com",
+                "소셜전용회원",
+                null,
+                true
+        );
+        Member member = memberService.registerGoogleMember(signupForm, googleUserProfile);
+
+        WithdrawalForm withdrawalForm = new WithdrawalForm();
+        withdrawalForm.setConfirmationText(MemberService.WITHDRAWAL_CONFIRMATION_TEXT);
+
+        Member withdrawnMember = memberService.withdrawMember(member.getMemberId(), withdrawalForm);
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Status.DELETED, withdrawnMember.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findGoogleMemberForLogin(googleUserProfile).isEmpty());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isEmpty());
+    }
+
+    @Test
     @DisplayName("이미 다른 회원에게 연결된 Google 계정은 마이페이지에서 다시 연동할 수 없다")
     void linkGoogleAccountFailsWhenLinkedToAnotherMember() {
         SignupForm firstForm = new SignupForm();
@@ -704,6 +767,9 @@ class MemberServiceTest {
             if (member.getMemberId() == null) {
                 member.setMemberId(sequence.getAndIncrement());
             }
+            storage.entrySet().removeIf(entry -> entry.getValue() != null
+                    && entry.getValue().getMemberId() != null
+                    && entry.getValue().getMemberId().equals(member.getMemberId()));
             storage.put(member.getUsername().toLowerCase(), member);
             return member;
         }

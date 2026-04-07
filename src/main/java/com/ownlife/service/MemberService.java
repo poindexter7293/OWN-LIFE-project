@@ -5,6 +5,7 @@ import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
+import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
 import com.ownlife.entity.SocialAccount;
@@ -37,6 +38,7 @@ public class MemberService {
     private static final int ITERATIONS = 65_536;
     private static final int KEY_LENGTH = 256;
     private static final int SALT_LENGTH = 16;
+    public static final String WITHDRAWAL_CONFIRMATION_TEXT = "회원탈퇴";
 
     private final MemberRepository memberRepository;
     private final MemberGoalHistoryRepository memberGoalHistoryRepository;
@@ -116,6 +118,37 @@ public class MemberService {
         member.setGoalWeight(myPageForm.getGoalWeight());
         member.setGoalEatKcal(myPageForm.getGoalEatKcal());
         member.setGoalBurnedKcal(myPageForm.getGoalBurnedKcal());
+
+        return memberRepository.saveAndFlush(member);
+    }
+
+    public Member withdrawMember(Long memberId, WithdrawalForm withdrawalForm) {
+        if (withdrawalForm == null) {
+            throw new IllegalArgumentException("회원탈퇴 요청 정보가 올바르지 않습니다.");
+        }
+
+        Member member = findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        validateWithdrawalRequest(member, withdrawalForm);
+        clearLinkedSocialAccounts(member.getMemberId());
+
+        member.setUsername(buildDeletedUsername(member.getMemberId()));
+        member.setPasswordHash(null);
+        member.setNickname(buildDeletedNickname(member.getMemberId()));
+        member.setEmail(null);
+        member.setGender(null);
+        member.setBirthDate(null);
+        member.setHeightCm(null);
+        member.setWeightKg(null);
+        member.setGoalEatKcal(null);
+        member.setGoalBurnedKcal(null);
+        member.setGoalWeight(null);
+        member.setStatus(Member.Status.DELETED);
+        member.setLoginType(Member.LoginType.LOCAL);
+        member.setSocialProvider(null);
+        member.setSocialProviderId(null);
+        member.setProfileImageUrl(null);
 
         return memberRepository.saveAndFlush(member);
     }
@@ -471,6 +504,26 @@ public class MemberService {
         }
     }
 
+    private void validateWithdrawalRequest(Member member, WithdrawalForm withdrawalForm) {
+        if (StringUtils.hasText(member.getPasswordHash())) {
+            if (!verifyPassword(withdrawalForm.getCurrentPassword(), member.getPasswordHash())) {
+                throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            }
+            return;
+        }
+
+        if (!WITHDRAWAL_CONFIRMATION_TEXT.equals(trimToNull(withdrawalForm.getConfirmationText()))) {
+            throw new IllegalArgumentException("확인 문구를 정확히 입력해 주세요.");
+        }
+    }
+
+    private void clearLinkedSocialAccounts(Long memberId) {
+        for (SocialAccount.Provider provider : SocialAccount.Provider.values()) {
+            socialAccountRepository.findByMemberMemberIdAndProvider(memberId, provider)
+                    .ifPresent(socialAccountRepository::delete);
+        }
+    }
+
     private Member unlinkSocialAccount(Long memberId, SocialAccount.Provider provider, String providerLabel) {
         Member member = findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
@@ -754,6 +807,14 @@ public class MemberService {
             return naverEmail;
         }
         return normalizeIdentity(signupForm.getEmail());
+    }
+
+    private String buildDeletedUsername(Long memberId) {
+        return "deleted_" + memberId;
+    }
+
+    private String buildDeletedNickname(Long memberId) {
+        return "탈퇴한 회원 #" + memberId;
     }
 
     private boolean hasGoalChanges(Member member, MyPageForm myPageForm) {

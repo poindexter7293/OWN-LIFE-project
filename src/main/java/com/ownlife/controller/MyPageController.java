@@ -3,6 +3,7 @@ package com.ownlife.controller;
 import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SessionMember;
+import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
@@ -64,6 +65,9 @@ public class MyPageController {
         if (!model.containsAttribute("myPageForm")) {
             model.addAttribute("myPageForm", toForm(member));
         }
+        if (!model.containsAttribute("withdrawalForm")) {
+            model.addAttribute("withdrawalForm", new WithdrawalForm());
+        }
         applyPageAttributes(
                 model,
                 member,
@@ -103,6 +107,45 @@ public class MyPageController {
 
         memberService.updateMyPageSettings(loginMember.getMemberId(), myPageForm);
         return "redirect:/mypage?success=true";
+    }
+
+    @PostMapping("/mypage/withdraw")
+    public String withdrawMember(@ModelAttribute("withdrawalForm") WithdrawalForm withdrawalForm,
+                                 BindingResult bindingResult,
+                                 Model model,
+                                 HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return "redirect:/login";
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return "redirect:/login";
+        }
+
+        Member member = memberOptional.get();
+        if (!model.containsAttribute("myPageForm")) {
+            model.addAttribute("myPageForm", toForm(member));
+        }
+
+        normalizeWithdrawalForm(withdrawalForm);
+        validateWithdrawalForm(withdrawalForm, member, bindingResult);
+        if (bindingResult.hasErrors()) {
+            applyPageAttributes(model, member, false, null, null, null, null, null, null);
+            return "main";
+        }
+
+        try {
+            memberService.withdrawMember(loginMember.getMemberId(), withdrawalForm);
+            session.invalidate();
+            return "redirect:/login?withdrawSuccess=true";
+        } catch (IllegalArgumentException exception) {
+            rejectWithdrawalFailure(bindingResult, member, exception.getMessage());
+            applyPageAttributes(model, member, false, null, null, null, null, null, null);
+            return "main";
+        }
     }
 
     @PostMapping("/mypage/link/google")
@@ -287,6 +330,7 @@ public class MyPageController {
         model.addAttribute("extraCssFiles", List.of("/css/mypage.css"));
         model.addAttribute("member", member);
         model.addAttribute("settingsUpdated", success);
+        model.addAttribute("withdrawalRequiresPassword", StringUtils.hasText(member.getPasswordHash()));
         model.addAttribute("genderLabel", formatGender(member.getGender()));
         model.addAttribute("loginTypeLabel", formatLoginType(member.getLoginType()));
         model.addAttribute("weightGoalMessage", buildWeightGoalMessage(member));
@@ -337,6 +381,47 @@ public class MyPageController {
         validateCalories(myPageForm.getGoalBurnedKcal(), "goalBurnedKcal", "목표 소모 칼로리는 0보다 커야 합니다.", bindingResult);
     }
 
+    private void normalizeWithdrawalForm(WithdrawalForm withdrawalForm) {
+        if (withdrawalForm == null) {
+            return;
+        }
+        withdrawalForm.setConfirmationText(trimToNull(withdrawalForm.getConfirmationText()));
+    }
+
+    private void validateWithdrawalForm(WithdrawalForm withdrawalForm, Member member, BindingResult bindingResult) {
+        if (withdrawalForm == null || member == null) {
+            bindingResult.reject("withdrawalFailed", "회원탈퇴 요청을 처리할 수 없습니다.");
+            return;
+        }
+
+        if (StringUtils.hasText(member.getPasswordHash())) {
+            if (!StringUtils.hasText(withdrawalForm.getCurrentPassword())) {
+                bindingResult.rejectValue("currentPassword", "required", "현재 비밀번호를 입력해 주세요.");
+            }
+            return;
+        }
+
+        if (!StringUtils.hasText(withdrawalForm.getConfirmationText())) {
+            bindingResult.rejectValue("confirmationText", "required", "확인 문구를 입력해 주세요.");
+            return;
+        }
+        if (!MemberService.WITHDRAWAL_CONFIRMATION_TEXT.equals(withdrawalForm.getConfirmationText())) {
+            bindingResult.rejectValue("confirmationText", "mismatch", "확인 문구를 정확히 입력해 주세요.");
+        }
+    }
+
+    private void rejectWithdrawalFailure(BindingResult bindingResult, Member member, String message) {
+        if (StringUtils.hasText(member.getPasswordHash()) && "현재 비밀번호가 일치하지 않습니다.".equals(message)) {
+            bindingResult.rejectValue("currentPassword", "mismatch", message);
+            return;
+        }
+        if (!StringUtils.hasText(member.getPasswordHash()) && "확인 문구를 정확히 입력해 주세요.".equals(message)) {
+            bindingResult.rejectValue("confirmationText", "mismatch", message);
+            return;
+        }
+        bindingResult.reject("withdrawalFailed", message);
+    }
+
     private void validateWeightField(BigDecimal value,
                                      String fieldName,
                                      String minMessage,
@@ -374,6 +459,13 @@ public class MyPageController {
         return sessionMember instanceof SessionMember ? (SessionMember) sessionMember : null;
     }
 
+    private String trimToNull(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
     private boolean isValidGoogleCsrf(String csrfCookie, String csrfToken) {
         return StringUtils.hasText(csrfCookie) && csrfCookie.equals(csrfToken);
     }
@@ -402,6 +494,7 @@ public class MyPageController {
         return switch (googleLinkStatus) {
             case "already-linked" -> "이미 Google 계정이 연동되어 있습니다.";
             case "linked-other-account" -> "이미 다른 계정에 연결된 Google 계정입니다.";
+            case "failed" -> "Google 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
             default -> null;
         };
     }
@@ -420,7 +513,8 @@ public class MyPageController {
         return switch (googleUnlinkStatus) {
             case "not-linked" -> "연동된 Google 계정이 없습니다.";
             case "last-login-method" -> "마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.";
-            default -> "Google 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            case "failed" -> "Google 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            default -> null;
         };
     }
 
@@ -463,7 +557,8 @@ public class MyPageController {
             case "already-linked" -> "이미 카카오 계정이 연동되어 있습니다.";
             case "linked-other-account" -> "이미 다른 계정에 연결된 카카오 계정입니다.";
             case "member-not-found" -> "회원 정보를 찾을 수 없어 카카오 연동을 진행할 수 없습니다.";
-            default -> "카카오 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            case "oauth-error", "failed" -> "카카오 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            default -> null;
         };
     }
 
@@ -481,7 +576,8 @@ public class MyPageController {
         return switch (kakaoUnlinkStatus) {
             case "not-linked" -> "연동된 카카오 계정이 없습니다.";
             case "last-login-method" -> "마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.";
-            default -> "카카오 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            case "failed" -> "카카오 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            default -> null;
         };
     }
 
@@ -527,7 +623,8 @@ public class MyPageController {
             case "already-linked" -> "이미 네이버 계정이 연동되어 있습니다.";
             case "linked-other-account" -> "이미 다른 계정에 연결된 네이버 계정입니다.";
             case "member-not-found" -> "회원 정보를 찾을 수 없어 네이버 연동을 진행할 수 없습니다.";
-            default -> "네이버 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            case "oauth-error", "failed" -> "네이버 계정 연동 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            default -> null;
         };
     }
 
@@ -545,7 +642,8 @@ public class MyPageController {
         return switch (naverUnlinkStatus) {
             case "not-linked" -> "연동된 네이버 계정이 없습니다.";
             case "last-login-method" -> "마지막 로그인 수단은 해제할 수 없습니다. 다른 로그인 수단을 먼저 연결해 주세요.";
-            default -> "네이버 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            case "failed" -> "네이버 계정 연동 해제 중 오류가 발생했습니다. 다시 시도해 주세요.";
+            default -> null;
         };
     }
 

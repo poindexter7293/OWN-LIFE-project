@@ -60,6 +60,15 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("회원탈퇴 완료 후 로그인 페이지에 성공 안내를 표시한다")
+    void loginPageAfterWithdrawalShowsSuccessMessage() throws Exception {
+        mockMvc.perform(get("/login").param("withdrawSuccess", "true"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("withdrawSuccess", true));
+    }
+
+    @Test
     @DisplayName("정상 로그인 시 세션에 회원 정보를 저장하고 메인으로 이동한다")
     void loginSuccess() throws Exception {
         MockHttpSession session = new MockHttpSession();
