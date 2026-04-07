@@ -1,15 +1,17 @@
 package com.ownlife.controller;
 
+import com.ownlife.dto.DietPageDataDto;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.service.MealService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @Controller
@@ -21,39 +23,27 @@ public class DietController {
 
     @GetMapping
     public String dietPage(@RequestParam(value = "date", required = false) String date,
-                           @RequestParam(value = "period", defaultValue = "day") String period,
-                           Model model,
-                           HttpSession session) {
+                           HttpSession session,
+                           Model model) {
 
-        SessionMember loginMember = getLoginMember(session);
+        SessionMember loginMember = (SessionMember) session.getAttribute("loginMember");
         if (loginMember == null) {
             return "redirect:/login";
         }
 
-        LocalDate selectedDate = (date == null || date.isBlank())
-                ? LocalDate.now()
-                : LocalDate.parse(date);
-
         Long memberId = loginMember.getMemberId();
+        LocalDate selectedDate = (date != null && !date.isBlank()) ? LocalDate.parse(date) : LocalDate.now();
 
-        model.addAttribute("pageTitle", "식단관리");
-        model.addAttribute("selectedDate", selectedDate);
-        model.addAttribute("period", period);
+        DietPageDataDto dietPageData = mealService.getDietPageData(memberId, selectedDate);
 
+        model.addAttribute("pageTitle", "식단 관리 | OWN LIFE");
+        model.addAttribute("dietPageData", dietPageData);
         model.addAttribute("foodList", mealService.getAllFoods());
-        model.addAttribute("mealLogs", mealService.getMealLogsByDate(memberId, selectedDate));
-        model.addAttribute("dailySummary", mealService.getDailySummary(memberId, selectedDate));
-        model.addAttribute("dietGoalSummary", mealService.getDietGoalSummary(memberId, selectedDate));
-
-        // 차트용 데이터 4개
-        model.addAttribute("dietDayChart", mealService.getDietDayChart(memberId, selectedDate));
-        model.addAttribute("dietWeekChart", mealService.getDietWeekChart(memberId, selectedDate));
-        model.addAttribute("dietMonthChart", mealService.getDietMonthChart(memberId, selectedDate));
-        model.addAttribute("dietYearChart", mealService.getDietYearChart(memberId, selectedDate));
+        model.addAttribute("centerFragment", "fragments/center-diet-main :: centerDietMain");
 
         model.addAttribute("extraCssFiles", List.of("/css/diet.css"));
         model.addAttribute("extraJsFiles", List.of("/js/diet.js"));
-        model.addAttribute("centerFragment", "fragments/center-diet-main :: centerDietMain");
+        model.addAttribute("period", "day");
 
         return "main";
     }
@@ -71,6 +61,7 @@ public class DietController {
                           @RequestParam(value = "customCarbG", required = false) Double customCarbG,
                           @RequestParam(value = "customProteinG", required = false) Double customProteinG,
                           @RequestParam(value = "customFatG", required = false) Double customFatG,
+                          @RequestParam(value = "selectedFoodsJson", required = false) String selectedFoodsJson,
                           HttpSession session) {
 
         SessionMember loginMember = getLoginMember(session);
@@ -79,12 +70,12 @@ public class DietController {
         }
 
         Long memberId = loginMember.getMemberId();
-        LocalDate date = LocalDate.parse(mealDate);
+        LocalDate dateValue = LocalDate.parse(mealDate);
 
         if ("custom".equals(inputMode)) {
             mealService.addCustomMeal(
                     memberId,
-                    date,
+                    dateValue,
                     mealType,
                     customFoodName,
                     customBaseAmountG,
@@ -96,31 +87,34 @@ public class DietController {
                     saveAsFood != null
             );
         } else {
-            mealService.addMeal(memberId, date, mealType, foodId, count);
+            mealService.addMeals(memberId, dateValue, mealType, selectedFoodsJson);
         }
 
         return "redirect:/diet?date=" + mealDate;
     }
 
-    @PostMapping("/delete/{mealLogId}")
-    public String deleteDiet(@PathVariable("mealLogId") Long mealLogId,
-                             @RequestParam("date") String date,
-                             HttpSession session) {
+    @PostMapping("/delete-group")
+    @ResponseBody
+    public ResponseEntity<DietPageDataDto> deleteMealGroup(@RequestParam("mealType") String mealType,
+                                                           @RequestParam("date") String date,
+                                                           HttpSession session) {
 
         SessionMember loginMember = getLoginMember(session);
         if (loginMember == null) {
-            return "redirect:/login";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         Long memberId = loginMember.getMemberId();
+        LocalDate mealDate = LocalDate.parse(date);
 
-        mealService.deleteMeal(memberId, mealLogId);
+        mealService.deleteMealGroup(memberId, mealDate, mealType);
 
-        return "redirect:/diet?date=" + date;
+        DietPageDataDto updatedData = mealService.getDietPageData(memberId, mealDate);
+
+        return ResponseEntity.ok(updatedData);
     }
 
     private SessionMember getLoginMember(HttpSession session) {
         return (SessionMember) session.getAttribute(AuthController.LOGIN_MEMBER);
     }
-
 }

@@ -6,12 +6,11 @@
     <section class="diet-header-card">
         <div class="diet-header-left">
             <h2>식단 관리</h2>
-            <p th:text="${selectedDate}">2026-04-01</p>
+            <p th:text="${dietPageData.selectedDate}">2026-04-01</p>
         </div>
 
         <form th:action="@{/diet}" method="get" class="diet-date-form">
-            <input type="hidden" name="period" th:value="${period}">
-            <input type="date" name="date" th:value="${selectedDate}">
+            <input type="date" name="date" th:value="${dietPageData.selectedDate}">
             <button type="submit">조회</button>
         </form>
     </section>
@@ -23,22 +22,22 @@
             <div class="dashboard-item" id="goal-card">
                 <span class="label">목표 칼로리</span>
                 <strong class="kcal-goal count-up"
-                        th:attr="data-value=${dietGoalSummary['goalKcal']}">0.0</strong>
+                        th:attr="data-value=${dietPageData.goalSummary.goalKcal}">0.0</strong>
                 <span class="unit">kcal</span>
             </div>
 
             <div class="dashboard-item" id="intake-card">
                 <span class="label">현재 섭취</span>
                 <strong class="kcal-intake count-up"
-                        th:attr="data-value=${dietGoalSummary['totalKcal']}">0.0</strong>
+                        th:attr="data-value=${dietPageData.goalSummary.totalKcal}">0.0</strong>
                 <span class="unit">kcal</span>
             </div>
 
             <div class="dashboard-item">
                 <span class="label">남은 칼로리</span>
                 <strong class="kcal-remaining count-up"
-                        th:classappend="${dietGoalSummary['remainingKcal']} < 0 ? ' kcal-over' : ''"
-                        th:attr="data-value=${dietGoalSummary['remainingKcal']}">0.0</strong>
+                        th:classappend="${dietPageData.goalSummary.exceededKcal > 0} ? ' kcal-over' : ''"
+                        th:attr="data-value=${dietPageData.goalSummary.remainingKcal}">0.0</strong>
                 <span class="unit">kcal</span>
             </div>
         </div>
@@ -49,7 +48,7 @@
             <h3>식단 추가</h3>
 
             <form th:action="@{/diet/add}" method="post" class="diet-form">
-                <input type="hidden" name="mealDate" th:value="${selectedDate}">
+                <input type="hidden" name="mealDate" th:value="${dietPageData.selectedDate}">
 
                 <div class="input-mode-box">
                     <label class="radio-label">
@@ -92,10 +91,10 @@
                                     th:value="${food.foodId}"
                                     th:text="${food.foodName}"
                                     th:attr="data-base-amount=${food.baseAmountG},
-                                         data-calories=${food.caloriesKcal},
-                                         data-carb=${food.carbG},
-                                         data-protein=${food.proteinG},
-                                         data-fat=${food.fatG}">
+                                             data-calories=${food.caloriesKcal},
+                                             data-carb=${food.carbG},
+                                             data-protein=${food.proteinG},
+                                             data-fat=${food.fatG}">
                                 음식명
                             </option>
                         </select>
@@ -104,6 +103,23 @@
                             검색어를 입력하면 목록이 줄어듭니다.
                         </small>
                     </div>
+
+                    <div class="form-row">
+                        <button type="button" class="add-food-btn" id="addSelectedFoodBtn">선택 음식 담기</button>
+                    </div>
+
+                    <div class="selected-foods-box">
+                        <div class="selected-foods-header">
+                            <h4>선택한 음식</h4>
+                            <span id="selectedFoodCount">0개</span>
+                        </div>
+
+                        <div id="selectedFoodList" class="selected-food-list">
+                            <div class="selected-food-empty">아직 담긴 음식이 없습니다.</div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="selectedFoodsJson" id="selectedFoodsJson">
 
                     <div class="select-food-preview-grid">
                         <div class="form-row">
@@ -171,7 +187,7 @@
                 </div>
 
                 <div class="form-row">
-                    <button type="submit" class="submit-btn">추가하기</button>
+                    <button type="submit" class="submit-btn">식단 저장하기</button>
                 </div>
             </form>
         </section>
@@ -204,100 +220,92 @@
                     <div class="macro-item">
                         <span class="dot carb"></span>
                         <span>탄수화물</span>
-                        <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['carb'] : 0, 1, 1)} + 'g'">0.0g</strong>
+                        <strong th:text="${#numbers.formatDecimal(dietPageData.dailySummary.carb, 1, 1)} + 'g'">0.0g</strong>
                     </div>
                     <div class="macro-item">
                         <span class="dot protein"></span>
                         <span>단백질</span>
-                        <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['protein'] : 0, 1, 1)} + 'g'">0.0g</strong>
+                        <strong th:text="${#numbers.formatDecimal(dietPageData.dailySummary.protein, 1, 1)} + 'g'">0.0g</strong>
                     </div>
                     <div class="macro-item">
                         <span class="dot fat"></span>
                         <span>지방</span>
-                        <strong th:text="${#numbers.formatDecimal(dailySummary != null ? dailySummary['fat'] : 0, 1, 1)} + 'g'">0.0g</strong>
+                        <strong th:text="${#numbers.formatDecimal(dietPageData.dailySummary.fat, 1, 1)} + 'g'">0.0g</strong>
                     </div>
                 </div>
             </div>
         </section>
     </section>
 
-
     <script th:inline="javascript">
         window.dietChartDataMap = {
             day: {
-                labels: /*[[${dietDayChart.labels}]]*/ [],
-                calories: /*[[${dietDayChart.calories}]]*/ [],
-                goalKcal: /*[[${dietDayChart.goalKcal}]]*/ 0
+                labels: /*[[${dietPageData.charts.day.labels}]]*/ [],
+                calories: /*[[${dietPageData.charts.day.calories}]]*/ [],
+                goalKcal: /*[[${dietPageData.charts.day.goalKcal}]]*/ 0
             },
             week: {
-                labels: /*[[${dietWeekChart.labels}]]*/ [],
-                calories: /*[[${dietWeekChart.calories}]]*/ [],
-                goalKcal: /*[[${dietWeekChart.goalKcal}]]*/ 0
+                labels: /*[[${dietPageData.charts.week.labels}]]*/ [],
+                calories: /*[[${dietPageData.charts.week.calories}]]*/ [],
+                goalKcal: /*[[${dietPageData.charts.week.goalKcal}]]*/ 0
             },
             month: {
-                labels: /*[[${dietMonthChart.labels}]]*/ [],
-                calories: /*[[${dietMonthChart.calories}]]*/ [],
-                goalKcal: /*[[${dietMonthChart.goalKcal}]]*/ 0
+                labels: /*[[${dietPageData.charts.month.labels}]]*/ [],
+                calories: /*[[${dietPageData.charts.month.calories}]]*/ [],
+                goalKcal: /*[[${dietPageData.charts.month.goalKcal}]]*/ 0
             },
             year: {
-                labels: /*[[${dietYearChart.labels}]]*/ [],
-                calories: /*[[${dietYearChart.calories}]]*/ [],
-                goalKcal: /*[[${dietYearChart.goalKcal}]]*/ 0
+                labels: /*[[${dietPageData.charts.year.labels}]]*/ [],
+                calories: /*[[${dietPageData.charts.year.calories}]]*/ [],
+                goalKcal: /*[[${dietPageData.charts.year.goalKcal}]]*/ 0
             }
         };
 
         window.macroRatioData = {
-            carb: /*[[${dailySummary != null ? dailySummary['carb'] : 0}]]*/ 0,
-            protein: /*[[${dailySummary != null ? dailySummary['protein'] : 0}]]*/ 0,
-            fat: /*[[${dailySummary != null ? dailySummary['fat'] : 0}]]*/ 0
+            carb: /*[[${dietPageData.dailySummary.carb}]]*/ 0,
+            protein: /*[[${dietPageData.dailySummary.protein}]]*/ 0,
+            fat: /*[[${dietPageData.dailySummary.fat}]]*/ 0
         };
     </script>
 
     <section class="diet-list-card">
         <h3>오늘 식단 기록</h3>
 
-        <div th:if="${mealLogs == null or #lists.isEmpty(mealLogs)}" class="empty-box">
+        <div th:if="${dietPageData.mealGroups == null or #lists.isEmpty(dietPageData.mealGroups)}"
+             class="empty-box"
+             id="mealSummaryEmpty">
             등록된 식단이 없습니다.
         </div>
 
-        <table th:if="${mealLogs != null and !#lists.isEmpty(mealLogs)}" class="diet-table">
-            <thead>
-            <tr>
-                <th>식사구분</th>
-                <th>음식명</th>
-                <th>섭취량(g)</th>
-                <th>칼로리</th>
-                <th>탄수화물</th>
-                <th>단백질</th>
-                <th>지방</th>
-                <th>삭제</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="meal : ${mealLogs}">
-                <td>
-                    <span class="meal-badge" th:switch="${meal.mealType}">
-                        <span th:case="'BREAKFAST'">아침</span>
-                        <span th:case="'LUNCH'">점심</span>
-                        <span th:case="'DINNER'">저녁</span>
-                        <span th:case="*">간식</span>
+        <div th:if="${dietPageData.mealGroups != null and !#lists.isEmpty(dietPageData.mealGroups)}"
+             class="meal-summary-list"
+             id="mealSummaryList">
+
+            <div class="meal-summary-item" th:each="group : ${dietPageData.mealGroups}">
+                <div class="meal-summary-line">
+                    <span class="meal-summary-type" th:text="${group.mealTypeLabel + ':'}">아침:</span>
+
+                    <span class="meal-summary-foods">
+                        <th:block th:each="item, stat : ${group.items}">
+                            <span th:text="${item.foodName}">음식명</span><span th:if="${!stat.last}">, </span>
+                        </th:block>
                     </span>
-                </td>
-                <td th:text="${meal.foodNameSnapshot}">달걀</td>
-                <td th:text="${#numbers.formatDecimal(meal.intakeG, 1, 1)}">120.0</td>
-                <td th:text="${#numbers.formatDecimal(meal.caloriesKcal, 1, 1)}">186.0</td>
-                <td th:text="${#numbers.formatDecimal(meal.carbG, 1, 1)}">1.3</td>
-                <td th:text="${#numbers.formatDecimal(meal.proteinG, 1, 1)}">15.6</td>
-                <td th:text="${#numbers.formatDecimal(meal.fatG, 1, 1)}">13.2</td>
-                <td>
-                    <form th:action="@{/diet/delete/{mealLogId}(mealLogId=${meal.mealLogId})}" method="post">
-                        <input type="hidden" name="date" th:value="${selectedDate}">
-                        <button type="submit" class="delete-btn">삭제</button>
-                    </form>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+
+                    <span class="meal-summary-total">
+                        소계:
+                        <span th:text="${#numbers.formatDecimal(group.subtotalKcal, 1, 1)}">0.0</span>
+                        kcal
+                    </span>
+
+                    <button type="button"
+                            class="meal-group-delete-btn"
+                            th:attr="data-meal-type=${group.mealType}, data-date=${dietPageData.selectedDate}">
+                        삭제
+                    </button>
+                </div>
+            </div>
+
+        </div>
     </section>
 
 </div>
