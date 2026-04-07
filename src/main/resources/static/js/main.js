@@ -3,19 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentUrl = new URL(window.location.href);
         const params = currentUrl.searchParams;
         const consumedParams = [];
-        let message = null;
-
-        const hasTrueFlag = (key) => params.get(key) === 'true';
-
-        if (hasTrueFlag('signupSuccess')) {
-            message = '회원가입이 완료되었습니다.';
-            consumedParams.push('signupSuccess');
-        }
-
-        if (hasTrueFlag('loginSuccess')) {
-            message = '로그인되었습니다.';
-            consumedParams.push('loginSuccess');
-        }
+        let message = window.postRedirectAlertMessage || null;
 
         if (params.get('googleLinkStatus') === 'success') {
             message = 'Google 계정이 연동되었습니다.';

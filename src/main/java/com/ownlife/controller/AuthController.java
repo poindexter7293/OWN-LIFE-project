@@ -19,6 +19,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -65,7 +66,8 @@ public class AuthController {
     public String login(@ModelAttribute("loginForm") LoginForm loginForm,
                         BindingResult bindingResult,
                         Model model,
-                        HttpSession session) {
+                        HttpSession session,
+                        RedirectAttributes redirectAttributes) {
         normalizeForm(loginForm);
         validateLoginForm(loginForm, bindingResult);
 
@@ -78,7 +80,8 @@ public class AuthController {
                 .map(member -> {
                     session.removeAttribute(PENDING_GOOGLE_SIGNUP);
                     session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                    return "redirect:/main?loginSuccess=true";
+                    redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "로그인되었습니다.");
+                    return "redirect:/main";
                 })
                 .orElseGet(() -> {
                     bindingResult.reject("loginFailed", "아이디 또는 비밀번호가 올바르지 않습니다.");
@@ -92,7 +95,8 @@ public class AuthController {
                               @RequestParam(value = "g_csrf_token", required = false) String csrfToken,
                               @CookieValue(value = "g_csrf_token", required = false) String csrfCookie,
                               Model model,
-                              HttpSession session) {
+                              HttpSession session,
+                              RedirectAttributes redirectAttributes) {
         if (!googleAuthService.isEnabled()) {
             return renderGoogleLoginError(model, session, "Google 로그인 설정이 아직 완료되지 않았습니다.");
         }
@@ -112,7 +116,8 @@ public class AuthController {
                     .map(member -> {
                         session.removeAttribute(PENDING_GOOGLE_SIGNUP);
                         session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                        return "redirect:/main?loginSuccess=true";
+                        redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "로그인되었습니다.");
+                        return "redirect:/main";
                     })
                     .orElseGet(() -> {
                         session.setAttribute(PENDING_GOOGLE_SIGNUP, PendingGoogleSignup.from(googleUserProfile));
@@ -129,7 +134,8 @@ public class AuthController {
                              @RequestParam(value = "error", required = false) String error,
                              @RequestParam(value = "error_description", required = false) String errorDescription,
                              Model model,
-                             HttpSession session) {
+                             HttpSession session,
+                             RedirectAttributes redirectAttributes) {
         Long pendingKakaoLinkMemberId = getPendingKakaoLinkMemberId(session);
 
         if (!kakaoAuthService.isEnabled()) {
@@ -182,7 +188,8 @@ public class AuthController {
                     .map(member -> {
                         session.removeAttribute(PENDING_KAKAO_SIGNUP);
                         session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                        return "redirect:/main?loginSuccess=true";
+                        redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "로그인되었습니다.");
+                        return "redirect:/main";
                     })
                     .orElseGet(() -> {
                         session.setAttribute(PENDING_KAKAO_SIGNUP, PendingKakaoSignup.from(kakaoUserProfile));
@@ -199,7 +206,8 @@ public class AuthController {
                              @RequestParam(value = "error", required = false) String error,
                              @RequestParam(value = "error_description", required = false) String errorDescription,
                              Model model,
-                             HttpSession session) {
+                             HttpSession session,
+                             RedirectAttributes redirectAttributes) {
         Long pendingNaverLinkMemberId = getPendingNaverLinkMemberId(session);
 
         if (!naverAuthService.isEnabled()) {
@@ -255,7 +263,8 @@ public class AuthController {
                     .map(member -> {
                         session.removeAttribute(PENDING_NAVER_SIGNUP);
                         session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                        return "redirect:/main?loginSuccess=true";
+                        redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "로그인되었습니다.");
+                        return "redirect:/main";
                     })
                     .orElseGet(() -> {
                         session.setAttribute(PENDING_NAVER_SIGNUP, PendingNaverSignup.from(naverUserProfile));

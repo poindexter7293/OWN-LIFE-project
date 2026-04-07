@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -173,7 +174,8 @@ public class MemberController {
     public String signup(@ModelAttribute("signupForm") SignupForm signupForm,
                          BindingResult bindingResult,
                          Model model,
-                         HttpSession session) {
+                         HttpSession session,
+                         RedirectAttributes redirectAttributes) {
         normalizeForm(signupForm);
         validateSignupForm(signupForm, bindingResult);
 
@@ -183,14 +185,16 @@ public class MemberController {
         }
 
         memberService.register(signupForm);
-        return "redirect:/main?signupSuccess=true";
+        redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "회원가입이 완료되었습니다.");
+        return "redirect:/main";
     }
 
     @PostMapping("/signup/google")
     public String googleSignup(@ModelAttribute("signupForm") SignupForm signupForm,
                                BindingResult bindingResult,
                                Model model,
-                               HttpSession session) {
+                               HttpSession session,
+                               RedirectAttributes redirectAttributes) {
         PendingGoogleSignup pendingGoogleSignup = getPendingGoogleSignup(session);
         if (pendingGoogleSignup == null) {
             return "redirect:/login?googleError=signup-session-expired";
@@ -214,14 +218,16 @@ public class MemberController {
         }
         session.removeAttribute(AuthController.PENDING_GOOGLE_SIGNUP);
         session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
-        return "redirect:/main?signupSuccess=true";
+        redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "회원가입이 완료되었습니다.");
+        return "redirect:/main";
     }
 
     @PostMapping("/signup/kakao")
     public String kakaoSignup(@ModelAttribute("signupForm") SignupForm signupForm,
                               BindingResult bindingResult,
                               Model model,
-                              HttpSession session) {
+                              HttpSession session,
+                              RedirectAttributes redirectAttributes) {
         PendingKakaoSignup pendingKakaoSignup = getPendingKakaoSignup(session);
         if (pendingKakaoSignup == null) {
             return "redirect:/login?kakaoError=signup-session-expired";
@@ -245,14 +251,16 @@ public class MemberController {
         }
         session.removeAttribute(AuthController.PENDING_KAKAO_SIGNUP);
         session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
-        return "redirect:/main?signupSuccess=true";
+        redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "회원가입이 완료되었습니다.");
+        return "redirect:/main";
     }
 
     @PostMapping("/signup/naver")
     public String naverSignup(@ModelAttribute("signupForm") SignupForm signupForm,
                               BindingResult bindingResult,
                               Model model,
-                              HttpSession session) {
+                              HttpSession session,
+                              RedirectAttributes redirectAttributes) {
         PendingNaverSignup pendingNaverSignup = getPendingNaverSignup(session);
         if (pendingNaverSignup == null) {
             return "redirect:/login?naverError=signup-session-expired";
@@ -276,7 +284,8 @@ public class MemberController {
         }
         session.removeAttribute(AuthController.PENDING_NAVER_SIGNUP);
         session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
-        return "redirect:/main?signupSuccess=true";
+        redirectAttributes.addFlashAttribute("postRedirectAlertMessage", "회원가입이 완료되었습니다.");
+        return "redirect:/main";
     }
 
     private void applyPageAttributes(Model model, boolean success, String socialSignupProvider, HttpSession session) {
