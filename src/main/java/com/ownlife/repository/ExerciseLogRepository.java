@@ -46,4 +46,15 @@ public interface ExerciseLogRepository extends JpaRepository<ExerciseLog, Long> 
     BigDecimal sumBurnedKcalByMemberAndDateBetween(@Param("memberId") Long memberId,
                                                    @Param("startDate") LocalDate startDate,
                                                    @Param("endDate") LocalDate endDate);
+
+    @Query("""
+            select distinct e.exerciseDate
+            from ExerciseLog e
+            where e.member.memberId = :memberId
+              and e.exerciseDate between :startDate and :endDate
+            order by e.exerciseDate desc
+            """)
+    List<LocalDate> findDistinctExerciseDatesBetween(@Param("memberId") Long memberId,
+                                                     @Param("startDate") LocalDate startDate,
+                                                     @Param("endDate") LocalDate endDate);
 }
