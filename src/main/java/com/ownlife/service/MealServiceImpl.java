@@ -1,17 +1,21 @@
 package com.ownlife.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ownlife.dto.*;
 import com.ownlife.entity.Food;
 import com.ownlife.entity.MealLog;
+import com.ownlife.entity.Member;
 import com.ownlife.repository.FoodRepository;
 import com.ownlife.repository.MealLogRepository;
+import com.ownlife.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.ownlife.entity.Member;
-import com.ownlife.repository.MemberRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
-
+import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class MealServiceImpl implements MealService {
@@ -104,6 +108,30 @@ public class MealServiceImpl implements MealService {
 
         // 5. 저장
         mealLogRepository.save(mealLog);
+    }
+
+    /*
+    식단 담기
+    */
+    @Override
+    public void addMeals(Long memberId, LocalDate date, String mealType, String selectedFoodsJson) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            List<Map<String, Object>> foods = objectMapper.readValue(
+                    selectedFoodsJson,
+                    new TypeReference<List<Map<String, Object>>>() {}
+            );
+
+            for (Map<String, Object> foodData : foods) {
+                Long foodId = Long.valueOf(String.valueOf(foodData.get("foodId")));
+                int count = Integer.parseInt(String.valueOf(foodData.get("count")));
+
+                addMeal(memberId, date, mealType, foodId, count);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("식단 저장 중 오류가 발생했습니다.", e);
+        }
     }
 
     /**
@@ -306,13 +334,23 @@ public class MealServiceImpl implements MealService {
             LocalDate weekStart = date.minusWeeks(i);
             LocalDate weekEnd = weekStart.plusDays(6);
 
-            double totalKcal = allLogs.stream()
+            List<MealLog> weekLogs = allLogs.stream()
                     .filter(log -> !log.getMealDate().isBefore(weekStart) && !log.getMealDate().isAfter(weekEnd))
+                    .toList();
+
+            double totalKcal = weekLogs.stream()
                     .mapToDouble(MealLog::getCaloriesKcal)
                     .sum();
 
-            labels.add((4 - i) + "주차");
-            calories.add(totalKcal);
+            long recordedDays = weekLogs.stream()
+                    .map(MealLog::getMealDate)
+                    .distinct()
+                    .count();
+
+            double avgKcal = recordedDays > 0 ? totalKcal / recordedDays : 0;
+
+            labels.add(getWeekLabel(weekStart));
+            calories.add(avgKcal);
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -343,14 +381,24 @@ public class MealServiceImpl implements MealService {
             int year = targetMonth.getYear();
             int month = targetMonth.getMonthValue();
 
-            double totalKcal = allLogs.stream()
+            List<MealLog> monthLogs = allLogs.stream()
                     .filter(log -> log.getMealDate().getYear() == year
                             && log.getMealDate().getMonthValue() == month)
+                    .toList();
+
+            double totalKcal = monthLogs.stream()
                     .mapToDouble(MealLog::getCaloriesKcal)
                     .sum();
 
+            long recordedDays = monthLogs.stream()
+                    .map(MealLog::getMealDate)
+                    .distinct()
+                    .count();
+
+            double avgKcal = recordedDays > 0 ? totalKcal / recordedDays : 0;
+
             labels.add(month + "월");
-            calories.add(totalKcal);
+            calories.add(avgKcal);
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -379,13 +427,23 @@ public class MealServiceImpl implements MealService {
         for (int i = 4; i >= 0; i--) {
             int targetYear = date.minusYears(i).getYear();
 
-            double totalKcal = allLogs.stream()
+            List<MealLog> yearLogs = allLogs.stream()
                     .filter(log -> log.getMealDate().getYear() == targetYear)
+                    .toList();
+
+            double totalKcal = yearLogs.stream()
                     .mapToDouble(MealLog::getCaloriesKcal)
                     .sum();
 
+            long recordedDays = yearLogs.stream()
+                    .map(MealLog::getMealDate)
+                    .distinct()
+                    .count();
+
+            double avgKcal = recordedDays > 0 ? totalKcal / recordedDays : 0;
+
             labels.add(targetYear + "년");
-            calories.add(totalKcal);
+            calories.add(avgKcal);
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -395,4 +453,179 @@ public class MealServiceImpl implements MealService {
 
         return result;
     }
+
+    /*
+    식단로그 삭제 버튼
+     */
+    @Transactional
+    @Override
+    public void deleteMealGroup(Long memberId, LocalDate date, String mealType) {
+        mealLogRepository.deleteByMemberIdAndMealDateAndMealType(memberId, date, mealType);
+    }
+
+    @Override
+    public DietPageDataDto getDietPageData(Long memberId, LocalDate date) {
+        List<MealLog> mealLogs = mealLogRepository.findByMemberIdAndMealDate(memberId, date);
+
+        NutritionSummaryDto dailySummary = createNutritionSummary(mealLogs);
+        GoalSummaryDto goalSummary = createGoalSummary(memberId, dailySummary);
+        List<MealGroupDto> mealGroups = createMealGroups(mealLogs);
+
+        DietChartBundleDto charts = new DietChartBundleDto();
+        charts.setDay(convertChartDto(getDietDayChart(memberId, date)));
+        charts.setWeek(convertChartDto(getDietWeekChart(memberId, date)));
+        charts.setMonth(convertChartDto(getDietMonthChart(memberId, date)));
+        charts.setYear(convertChartDto(getDietYearChart(memberId, date)));
+
+        DietPageDataDto dto = new DietPageDataDto();
+        dto.setSelectedDate(date);
+        dto.setDailySummary(dailySummary);
+        dto.setGoalSummary(goalSummary);
+        dto.setMealGroups(mealGroups);
+        dto.setCharts(charts);
+
+        return dto;
+    }
+
+    private DietChartDto convertChartDto(Map<String, Object> chartMap) {
+        DietChartDto dto = new DietChartDto();
+
+        dto.setLabels((List<String>) chartMap.getOrDefault("labels", new ArrayList<>()));
+        dto.setCalories((List<Double>) chartMap.getOrDefault("calories", new ArrayList<>()));
+
+        Object goalObj = chartMap.get("goalKcal");
+        dto.setGoalKcal(goalObj instanceof Number ? ((Number) goalObj).doubleValue() : 0);
+
+        return dto;
+    }
+
+    private NutritionSummaryDto createNutritionSummary(List<MealLog> mealLogs) {
+        double totalKcal = 0;
+        double totalCarb = 0;
+        double totalProtein = 0;
+        double totalFat = 0;
+
+        for (MealLog mealLog : mealLogs) {
+            totalKcal += mealLog.getCaloriesKcal() != null ? mealLog.getCaloriesKcal() : 0;
+            totalCarb += mealLog.getCarbG() != null ? mealLog.getCarbG() : 0;
+            totalProtein += mealLog.getProteinG() != null ? mealLog.getProteinG() : 0;
+            totalFat += mealLog.getFatG() != null ? mealLog.getFatG() : 0;
+        }
+
+        NutritionSummaryDto dto = new NutritionSummaryDto();
+        dto.setKcal(totalKcal);
+        dto.setCarb(totalCarb);
+        dto.setProtein(totalProtein);
+        dto.setFat(totalFat);
+
+        return dto;
+    }
+
+    private GoalSummaryDto createGoalSummary(Long memberId, NutritionSummaryDto dailySummary) {
+        double goalKcal = getGoalCalories(memberId);
+        double totalKcal = dailySummary.getKcal();
+
+        double remainingKcal = Math.max(goalKcal - totalKcal, 0);
+        double exceededKcal = totalKcal > goalKcal ? totalKcal - goalKcal : 0;
+        double goalPercent = goalKcal > 0 ? (totalKcal / goalKcal) * 100.0 : 0;
+
+        GoalSummaryDto dto = new GoalSummaryDto();
+        dto.setGoalKcal(goalKcal);
+        dto.setTotalKcal(totalKcal);
+        dto.setRemainingKcal(remainingKcal);
+        dto.setExceededKcal(exceededKcal);
+        dto.setGoalPercent(goalPercent);
+
+        return dto;
+    }
+
+    private List<MealGroupDto> createMealGroups(List<MealLog> mealLogs) {
+        Map<String, List<MealLog>> grouped = mealLogs.stream()
+                .collect(Collectors.groupingBy(MealLog::getMealType, LinkedHashMap::new, Collectors.toList()));
+
+        List<MealGroupDto> result = new ArrayList<>();
+
+        for (Map.Entry<String, List<MealLog>> entry : grouped.entrySet()) {
+            String mealType = entry.getKey();
+            List<MealLog> logs = entry.getValue();
+
+            List<MealItemDto> items = new ArrayList<>();
+            double subtotalKcal = 0;
+
+            for (MealLog mealLog : logs) {
+                MealItemDto itemDto = new MealItemDto();
+                itemDto.setMealLogId(mealLog.getMealLogId());
+                itemDto.setFoodName(mealLog.getFoodNameSnapshot());
+                itemDto.setCaloriesKcal(mealLog.getCaloriesKcal() != null ? mealLog.getCaloriesKcal() : 0);
+
+                items.add(itemDto);
+                subtotalKcal += itemDto.getCaloriesKcal();
+            }
+
+            MealGroupDto groupDto = new MealGroupDto();
+            groupDto.setMealType(mealType);
+            groupDto.setMealTypeLabel(convertMealTypeLabel(mealType));
+            groupDto.setItems(items);
+            groupDto.setSubtotalKcal(subtotalKcal);
+
+            result.add(groupDto);
+        }
+
+        result.sort(Comparator.comparingInt(group -> getMealTypeOrder(group.getMealType())));
+        return result;
+    }
+
+    private String convertMealTypeLabel(String mealType) {
+        if (mealType == null) return "";
+
+        switch (mealType) {
+            case "BREAKFAST":
+                return "아침";
+            case "LUNCH":
+                return "점심";
+            case "DINNER":
+                return "저녁";
+            case "SNACK":
+                return "간식";
+            default:
+                return mealType;
+        }
+    }
+
+    private int getMealTypeOrder(String mealType) {
+        if (mealType == null) return 99;
+
+        switch (mealType) {
+            case "BREAKFAST":
+                return 1;
+            case "LUNCH":
+                return 2;
+            case "DINNER":
+                return 3;
+            case "SNACK":
+                return 4;
+            default:
+                return 99;
+        }
+    }
+
+    private double getGoalCalories(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 없음"));
+
+        return member.getGoalEatKcal() != null ? member.getGoalEatKcal() : 0;
+    }
+
+    private int getWeekOfMonth(LocalDate date) {
+        LocalDate firstDayOfMonth = date.withDayOfMonth(1);
+        int firstDayValue = firstDayOfMonth.getDayOfWeek().getValue(); // 월=1 ~ 일=7
+        int adjustedDay = date.getDayOfMonth() + (firstDayValue - 1);
+        return (adjustedDay - 1) / 7 + 1;
+    }
+
+    private String getWeekLabel(LocalDate weekStart) {
+        return weekStart.getMonthValue() + "월 " + getWeekOfMonth(weekStart) + "주";
+    }
+
+
 }

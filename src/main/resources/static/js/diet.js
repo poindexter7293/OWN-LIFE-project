@@ -14,6 +14,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const selectedProteinG = document.getElementById("selectedProteinG");
     const selectedFatG = document.getElementById("selectedFatG");
 
+    const addSelectedFoodBtn = document.getElementById("addSelectedFoodBtn");
+    const selectedFoodList = document.getElementById("selectedFoodList");
+    const selectedFoodCount = document.getElementById("selectedFoodCount");
+    const selectedFoodsJson = document.getElementById("selectedFoodsJson");
+
+    let selectedFoods = [];
+
+    let dietIntakeChart = null;
+    let macroRatioChart = null;
+
     if (!modeRadios.length || !selectModeFields || !customModeFields || !form) {
         return;
     }
@@ -79,6 +89,14 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function getBarColors(calories, goalKcal) {
+        return calories.map(value => Number(value) > Number(goalKcal) ? "#ef4444" : "#22c55e");
+    }
+
+    function getBarHoverColors(calories, goalKcal) {
+        return calories.map(value => Number(value) > Number(goalKcal) ? "#dc2626" : "#16a34a");
+    }
+
     function renderDietIntakeChart() {
         const chartCanvas = document.getElementById("dietIntakeChart");
         if (!chartCanvas || !window.dietChartDataMap) return;
@@ -90,6 +108,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const { labels, calories, goalKcal } = chartData;
         const ctx = chartCanvas.getContext("2d");
 
+        const barColors = getBarColors(calories, goalKcal);
+        const barHoverColors = getBarHoverColors(calories, goalKcal);
+
         dietIntakeChart = new Chart(ctx, {
             type: "bar",
             data: {
@@ -98,8 +119,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     {
                         label: "섭취 칼로리",
                         data: calories,
-                        backgroundColor: "#22c55e",
-                        hoverBackgroundColor: "#16a34a",
+                        backgroundColor: barColors,
+                        hoverBackgroundColor: barHoverColors,
                         borderRadius: 10,
                         borderSkipped: false,
                         maxBarThickness: 34
@@ -181,6 +202,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         dietIntakeChart.data.labels = labels;
         dietIntakeChart.data.datasets[0].data = calories;
+        dietIntakeChart.data.datasets[0].backgroundColor = getBarColors(calories, goalKcal);
+        dietIntakeChart.data.datasets[0].hoverBackgroundColor = getBarHoverColors(calories, goalKcal);
         dietIntakeChart.data.datasets[1].data = labels.map(() => goalKcal);
         dietIntakeChart.update();
 
@@ -194,11 +217,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (period === "day") {
             titleEl.textContent = "최근 7일 섭취량";
         } else if (period === "week") {
-            titleEl.textContent = "최근 1주간 섭취량";
+            titleEl.textContent = "주간 평균 섭취량";
         } else if (period === "month") {
-            titleEl.textContent = "최근 1개월간 섭취량";
+            titleEl.textContent = "월간 평균 섭취량";
         } else if (period === "year") {
-            titleEl.textContent = "최근 1년간 섭취량";
+            titleEl.textContent = "연간 평균 섭취량";
         }
     }
 
@@ -218,11 +241,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    function renderMacroRatioChart() {
+    function renderMacroRatioChart(data = window.macroRatioData) {
         const chartCanvas = document.getElementById("macroRatioChart");
-        if (!chartCanvas || !window.macroRatioData) return;
+        if (!chartCanvas || !data) return;
 
-        const { carb, protein, fat } = window.macroRatioData;
+        const carb = Number(data.carb || 0);
+        const protein = Number(data.protein || 0);
+        const fat = Number(data.fat || 0);
         const total = carb + protein + fat;
         const ctx = chartCanvas.getContext("2d");
 
@@ -254,16 +279,26 @@ document.addEventListener("DOMContentLoaded", function () {
         };
 
         const isEmpty = total === 0;
+        const chartValues = isEmpty ? [1, 1, 1] : [carb, protein, fat];
+        const chartColors = isEmpty
+            ? ["#eef3f9", "#eef3f9", "#eef3f9"]
+            : ["#22c55e", "#6a5cff", "#c4b5fd"];
 
-        new Chart(ctx, {
+        if (macroRatioChart) {
+            macroRatioChart.data.datasets[0].data = chartValues;
+            macroRatioChart.data.datasets[0].backgroundColor = chartColors;
+            macroRatioChart.options.plugins.tooltip.enabled = !isEmpty;
+            macroRatioChart.update();
+            return;
+        }
+
+        macroRatioChart = new Chart(ctx, {
             type: "doughnut",
             data: {
                 labels: ["탄수화물", "단백질", "지방"],
                 datasets: [{
-                    data: isEmpty ? [1, 1, 1] : [carb, protein, fat],
-                    backgroundColor: isEmpty
-                        ? ["#eef3f9", "#eef3f9", "#eef3f9"]
-                        : ["#22c55e", "#6a5cff", "#c4b5fd"],
+                    data: chartValues,
+                    backgroundColor: chartColors,
                     borderWidth: 0,
                     hoverOffset: 6
                 }]
@@ -409,13 +444,323 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function getSelectedFoodData() {
+        if (!foodSelect) return null;
+
+        const selectedOption = foodSelect.options[foodSelect.selectedIndex];
+        if (!selectedOption || !selectedOption.value) return null;
+
+        return {
+            foodId: selectedOption.value,
+            foodName: selectedOption.textContent.trim(),
+            baseAmountG: parseFloat(selectedOption.dataset.baseAmount || "0"),
+            caloriesKcal: parseFloat(selectedOption.dataset.calories || "0"),
+            carbG: parseFloat(selectedOption.dataset.carb || "0"),
+            proteinG: parseFloat(selectedOption.dataset.protein || "0"),
+            fatG: parseFloat(selectedOption.dataset.fat || "0"),
+            count: 1
+        };
+    }
+
+    function renderSelectedFoods() {
+        if (!selectedFoodList || !selectedFoodCount || !selectedFoodsJson) return;
+
+        selectedFoodCount.textContent = `${selectedFoods.length}개`;
+        selectedFoodsJson.value = JSON.stringify(selectedFoods);
+
+        if (selectedFoods.length === 0) {
+            selectedFoodList.innerHTML = `<div class="selected-food-empty">아직 담긴 음식이 없습니다.</div>`;
+            return;
+        }
+
+        selectedFoodList.innerHTML = selectedFoods.map((food, index) => {
+            const totalKcal = (food.caloriesKcal * food.count).toFixed(1);
+
+            return `
+            <div class="selected-food-item">
+                <div class="selected-food-name">${food.foodName}</div>
+                <input type="number"
+                       min="1"
+                       step="1"
+                       value="${food.count}"
+                       class="selected-food-amount"
+                       data-index="${index}">
+                <div class="selected-food-kcal">${totalKcal} kcal</div>
+                <button type="button"
+                        class="remove-selected-food-btn"
+                        data-remove-index="${index}">삭제</button>
+            </div>
+        `;
+        }).join("");
+    }
+
+    function addSelectedFood() {
+        const selectedFood = getSelectedFoodData();
+
+        if (!selectedFood) {
+            alert("음식을 먼저 선택해 주세요.");
+            return;
+        }
+
+        const existsIndex = selectedFoods.findIndex(food => String(food.foodId) === String(selectedFood.foodId));
+
+        if (existsIndex !== -1) {
+            selectedFoods[existsIndex].count += 1;
+        } else {
+            selectedFoods.push(selectedFood);
+        }
+
+        renderSelectedFoods();
+    }
+
+    function bindSelectedFoodEvents() {
+        if (!selectedFoodList) return;
+
+        selectedFoodList.addEventListener("click", function (e) {
+            const removeIndex = e.target.dataset.removeIndex;
+            if (removeIndex === undefined) return;
+
+            selectedFoods.splice(Number(removeIndex), 1);
+            renderSelectedFoods();
+        });
+
+        selectedFoodList.addEventListener("input", function (e) {
+            if (!e.target.classList.contains("selected-food-amount")) return;
+
+            const index = Number(e.target.dataset.index);
+            const value = parseInt(e.target.value || "1", 10);
+
+            selectedFoods[index].count = value > 0 ? value : 1;
+            renderSelectedFoods();
+        });
+    }
+
+    if (addSelectedFoodBtn) {
+        addSelectedFoodBtn.addEventListener("click", addSelectedFood);
+    }
+
+    form.addEventListener("submit", function (e) {
+        const mode = document.querySelector('input[name="inputMode"]:checked')?.value;
+
+        if (mode === "custom") {
+            const name = document.getElementById("customFoodName").value.trim();
+            const base = document.getElementById("customBaseAmountG").value;
+
+            if (!name) {
+                alert("음식명을 입력해 주세요.");
+                e.preventDefault();
+                return;
+            }
+
+            if (!base || base <= 0) {
+                alert("기준량을 올바르게 입력해 주세요.");
+                e.preventDefault();
+                return;
+            }
+        } else {
+            if (selectedFoods.length === 0) {
+                alert("담긴 음식이 없습니다. 음식을 선택한 뒤 '선택 음식 담기'를 눌러주세요.");
+                e.preventDefault();
+                return;
+            }
+        }
+    });
+
+    function bindMealGroupDeleteButtons() {
+        document.addEventListener("click", async function (e) {
+            const btn = e.target.closest(".meal-group-delete-btn");
+            if (!btn) return;
+
+            const mealType = btn.dataset.mealType;
+            const date = btn.dataset.date;
+
+            const ok = confirm("이 식사 항목 전체를 삭제하시겠습니까?");
+            if (!ok) return;
+
+            try {
+                const response = await fetch("/diet/delete-group", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: new URLSearchParams({
+                        mealType: mealType,
+                        date: date
+                    })
+                });
+
+                if (!response.ok) {
+                    alert("삭제 중 오류가 발생했습니다.");
+                    return;
+                }
+
+                const data = await response.json();
+                refreshDietUI(data);
+
+            } catch (error) {
+                console.error(error);
+                alert("삭제 중 오류가 발생했습니다.");
+            }
+        });
+    }
+
+    function renderGoalSummary(goalSummary) {
+        const goalEl = document.querySelector(".kcal-goal");
+        const intakeEl = document.querySelector(".kcal-intake");
+        const remainingEl = document.querySelector(".kcal-remaining");
+
+        if (!goalEl || !intakeEl || !remainingEl || !goalSummary) return;
+
+        goalEl.dataset.value = Number(goalSummary.goalKcal || 0).toFixed(1);
+        intakeEl.dataset.value = Number(goalSummary.totalKcal || 0).toFixed(1);
+        remainingEl.dataset.value = Number(goalSummary.remainingKcal || 0).toFixed(1);
+
+        if (Number(goalSummary.exceededKcal || 0) > 0) {
+            remainingEl.classList.add("kcal-over");
+        } else {
+            remainingEl.classList.remove("kcal-over");
+        }
+
+        animateCountUp();
+    }
+
+    function renderMacroSummary(dailySummary) {
+        if (!dailySummary) return;
+
+        const macroItems = document.querySelectorAll(".macro-legend .macro-item strong");
+        if (macroItems.length < 3) return;
+
+        macroItems[0].textContent = `${Number(dailySummary.carb || 0).toFixed(1)}g`;
+        macroItems[1].textContent = `${Number(dailySummary.protein || 0).toFixed(1)}g`;
+        macroItems[2].textContent = `${Number(dailySummary.fat || 0).toFixed(1)}g`;
+    }
+
+    function renderMealGroups(mealGroups, selectedDate) {
+        const mealSummaryList = document.getElementById("mealSummaryList");
+        const mealSummaryEmpty = document.getElementById("mealSummaryEmpty");
+        const listContainer = mealSummaryList ? mealSummaryList.parentElement : mealSummaryEmpty ? mealSummaryEmpty.parentElement : null;
+
+        if (!listContainer) return;
+
+        if (mealSummaryList) {
+            mealSummaryList.remove();
+        }
+
+        if (mealSummaryEmpty) {
+            mealSummaryEmpty.style.display = "none";
+        }
+
+        if (!mealGroups || mealGroups.length === 0) {
+            if (mealSummaryEmpty) {
+                mealSummaryEmpty.style.display = "block";
+            } else {
+                const emptyBox = document.createElement("div");
+                emptyBox.className = "empty-box";
+                emptyBox.id = "mealSummaryEmpty";
+                emptyBox.textContent = "등록된 식단이 없습니다.";
+                listContainer.appendChild(emptyBox);
+            }
+            return;
+        }
+
+        const listEl = document.createElement("div");
+        listEl.className = "meal-summary-list";
+        listEl.id = "mealSummaryList";
+
+        listEl.innerHTML = mealGroups.map(group => {
+            const foodNames = (group.items || []).map(item => item.foodName).join(", ");
+            const subtotalKcal = Number(group.subtotalKcal || 0).toFixed(1);
+
+            return `
+            <div class="meal-summary-item">
+                <div class="meal-summary-line">
+                    <span class="meal-summary-type">${group.mealTypeLabel}:</span>
+
+                    <span class="meal-summary-foods">${foodNames}</span>
+
+                    <span class="meal-summary-total">
+                        소계:
+                        <span>${subtotalKcal}</span>
+                        kcal
+                    </span>
+
+                    <button type="button"
+                            class="meal-group-delete-btn"
+                            data-meal-type="${group.mealType}"
+                            data-date="${selectedDate}">
+                        삭제
+                    </button>
+                </div>
+            </div>
+        `;
+        }).join("");
+
+        listContainer.appendChild(listEl);
+    }
+
+    function refreshChartData(charts, dailySummary) {
+        if (charts) {
+            window.dietChartDataMap = {
+                day: charts.day || { labels: [], calories: [], goalKcal: 0 },
+                week: charts.week || { labels: [], calories: [], goalKcal: 0 },
+                month: charts.month || { labels: [], calories: [], goalKcal: 0 },
+                year: charts.year || { labels: [], calories: [], goalKcal: 0 }
+            };
+        }
+
+        if (dailySummary) {
+            window.macroRatioData = {
+                carb: Number(dailySummary.carb || 0),
+                protein: Number(dailySummary.protein || 0),
+                fat: Number(dailySummary.fat || 0)
+            };
+        }
+    }
+
+    function getActiveChartPeriod() {
+        const activeTab = document.querySelector(".chart-tab.active");
+        return activeTab ? activeTab.dataset.period : "day";
+    }
+
+    function refreshDietUI(data) {
+        if (!data) return;
+
+        renderGoalSummary(data.goalSummary);
+        renderMacroSummary(data.dailySummary);
+        renderMealGroups(data.mealGroups, data.selectedDate);
+        refreshChartData(data.charts, data.dailySummary);
+
+        const activePeriod = getActiveChartPeriod();
+        updateDietChart(activePeriod);
+        renderMacroRatioChart(window.macroRatioData);
+    }
+
+    function updateDietChartSubText(period) {
+        const subTextEl = document.getElementById("dietChartSubText");
+        if (!subTextEl) return;
+
+        if (period === "day") {
+            subTextEl.textContent = "선택한 기간 기준 일별 섭취 칼로리를 보여줍니다.";
+        } else if (period === "week") {
+            subTextEl.textContent = "각 주차별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
+        } else if (period === "month") {
+            subTextEl.textContent = "각 월별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
+        } else if (period === "year") {
+            subTextEl.textContent = "각 연도별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
+        }
+    }
+
     toggleDietInputMode();
     fillSelectedFoodInfo();
     filterFoodOptions();
+    renderSelectedFoods();
+    bindSelectedFoodEvents();
     animateCountUp();
     renderDietIntakeChart();
     renderMacroRatioChart();
     bindDietChartTabs();
     bindGoalCard();
     bindIntakeCard();
+    bindMealGroupDeleteButtons();
+    updateDietChartSubText(period);
 });
