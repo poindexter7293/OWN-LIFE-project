@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
+<!--/*@thymesVar id="loginForm" type="com.ownlife.dto.LoginForm"*/-->
 <section th:fragment="centerLogin" class="login-page">
     <div class="login-shell">
         <div class="card login-card">
@@ -87,13 +88,13 @@
                     <a class="social-login-button social-login-button--kakao"
                        th:if="${kakaoAuthEnabled}"
                        th:href="${kakaoLoginUrl}">
-                        <span class="social-login-button__badge">K</span>
-                        <span>카카오로 로그인 / 회원가입</span>
+                         <span class="social-login-button__badge"><img th:src="@{/images/kakaotalk_btn_small.png}" alt="카카오"></span>
+                         <span>카카오로 로그인 / 회원가입</span>
                     </a>
                     <a class="social-login-button social-login-button--naver"
                        th:if="${naverAuthEnabled}"
                        th:href="${naverLoginUrl}">
-                        <span class="social-login-button__badge social-login-button__badge--naver">N</span>
+                        <span class="social-login-button__badge social-login-button__badge--naver"><img th:src="@{/images/naver_btn.png}" alt="네이버"></span>
                         <span>네이버로 로그인 / 회원가입</span>
                     </a>
                 </div>

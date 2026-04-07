@@ -183,7 +183,7 @@ public class MemberController {
         }
 
         memberService.register(signupForm);
-        return "redirect:/main";
+        return "redirect:/main?signupSuccess=true";
     }
 
     @PostMapping("/signup/google")
@@ -214,7 +214,7 @@ public class MemberController {
         }
         session.removeAttribute(AuthController.PENDING_GOOGLE_SIGNUP);
         session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
-        return "redirect:/main";
+        return "redirect:/main?signupSuccess=true";
     }
 
     @PostMapping("/signup/kakao")
@@ -245,7 +245,7 @@ public class MemberController {
         }
         session.removeAttribute(AuthController.PENDING_KAKAO_SIGNUP);
         session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
-        return "redirect:/main";
+        return "redirect:/main?signupSuccess=true";
     }
 
     @PostMapping("/signup/naver")
@@ -276,7 +276,7 @@ public class MemberController {
         }
         session.removeAttribute(AuthController.PENDING_NAVER_SIGNUP);
         session.setAttribute(AuthController.LOGIN_MEMBER, toSessionMember(member));
-        return "redirect:/main";
+        return "redirect:/main?signupSuccess=true";
     }
 
     private void applyPageAttributes(Model model, boolean success, String socialSignupProvider, HttpSession session) {

@@ -154,8 +154,19 @@
     font-weight: 900;
 }
 
+.signup-social-button__badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 .signup-social-button__badge--naver {
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.signup-social-button__badge--naver img {
+    width: 86%;
+    height: 86%;
 }
 
 .signup-grid {

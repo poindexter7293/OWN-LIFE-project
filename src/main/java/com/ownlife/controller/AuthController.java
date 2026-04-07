@@ -78,7 +78,7 @@ public class AuthController {
                 .map(member -> {
                     session.removeAttribute(PENDING_GOOGLE_SIGNUP);
                     session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                    return "redirect:/main";
+                    return "redirect:/main?loginSuccess=true";
                 })
                 .orElseGet(() -> {
                     bindingResult.reject("loginFailed", "아이디 또는 비밀번호가 올바르지 않습니다.");
@@ -112,7 +112,7 @@ public class AuthController {
                     .map(member -> {
                         session.removeAttribute(PENDING_GOOGLE_SIGNUP);
                         session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                        return "redirect:/main";
+                        return "redirect:/main?loginSuccess=true";
                     })
                     .orElseGet(() -> {
                         session.setAttribute(PENDING_GOOGLE_SIGNUP, PendingGoogleSignup.from(googleUserProfile));
@@ -182,7 +182,7 @@ public class AuthController {
                     .map(member -> {
                         session.removeAttribute(PENDING_KAKAO_SIGNUP);
                         session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                        return "redirect:/main";
+                        return "redirect:/main?loginSuccess=true";
                     })
                     .orElseGet(() -> {
                         session.setAttribute(PENDING_KAKAO_SIGNUP, PendingKakaoSignup.from(kakaoUserProfile));
@@ -255,7 +255,7 @@ public class AuthController {
                     .map(member -> {
                         session.removeAttribute(PENDING_NAVER_SIGNUP);
                         session.setAttribute(LOGIN_MEMBER, toSessionMember(member));
-                        return "redirect:/main";
+                        return "redirect:/main?loginSuccess=true";
                     })
                     .orElseGet(() -> {
                         session.setAttribute(PENDING_NAVER_SIGNUP, PendingNaverSignup.from(naverUserProfile));

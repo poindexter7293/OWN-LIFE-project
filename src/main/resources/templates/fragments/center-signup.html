@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
+<!--/*@thymesVar id="signupForm" type="com.ownlife.dto.SignupForm"*/-->
 <section th:fragment="centerSignup" class="signup-page">
     <div class="signup-shell">
         <div class="signup-intro card signup-card">
@@ -35,21 +36,21 @@
                     <a class="signup-social-button signup-social-button--kakao"
                        th:if="${kakaoAuthEnabled}"
                        th:href="${kakaoLoginUrl}">
-                        <span class="signup-social-button__badge">K</span>
-                        <span>카카오로 3초 가입</span>
+                         <span class="signup-social-button__badge"><img th:src="@{/images/kakaotalk_btn_small.png}" alt="카카오"></span>
+                         <span>카카오로 3초 가입</span>
                     </a>
                     <a class="signup-social-button signup-social-button--naver"
                        th:if="${naverAuthEnabled}"
                        th:href="${naverLoginUrl}">
-                        <span class="signup-social-button__badge signup-social-button__badge--naver">N</span>
+                        <span class="signup-social-button__badge signup-social-button__badge--naver"><img th:src="@{/images/naver_btn.png}" alt="네이버"></span>
                         <span>네이버로 3초 가입</span>
                     </a>
                 </div>
             </div>
 
             <form th:action="${signupAction}" method="post" th:object="${signupForm}" class="signup-form" data-signup-form th:attr="data-social-signup-mode=${socialSignupMode}">
-                <div class="signup-alert signup-alert-error" th:if="${#fields.hasGlobalErrors()}" th:errors="*{global}">
-                    회원가입 처리 중 오류가 발생했습니다.
+                <div class="signup-alert signup-alert-error" th:if="${#fields.hasGlobalErrors()}">
+                    <p th:each="error : ${#fields.globalErrors()}" th:text="${error}">회원가입 처리 중 오류가 발생했습니다.</p>
                 </div>
                 <div class="signup-alert signup-alert-error" th:if="${#fields.hasAnyErrors()}">
                     입력값을 다시 확인해 주세요. 빨간 안내가 있는 항목부터 수정하면 됩니다.
