@@ -1,5 +1,6 @@
 package com.ownlife.service;
 
+import com.ownlife.dto.DietPageDataDto;
 import com.ownlife.entity.Food;
 import com.ownlife.entity.MealLog;
 
@@ -8,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 public interface MealService {
+
+    DietPageDataDto getDietPageData(Long memberId, LocalDate date);
 
     List<Food> getAllFoods();
 
@@ -31,9 +34,13 @@ public interface MealService {
 
     void deleteMeal(Long memberId, Long mealLogId);
 
+    void addMeals(Long memberId, LocalDate date, String mealType, String selectedFoodsJson);
+
     void addCustomMeal(Long memberId, LocalDate date, String mealType, String customFoodName,
                        Double customBaseAmountG, int count, Double customCaloriesKcal, Double customCarbG,
                        Double customProteinG, Double customFatG, boolean saveAsFood);
+
+    void deleteMealGroup(Long memberId, LocalDate date, String mealType);
 
 }
 
