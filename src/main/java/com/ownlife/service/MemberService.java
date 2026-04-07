@@ -24,7 +24,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -119,6 +121,41 @@ public class MemberService {
         member.setGoalEatKcal(myPageForm.getGoalEatKcal());
         member.setGoalBurnedKcal(myPageForm.getGoalBurnedKcal());
 
+        return memberRepository.saveAndFlush(member);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Member> findMembersForAdmin(String keyword, Member.Status status) {
+        String normalizedKeyword = normalizeAdminKeyword(keyword);
+
+        return memberRepository.findAll().stream()
+                .filter(member -> status == null || member.getStatus() == status)
+                .filter(member -> matchesAdminKeyword(member, normalizedKeyword))
+                .sorted(Comparator
+                        .comparing(Member::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Member::getMemberId, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    public Member changeMemberStatusByAdmin(Long adminMemberId, Long targetMemberId, Member.Status nextStatus) {
+        if (adminMemberId == null || targetMemberId == null || nextStatus == null) {
+            throw new IllegalArgumentException("회원 상태 변경 요청이 올바르지 않습니다.");
+        }
+        if (nextStatus == Member.Status.DELETED) {
+            throw new IllegalArgumentException("탈퇴한 계정 상태는 관리자 페이지에서 직접 변경할 수 없습니다.");
+        }
+        if (adminMemberId.equals(targetMemberId)) {
+            throw new IllegalStateException("본인 계정 상태는 변경할 수 없습니다.");
+        }
+
+        Member member = memberRepository.findById(targetMemberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        if (member.getStatus() == Member.Status.DELETED) {
+            throw new IllegalStateException("탈퇴한 회원 상태는 변경할 수 없습니다.");
+        }
+
+        member.setStatus(nextStatus);
         return memberRepository.saveAndFlush(member);
     }
 
@@ -486,6 +523,11 @@ public class MemberService {
         return normalizeIdentity(value);
     }
 
+    private String normalizeAdminKeyword(String value) {
+        String trimmed = trimToNull(value);
+        return trimmed == null ? null : trimmed.toLowerCase(Locale.ROOT);
+    }
+
     private String normalizeIdentity(String value) {
         String trimmed = trimToNull(value);
         return trimmed == null ? null : trimmed.toLowerCase();
@@ -502,6 +544,20 @@ public class MemberService {
         if (member.getStatus() != Member.Status.ACTIVE) {
             throw new IllegalStateException("비활성화된 계정은 로그인할 수 없습니다.");
         }
+    }
+
+    private boolean matchesAdminKeyword(Member member, String normalizedKeyword) {
+        if (!StringUtils.hasText(normalizedKeyword)) {
+            return true;
+        }
+
+        return containsIgnoreCase(member.getUsername(), normalizedKeyword)
+                || containsIgnoreCase(member.getNickname(), normalizedKeyword)
+                || containsIgnoreCase(member.getEmail(), normalizedKeyword);
+    }
+
+    private boolean containsIgnoreCase(String source, String normalizedKeyword) {
+        return source != null && source.toLowerCase(Locale.ROOT).contains(normalizedKeyword);
     }
 
     private void validateWithdrawalRequest(Member member, WithdrawalForm withdrawalForm) {

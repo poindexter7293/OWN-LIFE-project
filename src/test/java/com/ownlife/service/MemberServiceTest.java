@@ -673,6 +673,71 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("관리자는 키워드와 상태로 회원 목록을 조회할 수 있다")
+    void findMembersForAdmin() {
+        SignupForm activeMemberForm = new SignupForm();
+        activeMemberForm.setUsername("alphauser01");
+        activeMemberForm.setPassword("Password123!");
+        activeMemberForm.setNickname("알파회원");
+        activeMemberForm.setEmail("alpha@example.com");
+        memberService.register(activeMemberForm);
+
+        SignupForm suspendedMemberForm = new SignupForm();
+        suspendedMemberForm.setUsername("betamember01");
+        suspendedMemberForm.setPassword("Password123!");
+        suspendedMemberForm.setNickname("베타회원");
+        suspendedMemberForm.setEmail("beta@example.com");
+        Member suspendedMember = memberService.register(suspendedMemberForm);
+        suspendedMember.setStatus(Member.Status.SUSPENDED);
+
+        java.util.List<Member> keywordResult = memberService.findMembersForAdmin("베타", null);
+        java.util.List<Member> suspendedResult = memberService.findMembersForAdmin(null, Member.Status.SUSPENDED);
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, keywordResult.size());
+        org.junit.jupiter.api.Assertions.assertEquals("betamember01", keywordResult.getFirst().getUsername());
+        org.junit.jupiter.api.Assertions.assertEquals(1, suspendedResult.size());
+        org.junit.jupiter.api.Assertions.assertEquals(suspendedMember.getMemberId(), suspendedResult.getFirst().getMemberId());
+    }
+
+    @Test
+    @DisplayName("관리자는 본인 계정을 제외한 회원 상태를 변경할 수 있다")
+    void changeMemberStatusByAdmin() {
+        SignupForm adminForm = new SignupForm();
+        adminForm.setUsername("adminuser01");
+        adminForm.setPassword("Password123!");
+        adminForm.setNickname("관리자");
+        adminForm.setEmail("admin@example.com");
+        Member adminMember = memberService.register(adminForm);
+        adminMember.setRole(Member.Role.ADMIN);
+
+        SignupForm userForm = new SignupForm();
+        userForm.setUsername("targetuser01");
+        userForm.setPassword("Password123!");
+        userForm.setNickname("대상회원");
+        userForm.setEmail("target@example.com");
+        Member targetMember = memberService.register(userForm);
+
+        Member updatedMember = memberService.changeMemberStatusByAdmin(adminMember.getMemberId(), targetMember.getMemberId(), Member.Status.SUSPENDED);
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Status.SUSPENDED, updatedMember.getStatus());
+    }
+
+    @Test
+    @DisplayName("관리자는 본인 계정 상태를 변경할 수 없다")
+    void changeMemberStatusByAdminFailsForSelf() {
+        SignupForm adminForm = new SignupForm();
+        adminForm.setUsername("selfadmin01");
+        adminForm.setPassword("Password123!");
+        adminForm.setNickname("자기관리자");
+        adminForm.setEmail("self-admin@example.com");
+        Member adminMember = memberService.register(adminForm);
+        adminMember.setRole(Member.Role.ADMIN);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> memberService.changeMemberStatusByAdmin(adminMember.getMemberId(), adminMember.getMemberId(), Member.Status.INACTIVE));
+    }
+
+    @Test
     @DisplayName("이미 다른 회원에게 연결된 Google 계정은 마이페이지에서 다시 연동할 수 없다")
     void linkGoogleAccountFailsWhenLinkedToAnotherMember() {
         SignupForm firstForm = new SignupForm();
@@ -751,6 +816,7 @@ class MemberServiceTest {
                 case "findByEmail" -> storage.values().stream().filter(member -> member.getEmail() != null && member.getEmail().equalsIgnoreCase((String) args[0])).findFirst();
                 case "findByUsername" -> Optional.ofNullable(storage.get(((String) args[0]).toLowerCase()));
                 case "findById" -> storage.values().stream().filter(member -> member.getMemberId().equals(args[0])).findFirst();
+                case "findAll" -> new java.util.ArrayList<>(storage.values());
                 case "findBySocialProviderAndSocialProviderId" -> storage.values().stream()
                         .filter(member -> member.getSocialProvider() != null && member.getSocialProviderId() != null)
                         .filter(member -> member.getSocialProvider().equals(args[0]) && member.getSocialProviderId().equals(args[1]))
