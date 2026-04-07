@@ -496,15 +496,25 @@ let routeMarkers = [];
 let routeMarkerPositions = [];
 let routeMapInitialized = false;
 let currentLocationMarker = null;
+let routeSearchMarker = null;
+let geolocationWatchId = null;
+let routePostcodeInstance = null;
 
 function initRouteMeasureMap() {
     const form = document.getElementById('routeQuickForm');
     const mapElement = document.getElementById('routeMap');
     const currentLocationButton = document.getElementById('routeCurrentLocationButton');
+    const searchAddressButton = document.getElementById('routeSearchAddressButton');
     const resetButton = document.getElementById('routeResetButton');
     const pathInput = document.getElementById('routePathPointsJson');
     const routeDistanceKmInput = document.getElementById('routeDistanceKmInput');
     const mapProviderInput = document.getElementById('routeMapProvider');
+
+    const routeAddressModal = document.getElementById('routeAddressModal');
+    const routeAddressModalBackdrop = document.getElementById('routeAddressModalBackdrop');
+    const routeAddressModalClose = document.getElementById('routeAddressModalClose');
+    const routePostcodeWrap = document.getElementById('routePostcodeWrap');
+    const routeAddressSelected = document.getElementById('routeAddressSelected');
 
     if (!form || !mapElement || !currentLocationButton || !resetButton || !routeDistanceKmInput) {
         return;
@@ -562,6 +572,25 @@ function initRouteMeasureMap() {
             moveMapToCurrentLocation(routeMapInstance);
         });
 
+        if (searchAddressButton) {
+            searchAddressButton.addEventListener('click', function () {
+                openAddressSearchModal({
+                    map: routeMapInstance,
+                    modal: routeAddressModal,
+                    wrap: routePostcodeWrap,
+                    selectedBox: routeAddressSelected
+                });
+            });
+        }
+
+        if (routeAddressModalClose) {
+            routeAddressModalClose.addEventListener('click', closeAddressSearchModal);
+        }
+
+        if (routeAddressModalBackdrop) {
+            routeAddressModalBackdrop.addEventListener('click', closeAddressSearchModal);
+        }
+
         resetButton.addEventListener('click', function () {
             routeMarkerPositions.length = 0;
             routeMarkers.forEach(marker => marker.setMap(null));
@@ -569,6 +598,11 @@ function initRouteMeasureMap() {
 
             if (routePolyline) {
                 routePolyline.setPath([]);
+            }
+
+            if (routeSearchMarker) {
+                routeSearchMarker.setMap(null);
+                routeSearchMarker = null;
             }
 
             routeDistanceKmInput.value = '';
@@ -645,27 +679,95 @@ function moveMapToCurrentLocation(map) {
         return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-        function (position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            const currentCenter = new kakao.maps.LatLng(lat, lng);
+    if (geolocationWatchId !== null) {
+        navigator.geolocation.clearWatch(geolocationWatchId);
+        geolocationWatchId = null;
+    }
 
-            map.setCenter(currentCenter);
-            map.setLevel(3);
+    let bestPosition = null;
+    let settled = false;
 
-            renderCurrentLocationMarker(map, currentCenter);
-        },
-        function () {
+    const finalizePosition = (coords) => {
+        if (!coords) {
             alert('현재 위치를 가져오지 못했습니다. 위치 권한을 확인해 주세요.');
             map.setCenter(fallbackCenter);
+            return;
+        }
+
+        const lat = coords.latitude;
+        const lng = coords.longitude;
+        const accuracy = Number(coords.accuracy || 9999);
+        const currentCenter = new kakao.maps.LatLng(lat, lng);
+
+        map.setCenter(currentCenter);
+        map.setLevel(3);
+
+        renderCurrentLocationMarker(map, currentCenter);
+
+        if (accuracy > 300) {
+            alert('현재 위치 정확도가 낮습니다. PC 환경에서는 주소 검색 기능을 권장드립니다.');
+        }
+    };
+
+    const settle = (coords) => {
+        if (settled) {
+            return;
+        }
+
+        settled = true;
+
+        if (geolocationWatchId !== null) {
+            navigator.geolocation.clearWatch(geolocationWatchId);
+            geolocationWatchId = null;
+        }
+
+        finalizePosition(coords);
+    };
+
+    navigator.geolocation.getCurrentPosition(
+        function (position) {
+            bestPosition = position.coords;
+
+            if (position.coords.accuracy <= 100) {
+                settle(position.coords);
+            }
+        },
+        function () {
         },
         {
             enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
+            timeout: 8000,
+            maximumAge: 0
         }
     );
+
+    geolocationWatchId = navigator.geolocation.watchPosition(
+        function (position) {
+            if (!bestPosition || position.coords.accuracy < bestPosition.accuracy) {
+                bestPosition = position.coords;
+            }
+
+            if (position.coords.accuracy <= 100) {
+                settle(position.coords);
+            }
+        },
+        function () {
+            if (!settled) {
+                settle(bestPosition);
+            }
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+    );
+
+    setTimeout(function () {
+        if (!settled) {
+            settle(bestPosition);
+        }
+    }, 5000);
 }
 
 function renderCurrentLocationMarker(map, position) {
@@ -678,4 +780,145 @@ function renderCurrentLocationMarker(map, position) {
     });
 
     currentLocationMarker.setMap(map);
+}
+
+function openAddressSearchModal(options) {
+    const map = options?.map;
+    const modal = options?.modal;
+    const wrap = options?.wrap;
+    const selectedBox = options?.selectedBox;
+
+    if (!map || !modal || !wrap) {
+        return;
+    }
+
+    if (typeof kakao === 'undefined' || !kakao.Postcode || !kakao.maps || !kakao.maps.services) {
+        alert('주소 검색 서비스를 사용할 수 없습니다.');
+        return;
+    }
+
+    modal.hidden = false;
+
+    if (selectedBox) {
+        selectedBox.textContent = '주소를 검색한 뒤 항목을 선택해 주세요.';
+    }
+
+    wrap.innerHTML = '';
+
+    routePostcodeInstance = new kakao.Postcode({
+        width: '100%',
+        height: '100%',
+        oncomplete: function (data) {
+            const fullAddress = buildFullAddress(data);
+
+            if (selectedBox) {
+                selectedBox.textContent = '선택 주소: ' + fullAddress;
+            }
+
+            moveMapToAddress(map, fullAddress, data);
+            closeAddressSearchModal();
+        },
+        onresize: function (size) {
+            wrap.style.height = size.height + 'px';
+        }
+    });
+
+    routePostcodeInstance.embed(wrap);
+}
+
+function closeAddressSearchModal() {
+    const modal = document.getElementById('routeAddressModal');
+    const wrap = document.getElementById('routePostcodeWrap');
+
+    if (wrap) {
+        wrap.innerHTML = '';
+    }
+
+    if (modal) {
+        modal.hidden = true;
+    }
+
+    routePostcodeInstance = null;
+}
+
+function buildFullAddress(data) {
+    let addr = '';
+    let extraAddr = '';
+
+    if (data.userSelectedType === 'R') {
+        addr = data.roadAddress || '';
+    } else {
+        addr = data.jibunAddress || data.address || '';
+    }
+
+    if (data.userSelectedType === 'R') {
+        if (data.bname && /[동로가]$/g.test(data.bname)) {
+            extraAddr += data.bname;
+        }
+
+        if (data.buildingName && data.apartment === 'Y') {
+            extraAddr += (extraAddr ? ', ' + data.buildingName : data.buildingName);
+        }
+
+        if (extraAddr) {
+            addr += ' (' + extraAddr + ')';
+        }
+    }
+
+    return addr || data.address || '';
+}
+
+function moveMapToAddress(map, address, postcodeData) {
+    if (!map || !address) {
+        return;
+    }
+
+    const geocoder = new kakao.maps.services.Geocoder();
+
+    geocoder.addressSearch(address, function (result, status) {
+        if (status !== kakao.maps.services.Status.OK || !result || !result.length) {
+            alert('선택한 주소의 좌표를 찾지 못했습니다.');
+            return;
+        }
+
+        const first = result[0];
+        const latLng = new kakao.maps.LatLng(Number(first.y), Number(first.x));
+
+        map.setCenter(latLng);
+        map.setLevel(3);
+
+        if (routeSearchMarker) {
+            routeSearchMarker.setMap(null);
+        }
+
+        routeSearchMarker = new kakao.maps.Marker({
+            position: latLng
+        });
+
+        routeSearchMarker.setMap(map);
+
+        const infoWindow = new kakao.maps.InfoWindow({
+            content:
+                '<div style="padding:8px 12px;font-size:12px;line-height:1.45;">' +
+                '<strong>선택한 위치</strong><br>' +
+                escapeHtml(address) +
+                (postcodeData && postcodeData.zonecode ? '<br>우편번호: ' + escapeHtml(postcodeData.zonecode) : '') +
+                '</div>'
+        });
+
+        infoWindow.open(map, routeSearchMarker);
+
+        setTimeout(function () {
+            infoWindow.close();
+        }, 2500);
+    });
+}
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
