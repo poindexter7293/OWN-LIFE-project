@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const data = window.dashboardData;
 
+
     const animateNumber = ({
                                element,
                                endValue,
@@ -203,8 +204,19 @@ document.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(frame);
     };
 
-    const createProgressDoughnut = (canvas, targetPercent) => {
+    const createProgressDoughnut = (canvas, targetPercent, type) => {
         if (!canvas) return null;
+
+        const safePercent = Math.max(0, Number(targetPercent || 0));
+
+        let fillColor = '#d7d9e1';
+        const remainColor = '#f3f4f8';
+
+        if (type === 'burned') {
+            fillColor = safePercent >= 100 ? '#4c57e8' : '#d7d9e1';
+        } else if (type === 'intake') {
+            fillColor = safePercent > 100 ? '#ef4444' : '#4c57e8';
+        }
 
         const chart = new Chart(canvas, {
             type: 'doughnut',
@@ -212,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 labels: ['달성', '남음'],
                 datasets: [{
                     data: [0, 100],
-                    backgroundColor: ['#d7d9e1', '#f3f4f8'],
+                    backgroundColor: [fillColor, remainColor],
                     borderWidth: 0,
                     cutout: '82%',
                     hoverOffset: 0
@@ -231,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        animateDoughnutFill(chart, targetPercent, 1250);
+        animateDoughnutFill(chart, safePercent, 1250);
         return chart;
     };
 
@@ -273,34 +285,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const burnedCalories = Number(data.burnedCalories || 0);
     const targetCalories = Number(data.targetCalories || 0);
-    const burnedPercent = targetCalories > 0
-        ? Math.min(100, Math.round((burnedCalories * 100) / targetCalories))
-        : 0;
-
+    const burnedPercent = Number(data.burnedPercent || 0);
     const intakePercent = Number(data.intakePercent || 0);
 
     createProgressDoughnut(
         document.getElementById('burnedProgressChart'),
-        burnedPercent
+        burnedPercent,
+        'burned'
     );
 
     createProgressDoughnut(
         document.getElementById('intakeProgressChart'),
-        intakePercent
+        intakePercent,
+        'intake'
     );
 
     const macroCanvas = document.getElementById('macroChart');
     if (macroCanvas) {
+        const carbPercent = Number(data.carbPercent || 0);
+        const fatPercent = Number(data.fatPercent || 0);
+        const proteinPercent = Number(data.proteinPercent || 0);
+
+        const macroChartData =
+            carbPercent === 0 && fatPercent === 0 && proteinPercent === 0
+                ? [1, 1, 1]
+                : [carbPercent, fatPercent, proteinPercent];
+
         new Chart(macroCanvas, {
             type: 'doughnut',
             data: {
                 labels: ['탄수화물', '지방', '단백질'],
                 datasets: [{
-                    data: [
-                        Number(data.carbPercent || 0),
-                        Number(data.fatPercent || 0),
-                        Number(data.proteinPercent || 0)
-                    ],
+                    data: macroChartData,
                     backgroundColor: ['#4c57e8', '#f5a000', '#22c55e'],
                     borderWidth: 0,
                     cutout: '64%'

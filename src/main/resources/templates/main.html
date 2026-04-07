@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${pageTitle}">OWN LIFE</title>
+
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <link rel="stylesheet"
           th:if="${extraCssFiles != null}"
           th:each="cssFile : ${extraCssFiles}"
           th:href="${cssFile}">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -43,7 +45,6 @@
 
     window.isLoginMember = /*[[${session.loginMember != null}]]*/ false;
     window.loginPageUrl = /*[[@{/login}]]*/ '/login';
-    window.postRedirectAlertMessage = /*[[${postRedirectAlertMessage}]]*/ null;
 </script>
 
 <script th:src="@{/js/main.js}"></script>
