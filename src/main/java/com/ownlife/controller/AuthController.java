@@ -48,6 +48,7 @@ public class AuthController {
 
     @GetMapping("/login")
     public String loginForm(@RequestParam(value = "logoutSuccess", defaultValue = "false") boolean logoutSuccess,
+                            @RequestParam(value = "withdrawSuccess", defaultValue = "false") boolean withdrawSuccess,
                             @RequestParam(value = "googleError", required = false) String googleError,
                             @RequestParam(value = "kakaoError", required = false) String kakaoError,
                             @RequestParam(value = "naverError", required = false) String naverError,
@@ -56,7 +57,7 @@ public class AuthController {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, logoutSuccess, resolveGoogleErrorMessage(googleError), resolveKakaoErrorMessage(kakaoError), resolveNaverErrorMessage(naverError), session);
+        applyPageAttributes(model, logoutSuccess, withdrawSuccess, resolveGoogleErrorMessage(googleError), resolveKakaoErrorMessage(kakaoError), resolveNaverErrorMessage(naverError), session);
         return "main";
     }
 
@@ -69,7 +70,7 @@ public class AuthController {
         validateLoginForm(loginForm, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            applyPageAttributes(model, false, null, null, null, session);
+            applyPageAttributes(model, false, false, null, null, null, session);
             return "main";
         }
 
@@ -81,7 +82,7 @@ public class AuthController {
                 })
                 .orElseGet(() -> {
                     bindingResult.reject("loginFailed", "아이디 또는 비밀번호가 올바르지 않습니다.");
-                    applyPageAttributes(model, false, null, null, null, session);
+                    applyPageAttributes(model, false, false, null, null, null, session);
                     return "main";
                 });
     }
@@ -275,7 +276,7 @@ public class AuthController {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, false, errorMessage, null, null, session);
+        applyPageAttributes(model, false, false, errorMessage, null, null, session);
         return "main";
     }
 
@@ -283,7 +284,7 @@ public class AuthController {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, false, null, errorMessage, null, session);
+        applyPageAttributes(model, false, false, null, errorMessage, null, session);
         return "main";
     }
 
@@ -291,12 +292,13 @@ public class AuthController {
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
-        applyPageAttributes(model, false, null, null, errorMessage, session);
+        applyPageAttributes(model, false, false, null, null, errorMessage, session);
         return "main";
     }
 
     private void applyPageAttributes(Model model,
                                      boolean logoutSuccess,
+                                     boolean withdrawSuccess,
                                      String googleErrorMessage,
                                      String kakaoErrorMessage,
                                      String naverErrorMessage,
@@ -306,6 +308,7 @@ public class AuthController {
         model.addAttribute("extraCssFiles", List.of("/css/login.css"));
         model.addAttribute("extraJsFiles", List.of("/js/login.js"));
         model.addAttribute("logoutSuccess", logoutSuccess);
+        model.addAttribute("withdrawSuccess", withdrawSuccess);
         model.addAttribute("googleAuthEnabled", googleAuthService.isEnabled());
         model.addAttribute("googleClientId", googleAuthService.getGoogleClientId());
         model.addAttribute("googleRedirectUrl", googleAuthService.getGoogleRedirectUrl());

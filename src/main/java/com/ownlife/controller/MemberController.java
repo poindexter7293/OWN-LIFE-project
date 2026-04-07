@@ -259,7 +259,7 @@ public class MemberController {
         }
 
         normalizeNaverSignupForm(signupForm, pendingNaverSignup);
-        validateNaverSignupForm(signupForm, bindingResult);
+        validateNaverSignupForm(signupForm, pendingNaverSignup, bindingResult);
 
         if (bindingResult.hasErrors()) {
             applyPageAttributes(model, false, "naver", session);
@@ -285,6 +285,10 @@ public class MemberController {
         boolean naverSignupMode = "naver".equals(socialSignupProvider);
         boolean socialSignupMode = googleSignupMode || kakaoSignupMode || naverSignupMode;
         String socialProviderLabel = googleSignupMode ? "Google" : (kakaoSignupMode ? "카카오" : (naverSignupMode ? "네이버" : null));
+        PendingNaverSignup pendingNaverSignup = naverSignupMode ? getPendingNaverSignup(session) : null;
+        boolean socialEmailReadonly = googleSignupMode
+                || kakaoSignupMode
+                || (naverSignupMode && pendingNaverSignup != null && StringUtils.hasText(pendingNaverSignup.getEmail()));
 
         model.addAttribute("pageTitle", socialSignupMode ? socialProviderLabel + " 추가 회원가입" : "회원가입");
         model.addAttribute("centerFragment", "fragments/center-signup :: centerSignup");
@@ -296,6 +300,7 @@ public class MemberController {
         model.addAttribute("naverSignupMode", naverSignupMode);
         model.addAttribute("socialSignupMode", socialSignupMode);
         model.addAttribute("socialProviderLabel", socialProviderLabel);
+        model.addAttribute("socialEmailReadonly", socialEmailReadonly);
         model.addAttribute("signupAction", googleSignupMode ? "/signup/google" : (kakaoSignupMode ? "/signup/kakao" : (naverSignupMode ? "/signup/naver" : "/signup")));
         model.addAttribute("signupHeading", socialSignupMode ? socialProviderLabel + " 계정 추가 정보 입력" : "건강한 루틴을 위한 회원가입");
         model.addAttribute("signupDescriptionText", socialSignupMode
@@ -338,7 +343,11 @@ public class MemberController {
         signupForm.setPassword(null);
         signupForm.setPasswordConfirm(null);
         signupForm.setNickname(trimToNull(signupForm.getNickname()));
-        signupForm.setEmail(normalizeIdentity(pendingNaverSignup.getEmail()));
+        if (StringUtils.hasText(pendingNaverSignup.getEmail())) {
+            signupForm.setEmail(normalizeIdentity(pendingNaverSignup.getEmail()));
+            return;
+        }
+        signupForm.setEmail(normalizeIdentity(signupForm.getEmail()));
     }
 
     private void validateSignupForm(SignupForm signupForm, BindingResult bindingResult) {
@@ -367,8 +376,22 @@ public class MemberController {
         validateGoogleSignupForm(signupForm, bindingResult);
     }
 
-    private void validateNaverSignupForm(SignupForm signupForm, BindingResult bindingResult) {
-        validateGoogleSignupForm(signupForm, bindingResult);
+    private void validateNaverSignupForm(SignupForm signupForm, PendingNaverSignup pendingNaverSignup, BindingResult bindingResult) {
+        validateNickname(signupForm, bindingResult);
+
+        if (pendingNaverSignup != null && StringUtils.hasText(pendingNaverSignup.getEmail())) {
+            String emailValidationMessage = validateEmailValue(signupForm.getEmail());
+            if (emailValidationMessage != null) {
+                bindingResult.rejectValue("email", "invalid", emailValidationMessage);
+            }
+        } else {
+            validateEmail(signupForm, bindingResult);
+        }
+
+        validateGenderRequired(signupForm, bindingResult);
+        validateBirthDate(signupForm, bindingResult);
+        validateRequiredDecimal(signupForm.getHeightCm(), "heightCm", "키를 입력해 주세요.", "키는 0보다 커야 합니다.", "키는 300cm 이하로 입력해 주세요.", bindingResult, new BigDecimal("300"));
+        validateRequiredDecimal(signupForm.getWeightKg(), "weightKg", "현재 체중을 입력해 주세요.", "현재 체중은 0보다 커야 합니다.", "현재 체중은 500kg 이하로 입력해 주세요.", bindingResult, new BigDecimal("500"));
     }
 
     private void validateUsername(SignupForm signupForm, BindingResult bindingResult) {

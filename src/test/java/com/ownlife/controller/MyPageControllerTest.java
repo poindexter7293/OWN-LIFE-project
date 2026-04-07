@@ -3,6 +3,7 @@ package com.ownlife.controller;
 import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SessionMember;
+import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
@@ -63,6 +64,42 @@ class MyPageControllerTest {
                 .andExpect(model().attribute("googleLinked", false))
                 .andExpect(model().attribute("kakaoLinked", false))
                 .andExpect(model().attribute("naverLinked", false));
+    }
+
+    @Test
+    @DisplayName("소셜 계정 연동 성공 상태에서는 성공 메시지만 표시하고 에러 메시지는 표시하지 않는다")
+    void myPageShowsOnlySuccessMessageForLinkSuccessStatuses() throws Exception {
+        mockMvc.perform(get("/mypage")
+                        .session(session)
+                        .param("googleLinkStatus", "success")
+                        .param("kakaoLinkStatus", "success")
+                        .param("naverLinkStatus", "success"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("googleLinkSuccessMessage", "Google 계정이 성공적으로 연동되었습니다."))
+                .andExpect(model().attribute("googleLinkErrorMessage", org.hamcrest.Matchers.nullValue()))
+                .andExpect(model().attribute("kakaoLinkSuccessMessage", "카카오 계정이 성공적으로 연동되었습니다."))
+                .andExpect(model().attribute("kakaoLinkErrorMessage", org.hamcrest.Matchers.nullValue()))
+                .andExpect(model().attribute("naverLinkSuccessMessage", "네이버 계정이 성공적으로 연동되었습니다."))
+                .andExpect(model().attribute("naverLinkErrorMessage", org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    @DisplayName("소셜 계정 연동해제 성공 상태에서는 성공 메시지만 표시하고 에러 메시지는 표시하지 않는다")
+    void myPageShowsOnlySuccessMessageForUnlinkSuccessStatuses() throws Exception {
+        mockMvc.perform(get("/mypage")
+                        .session(session)
+                        .param("googleUnlinkStatus", "success")
+                        .param("kakaoUnlinkStatus", "success")
+                        .param("naverUnlinkStatus", "success"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("googleLinkSuccessMessage", "Google 계정 연동이 해제되었습니다."))
+                .andExpect(model().attribute("googleLinkErrorMessage", org.hamcrest.Matchers.nullValue()))
+                .andExpect(model().attribute("kakaoLinkSuccessMessage", "카카오 계정 연동이 해제되었습니다."))
+                .andExpect(model().attribute("kakaoLinkErrorMessage", org.hamcrest.Matchers.nullValue()))
+                .andExpect(model().attribute("naverLinkSuccessMessage", "네이버 계정 연동이 해제되었습니다."))
+                .andExpect(model().attribute("naverLinkErrorMessage", org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
@@ -207,6 +244,46 @@ class MyPageControllerTest {
         org.junit.jupiter.api.Assertions.assertEquals(1, memberService.unlinkNaverCallCount);
     }
 
+    @Test
+    @DisplayName("로컬 계정 회원탈퇴가 완료되면 로그인 페이지로 이동하고 세션이 종료된다")
+    void withdrawLocalMemberSuccess() throws Exception {
+        mockMvc.perform(post("/mypage/withdraw")
+                        .session(session)
+                        .param("currentPassword", "Password123!"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?withdrawSuccess=true"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.withdrawCallCount);
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Status.DELETED, memberService.member.getStatus());
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> session.getAttribute(AuthController.LOGIN_MEMBER));
+    }
+
+    @Test
+    @DisplayName("로컬 계정 회원탈퇴 시 비밀번호가 틀리면 같은 화면에 오류를 표시한다")
+    void withdrawLocalMemberFailsWithWrongPassword() throws Exception {
+        mockMvc.perform(post("/mypage/withdraw")
+                        .session(session)
+                        .param("currentPassword", "WrongPassword!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attributeHasFieldErrors("withdrawalForm", "currentPassword"));
+    }
+
+    @Test
+    @DisplayName("소셜 전용 계정 회원탈퇴는 확인 문구 입력으로 진행할 수 있다")
+    void withdrawSocialOnlyMemberWithConfirmationText() throws Exception {
+        memberService.member.setPasswordHash(null);
+        memberService.member.setLoginType(Member.LoginType.NAVER);
+
+        mockMvc.perform(post("/mypage/withdraw")
+                        .session(session)
+                        .param("confirmationText", MemberService.WITHDRAWAL_CONFIRMATION_TEXT))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?withdrawSuccess=true"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.withdrawCallCount);
+    }
+
     private static class StubMemberService extends MemberService {
 
         private final Member member;
@@ -215,6 +292,7 @@ class MyPageControllerTest {
         private int unlinkGoogleCallCount;
         private int unlinkKakaoCallCount;
         private int unlinkNaverCallCount;
+        private int withdrawCallCount;
         private boolean googleLinked;
         private boolean kakaoLinked;
         private boolean naverLinked;
@@ -237,6 +315,7 @@ class MyPageControllerTest {
             member.setRole(Member.Role.USER);
             member.setStatus(Member.Status.ACTIVE);
             member.setLoginType(Member.LoginType.LOCAL);
+            member.setPasswordHash("stored-password");
         }
 
         @Override
@@ -323,6 +402,24 @@ class MyPageControllerTest {
             }
             unlinkNaverCallCount++;
             naverLinked = false;
+            return member;
+        }
+
+        @Override
+        public Member withdrawMember(Long memberId, WithdrawalForm withdrawalForm) {
+            if (memberId == null || !memberId.equals(member.getMemberId())) {
+                throw new IllegalArgumentException("회원 정보를 찾을 수 없습니다.");
+            }
+            if (member.getPasswordHash() != null) {
+                if (!"Password123!".equals(withdrawalForm.getCurrentPassword())) {
+                    throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+                }
+            } else if (!MemberService.WITHDRAWAL_CONFIRMATION_TEXT.equals(withdrawalForm.getConfirmationText())) {
+                throw new IllegalArgumentException("확인 문구를 정확히 입력해 주세요.");
+            }
+            withdrawCallCount++;
+            member.setStatus(Member.Status.DELETED);
+            member.setPasswordHash(null);
             return member;
         }
     }

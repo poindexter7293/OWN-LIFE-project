@@ -403,6 +403,36 @@
     color: #496181;
 }
 
+.mypage-danger-zone {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(214, 112, 132, 0.18);
+}
+
+.mypage-danger-zone__description {
+    margin-bottom: 18px;
+    color: #7a5970;
+    line-height: 1.7;
+}
+
+.mypage-withdrawal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.mypage-actions--danger {
+    justify-content: flex-start;
+}
+
+.mypage-button-danger {
+    border: none;
+    background: linear-gradient(180deg, #e37b8f, #cb586d);
+    color: #ffffff;
+    box-shadow: 0 12px 22px rgba(203, 88, 109, 0.22);
+    cursor: pointer;
+}
+
 @media (max-width: 1100px) {
     .mypage-stat-grid,
     .mypage-grid {

@@ -5,6 +5,7 @@ import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
+import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
 import com.ownlife.entity.SocialAccount;
@@ -527,6 +528,64 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("네이버가 이메일을 제공하지 않아도 수동 이메일로 가입하고 식별자로 로그인할 수 있다")
+    void registerNaverMemberWithoutProviderEmail() {
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-user-no-email",
+                null,
+                "네이버사용자",
+                "네이버닉네임",
+                "https://example.com/naver-profile.png",
+                false
+        );
+
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("네이버수동가입");
+        signupForm.setEmail("manual-naver@example.com");
+        signupForm.setGender(Member.Gender.F);
+        signupForm.setHeightCm(new BigDecimal("164.0"));
+        signupForm.setWeightKg(new BigDecimal("55.5"));
+
+        Member createdMember = memberService.registerNaverMember(signupForm, naverUserProfile);
+        Member loggedInMember = memberService.findNaverMemberForLogin(naverUserProfile).orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals("manual-naver@example.com", createdMember.getEmail());
+        org.junit.jupiter.api.Assertions.assertEquals(createdMember.getMemberId(), loggedInMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals("manual-naver@example.com", loggedInMember.getEmail());
+        SocialAccount socialAccount = socialAccountHandler.storage.values().iterator().next();
+        org.junit.jupiter.api.Assertions.assertNull(socialAccount.getProviderEmail());
+        org.junit.jupiter.api.Assertions.assertEquals("naver-user-no-email", socialAccount.getProviderUserId());
+    }
+
+    @Test
+    @DisplayName("네이버가 이메일을 제공하지 않아도 기존 로컬 이메일은 연동 후 유지된다")
+    void linkNaverAccountWithoutProviderEmailKeepsMemberEmail() {
+        SignupForm localSignupForm = new SignupForm();
+        localSignupForm.setUsername("naverlinknoemail");
+        localSignupForm.setPassword("Password123!");
+        localSignupForm.setNickname("네이버무이메일연동");
+        localSignupForm.setEmail("local-keep@example.com");
+
+        Member member = memberService.register(localSignupForm);
+
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-link-no-email",
+                null,
+                "네이버연동",
+                "네이버닉네임",
+                null,
+                false
+        );
+
+        Member linkedMember = memberService.linkNaverAccount(member.getMemberId(), naverUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertEquals("local-keep@example.com", linkedMember.getEmail());
+        SocialAccount socialAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNull(socialAccount.getProviderEmail());
+        org.junit.jupiter.api.Assertions.assertEquals("naver-link-no-email", socialAccount.getProviderUserId());
+    }
+
+    @Test
     @DisplayName("로컬 로그인 수단이 있는 회원은 네이버 연동을 해제할 수 있다")
     void unlinkNaverAccountFromLocalMember() {
         SignupForm signupForm = new SignupForm();
@@ -549,6 +608,133 @@ class MemberServiceTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER).isEmpty());
         org.junit.jupiter.api.Assertions.assertEquals(Member.LoginType.LOCAL, updatedMember.getLoginType());
+    }
+
+    @Test
+    @DisplayName("로컬 회원탈퇴 시 개인정보와 소셜 연동이 정리되고 재로그인이 차단된다")
+    void withdrawLocalMemberAnonymizesAccountAndBlocksLogin() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setUsername("withdrawlocal01");
+        signupForm.setPassword("Password123!");
+        signupForm.setNickname("탈퇴예정회원");
+        signupForm.setEmail("withdraw-local@example.com");
+
+        Member member = memberService.register(signupForm);
+        memberService.linkGoogleAccount(member.getMemberId(), new GoogleUserProfile(
+                "withdraw-google-subject",
+                "withdraw-social@example.com",
+                "구글연동",
+                null,
+                true
+        ));
+
+        WithdrawalForm withdrawalForm = new WithdrawalForm();
+        withdrawalForm.setCurrentPassword("Password123!");
+
+        Member withdrawnMember = memberService.withdrawMember(member.getMemberId(), withdrawalForm);
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Status.DELETED, withdrawnMember.getStatus());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getEmail());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getPasswordHash());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getSocialProvider());
+        org.junit.jupiter.api.Assertions.assertNull(withdrawnMember.getSocialProviderId());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isEmpty());
+        org.junit.jupiter.api.Assertions.assertFalse(memberService.authenticate("withdrawlocal01", "Password123!").isPresent());
+        org.junit.jupiter.api.Assertions.assertFalse(memberService.existsByUsername("withdrawlocal01"));
+        org.junit.jupiter.api.Assertions.assertFalse(memberService.existsByEmail("withdraw-local@example.com"));
+    }
+
+    @Test
+    @DisplayName("소셜 전용 회원탈퇴는 확인 문구로 진행하고 이후 소셜 로그인도 차단된다")
+    void withdrawSocialOnlyMemberBlocksSocialLogin() {
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("소셜전용회원");
+        signupForm.setGender(Member.Gender.F);
+        signupForm.setHeightCm(new BigDecimal("165.0"));
+        signupForm.setWeightKg(new BigDecimal("56.0"));
+
+        GoogleUserProfile googleUserProfile = new GoogleUserProfile(
+                "withdraw-social-only",
+                "withdraw-social-only@example.com",
+                "소셜전용회원",
+                null,
+                true
+        );
+        Member member = memberService.registerGoogleMember(signupForm, googleUserProfile);
+
+        WithdrawalForm withdrawalForm = new WithdrawalForm();
+        withdrawalForm.setConfirmationText(MemberService.WITHDRAWAL_CONFIRMATION_TEXT);
+
+        Member withdrawnMember = memberService.withdrawMember(member.getMemberId(), withdrawalForm);
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Status.DELETED, withdrawnMember.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findGoogleMemberForLogin(googleUserProfile).isEmpty());
+        org.junit.jupiter.api.Assertions.assertTrue(memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE).isEmpty());
+    }
+
+    @Test
+    @DisplayName("관리자는 키워드와 상태로 회원 목록을 조회할 수 있다")
+    void findMembersForAdmin() {
+        SignupForm activeMemberForm = new SignupForm();
+        activeMemberForm.setUsername("alphauser01");
+        activeMemberForm.setPassword("Password123!");
+        activeMemberForm.setNickname("알파회원");
+        activeMemberForm.setEmail("alpha@example.com");
+        memberService.register(activeMemberForm);
+
+        SignupForm suspendedMemberForm = new SignupForm();
+        suspendedMemberForm.setUsername("betamember01");
+        suspendedMemberForm.setPassword("Password123!");
+        suspendedMemberForm.setNickname("베타회원");
+        suspendedMemberForm.setEmail("beta@example.com");
+        Member suspendedMember = memberService.register(suspendedMemberForm);
+        suspendedMember.setStatus(Member.Status.SUSPENDED);
+
+        java.util.List<Member> keywordResult = memberService.findMembersForAdmin("베타", null);
+        java.util.List<Member> suspendedResult = memberService.findMembersForAdmin(null, Member.Status.SUSPENDED);
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, keywordResult.size());
+        org.junit.jupiter.api.Assertions.assertEquals("betamember01", keywordResult.getFirst().getUsername());
+        org.junit.jupiter.api.Assertions.assertEquals(1, suspendedResult.size());
+        org.junit.jupiter.api.Assertions.assertEquals(suspendedMember.getMemberId(), suspendedResult.getFirst().getMemberId());
+    }
+
+    @Test
+    @DisplayName("관리자는 본인 계정을 제외한 회원 상태를 변경할 수 있다")
+    void changeMemberStatusByAdmin() {
+        SignupForm adminForm = new SignupForm();
+        adminForm.setUsername("adminuser01");
+        adminForm.setPassword("Password123!");
+        adminForm.setNickname("관리자");
+        adminForm.setEmail("admin@example.com");
+        Member adminMember = memberService.register(adminForm);
+        adminMember.setRole(Member.Role.ADMIN);
+
+        SignupForm userForm = new SignupForm();
+        userForm.setUsername("targetuser01");
+        userForm.setPassword("Password123!");
+        userForm.setNickname("대상회원");
+        userForm.setEmail("target@example.com");
+        Member targetMember = memberService.register(userForm);
+
+        Member updatedMember = memberService.changeMemberStatusByAdmin(adminMember.getMemberId(), targetMember.getMemberId(), Member.Status.SUSPENDED);
+
+        org.junit.jupiter.api.Assertions.assertEquals(Member.Status.SUSPENDED, updatedMember.getStatus());
+    }
+
+    @Test
+    @DisplayName("관리자는 본인 계정 상태를 변경할 수 없다")
+    void changeMemberStatusByAdminFailsForSelf() {
+        SignupForm adminForm = new SignupForm();
+        adminForm.setUsername("selfadmin01");
+        adminForm.setPassword("Password123!");
+        adminForm.setNickname("자기관리자");
+        adminForm.setEmail("self-admin@example.com");
+        Member adminMember = memberService.register(adminForm);
+        adminMember.setRole(Member.Role.ADMIN);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> memberService.changeMemberStatusByAdmin(adminMember.getMemberId(), adminMember.getMemberId(), Member.Status.INACTIVE));
     }
 
     @Test
@@ -630,6 +816,7 @@ class MemberServiceTest {
                 case "findByEmail" -> storage.values().stream().filter(member -> member.getEmail() != null && member.getEmail().equalsIgnoreCase((String) args[0])).findFirst();
                 case "findByUsername" -> Optional.ofNullable(storage.get(((String) args[0]).toLowerCase()));
                 case "findById" -> storage.values().stream().filter(member -> member.getMemberId().equals(args[0])).findFirst();
+                case "findAll" -> new java.util.ArrayList<>(storage.values());
                 case "findBySocialProviderAndSocialProviderId" -> storage.values().stream()
                         .filter(member -> member.getSocialProvider() != null && member.getSocialProviderId() != null)
                         .filter(member -> member.getSocialProvider().equals(args[0]) && member.getSocialProviderId().equals(args[1]))
@@ -646,6 +833,9 @@ class MemberServiceTest {
             if (member.getMemberId() == null) {
                 member.setMemberId(sequence.getAndIncrement());
             }
+            storage.entrySet().removeIf(entry -> entry.getValue() != null
+                    && entry.getValue().getMemberId() != null
+                    && entry.getValue().getMemberId().equals(member.getMemberId()));
             storage.put(member.getUsername().toLowerCase(), member);
             return member;
         }

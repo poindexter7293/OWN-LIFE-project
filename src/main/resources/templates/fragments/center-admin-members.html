@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="centerAdminMembers" class="admin-page">
+    <div class="admin-shell">
+        <article class="summary-card admin-hero-card">
+            <div>
+                <p class="admin-eyebrow">ADMIN</p>
+                <h1>회원 관리</h1>
+                <p class="admin-description">회원 목록을 조회하고 계정 상태를 간단히 관리할 수 있습니다.</p>
+            </div>
+        </article>
+
+        <article class="summary-card admin-filter-card">
+            <form th:action="@{/admin/members}" method="get" class="admin-filter-form">
+                <div class="admin-filter-field admin-filter-field--wide">
+                    <label for="keyword">검색</label>
+                    <input type="text" id="keyword" name="keyword" th:value="${keyword}" placeholder="아이디, 닉네임, 이메일로 검색">
+                </div>
+
+                <div class="admin-filter-field">
+                    <label for="status">상태</label>
+                    <select id="status" name="status">
+                        <option value="">전체</option>
+                        <option th:each="statusOption : ${manageableStatuses}"
+                                th:value="${statusOption}"
+                                th:text="${statusOption}"
+                                th:selected="${selectedStatus == statusOption}">
+                        </option>
+                    </select>
+                </div>
+
+                <div class="admin-filter-actions">
+                    <button type="submit" class="admin-button admin-button-primary">조회</button>
+                    <a th:href="@{/admin/members}" class="admin-button admin-button-secondary">초기화</a>
+                </div>
+            </form>
+        </article>
+
+        <div class="admin-alert admin-alert-success" th:if="${memberStatusUpdateSuccessMessage != null}" th:text="${memberStatusUpdateSuccessMessage}">
+            회원 상태가 업데이트되었습니다.
+        </div>
+        <div class="admin-alert admin-alert-error" th:if="${memberStatusUpdateErrorMessage != null}" th:text="${memberStatusUpdateErrorMessage}">
+            회원 상태 변경 중 오류가 발생했습니다.
+        </div>
+
+        <article class="summary-card admin-table-card">
+            <div class="admin-table-header">
+                <div>
+                    <h2>회원 목록</h2>
+                    <p th:text="|총 ${#lists.size(members)}명|">총 0명</p>
+                </div>
+            </div>
+
+            <div class="admin-empty-state" th:if="${#lists.isEmpty(members)}">
+                조건에 맞는 회원이 없습니다.
+            </div>
+
+            <div class="admin-table-wrap" th:if="${!#lists.isEmpty(members)}">
+                <table class="admin-member-table">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>아이디</th>
+                        <th>닉네임</th>
+                        <th>이메일</th>
+                        <th>권한</th>
+                        <th>상태</th>
+                        <th>가입방식</th>
+                        <th>가입일</th>
+                        <th>관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="memberItem : ${members}">
+                        <td th:text="${memberItem.memberId}">1</td>
+                        <td th:text="${memberItem.username != null ? memberItem.username : '-'}">username</td>
+                        <td th:text="${memberItem.nickname}">nickname</td>
+                        <td th:text="${memberItem.email != null ? memberItem.email : '-'}">email</td>
+                        <td>
+                            <span class="admin-role-badge" th:text="${memberItem.role}">USER</span>
+                        </td>
+                        <td>
+                            <span class="admin-status-badge"
+                                  th:classappend="${memberItem.status == T(com.ownlife.entity.Member.Status).ACTIVE ? ' is-active' : (memberItem.status == T(com.ownlife.entity.Member.Status).SUSPENDED ? ' is-suspended' : ' is-inactive')}"
+                                  th:text="${memberItem.status}">
+                                ACTIVE
+                            </span>
+                        </td>
+                        <td th:text="${memberItem.loginType}">LOCAL</td>
+                        <td th:text="${memberItem.createdAt != null ? #temporals.format(memberItem.createdAt, 'yyyy.MM.dd HH:mm') : '-'}">-</td>
+                        <td>
+                            <div class="admin-action-group" th:if="${session.loginMember != null and session.loginMember.memberId != memberItem.memberId and memberItem.status != T(com.ownlife.entity.Member.Status).DELETED}">
+                                <form th:if="${memberItem.status != T(com.ownlife.entity.Member.Status).ACTIVE}" th:action="@{/admin/members/status}" method="post">
+                                    <input type="hidden" name="memberId" th:value="${memberItem.memberId}">
+                                    <input type="hidden" name="status" value="ACTIVE">
+                                    <button type="submit" class="admin-action-button admin-action-button--active">활성화</button>
+                                </form>
+                                <form th:if="${memberItem.status != T(com.ownlife.entity.Member.Status).INACTIVE}" th:action="@{/admin/members/status}" method="post">
+                                    <input type="hidden" name="memberId" th:value="${memberItem.memberId}">
+                                    <input type="hidden" name="status" value="INACTIVE">
+                                    <button type="submit" class="admin-action-button admin-action-button--inactive">비활성</button>
+                                </form>
+                                <form th:if="${memberItem.status != T(com.ownlife.entity.Member.Status).SUSPENDED}" th:action="@{/admin/members/status}" method="post">
+                                    <input type="hidden" name="memberId" th:value="${memberItem.memberId}">
+                                    <input type="hidden" name="status" value="SUSPENDED">
+                                    <button type="submit" class="admin-action-button admin-action-button--suspended">정지</button>
+                                </form>
+                            </div>
+                            <span class="admin-self-note" th:if="${session.loginMember != null and session.loginMember.memberId == memberItem.memberId}">본인 계정</span>
+                            <span class="admin-self-note" th:if="${memberItem.status == T(com.ownlife.entity.Member.Status).DELETED}">탈퇴 처리됨</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+</section>
+</body>
+</html>
+

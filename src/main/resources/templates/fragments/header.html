@@ -57,6 +57,13 @@
                data-login-required="true">
                 마이페이지
             </a>
+
+            <a class="nav-item"
+               th:if="${session.loginMember != null and session.loginMember.role != null and session.loginMember.role.name() == 'ADMIN'}"
+               th:classappend="${centerFragment != null and #strings.contains(centerFragment, 'center-admin-members')} ? ' active' : ''"
+               th:href="@{/admin/members}">
+                회원 관리
+            </a>
         </div>
     </div>
 </div>

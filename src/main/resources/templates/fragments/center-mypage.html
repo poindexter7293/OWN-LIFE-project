@@ -204,7 +204,7 @@
                         </div>
 
                         <div class="mypage-social-meta" th:if="${naverLinked}">
-                            <span th:text="|연동 이메일: ${naverLinkedEmail != null ? naverLinkedEmail : '정보 없음'}|">연동 이메일</span>
+                            <span th:text="${naverLinkedEmail != null ? '연동 이메일: ' + naverLinkedEmail : '연동 식별자: ' + (naverLinkedProviderUserId != null ? naverLinkedProviderUserId : '정보 없음')}">연동 정보</span>
                             <span th:text="${naverLinkedAt != null ? '연동일: ' + #temporals.format(naverLinkedAt, 'yyyy.MM.dd HH:mm') : '연동일 정보 없음'}">연동일</span>
                             <span th:text="${naverLastLoginAt != null ? '마지막 네이버 로그인: ' + #temporals.format(naverLastLoginAt, 'yyyy.MM.dd HH:mm') : '네이버 로그인 기록 없음'}">마지막 로그인</span>
                         </div>
@@ -282,6 +282,45 @@
                         <a th:href="@{/main}" class="mypage-button mypage-button-secondary">메인으로 이동</a>
                     </div>
                 </form>
+
+                <div class="mypage-danger-zone">
+                    <div class="mypage-card-title-wrap mypage-card-title-wrap--compact">
+                        <p class="mypage-card-kicker">Danger Zone</p>
+                        <h2>회원탈퇴</h2>
+                    </div>
+
+                    <p class="mypage-danger-zone__description">
+                        회원탈퇴를 진행하면 OWN LIFE 계정으로는 다시 로그인할 수 없고, 저장된 프로필 정보와 소셜 연동 정보가 정리됩니다.
+                        소셜 제공자 계정 자체는 삭제되지 않아요.
+                    </p>
+
+                    <form th:action="@{/mypage/withdraw}" method="post" th:object="${withdrawalForm}" class="mypage-withdrawal-form">
+                        <div class="mypage-alert mypage-alert-error" th:if="${#fields.hasGlobalErrors()}" th:errors="*{global}">
+                            회원탈퇴 처리 중 오류가 발생했습니다.
+                        </div>
+
+                        <div class="mypage-form-field" th:if="${withdrawalRequiresPassword}">
+                            <label for="currentPassword">현재 비밀번호</label>
+                            <input type="password" id="currentPassword" th:field="*{currentPassword}" autocomplete="current-password" placeholder="현재 비밀번호를 입력해 주세요">
+                            <p class="mypage-field-hint">로컬 로그인 비밀번호를 확인한 뒤 회원탈퇴를 진행합니다.</p>
+                            <p class="mypage-field-error" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}"></p>
+                        </div>
+
+                        <div class="mypage-form-field" th:if="${!withdrawalRequiresPassword}">
+                            <label for="confirmationText">확인 문구 입력</label>
+                            <input type="text" id="confirmationText" th:field="*{confirmationText}" placeholder="회원탈퇴">
+                            <p class="mypage-field-hint">소셜 전용 계정은 <strong>회원탈퇴</strong> 문구를 정확히 입력해야 진행됩니다.</p>
+                            <p class="mypage-field-error" th:if="${#fields.hasErrors('confirmationText')}" th:errors="*{confirmationText}"></p>
+                        </div>
+
+                        <div class="mypage-actions mypage-actions--danger">
+                            <button type="submit" class="mypage-button mypage-button-danger"
+                                    onclick="return confirm('정말 회원탈퇴를 진행할까요? 이 작업은 되돌릴 수 없습니다.');">
+                                회원탈퇴 진행
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </article>
         </div>
     </div>

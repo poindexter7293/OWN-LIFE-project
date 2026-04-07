@@ -5,6 +5,7 @@ import com.ownlife.dto.GoogleUserProfile;
 import com.ownlife.dto.KakaoUserProfile;
 import com.ownlife.dto.NaverUserProfile;
 import com.ownlife.dto.SignupForm;
+import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.MemberGoalHistory;
 import com.ownlife.entity.SocialAccount;
@@ -23,7 +24,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,6 +40,7 @@ public class MemberService {
     private static final int ITERATIONS = 65_536;
     private static final int KEY_LENGTH = 256;
     private static final int SALT_LENGTH = 16;
+    public static final String WITHDRAWAL_CONFIRMATION_TEXT = "회원탈퇴";
 
     private final MemberRepository memberRepository;
     private final MemberGoalHistoryRepository memberGoalHistoryRepository;
@@ -116,6 +120,72 @@ public class MemberService {
         member.setGoalWeight(myPageForm.getGoalWeight());
         member.setGoalEatKcal(myPageForm.getGoalEatKcal());
         member.setGoalBurnedKcal(myPageForm.getGoalBurnedKcal());
+
+        return memberRepository.saveAndFlush(member);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Member> findMembersForAdmin(String keyword, Member.Status status) {
+        String normalizedKeyword = normalizeAdminKeyword(keyword);
+
+        return memberRepository.findAll().stream()
+                .filter(member -> status == null || member.getStatus() == status)
+                .filter(member -> matchesAdminKeyword(member, normalizedKeyword))
+                .sorted(Comparator
+                        .comparing(Member::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Member::getMemberId, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    public Member changeMemberStatusByAdmin(Long adminMemberId, Long targetMemberId, Member.Status nextStatus) {
+        if (adminMemberId == null || targetMemberId == null || nextStatus == null) {
+            throw new IllegalArgumentException("회원 상태 변경 요청이 올바르지 않습니다.");
+        }
+        if (nextStatus == Member.Status.DELETED) {
+            throw new IllegalArgumentException("탈퇴한 계정 상태는 관리자 페이지에서 직접 변경할 수 없습니다.");
+        }
+        if (adminMemberId.equals(targetMemberId)) {
+            throw new IllegalStateException("본인 계정 상태는 변경할 수 없습니다.");
+        }
+
+        Member member = memberRepository.findById(targetMemberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        if (member.getStatus() == Member.Status.DELETED) {
+            throw new IllegalStateException("탈퇴한 회원 상태는 변경할 수 없습니다.");
+        }
+
+        member.setStatus(nextStatus);
+        return memberRepository.saveAndFlush(member);
+    }
+
+    public Member withdrawMember(Long memberId, WithdrawalForm withdrawalForm) {
+        if (withdrawalForm == null) {
+            throw new IllegalArgumentException("회원탈퇴 요청 정보가 올바르지 않습니다.");
+        }
+
+        Member member = findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        validateWithdrawalRequest(member, withdrawalForm);
+        clearLinkedSocialAccounts(member.getMemberId());
+
+        member.setUsername(buildDeletedUsername(member.getMemberId()));
+        member.setPasswordHash(null);
+        member.setNickname(buildDeletedNickname(member.getMemberId()));
+        member.setEmail(null);
+        member.setGender(null);
+        member.setBirthDate(null);
+        member.setHeightCm(null);
+        member.setWeightKg(null);
+        member.setGoalEatKcal(null);
+        member.setGoalBurnedKcal(null);
+        member.setGoalWeight(null);
+        member.setStatus(Member.Status.DELETED);
+        member.setLoginType(Member.LoginType.LOCAL);
+        member.setSocialProvider(null);
+        member.setSocialProviderId(null);
+        member.setProfileImageUrl(null);
 
         return memberRepository.saveAndFlush(member);
     }
@@ -263,9 +333,6 @@ public class MemberService {
         if (naverUserProfile == null) {
             throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
         }
-        if (!naverUserProfile.isEmailVerified()) {
-            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 연동할 수 있습니다.");
-        }
 
         Member member = findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
@@ -308,9 +375,6 @@ public class MemberService {
         if (naverUserProfile == null) {
             throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
         }
-        if (!naverUserProfile.isEmailVerified()) {
-            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 사용할 수 있습니다.");
-        }
 
         Optional<SocialAccount> existingSocialAccount = socialAccountRepository.findByProviderAndProviderUserId(SocialAccount.Provider.NAVER, naverUserProfile.getId());
         if (existingSocialAccount.isPresent()) {
@@ -321,7 +385,12 @@ public class MemberService {
             return Optional.of(memberRepository.saveAndFlush(member));
         }
 
-        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (!StringUtils.hasText(naverEmail)) {
+            return Optional.empty();
+        }
+
+        Optional<Member> existingEmailMember = memberRepository.findByEmail(naverEmail);
         if (existingEmailMember.isPresent()) {
             Member member = existingEmailMember.get();
             validateActiveMember(member);
@@ -340,11 +409,11 @@ public class MemberService {
         if (naverUserProfile == null) {
             throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
         }
-        if (!naverUserProfile.isEmailVerified()) {
-            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 사용할 수 있습니다.");
-        }
 
-        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        Optional<Member> existingEmailMember = StringUtils.hasText(naverEmail)
+                ? memberRepository.findByEmail(naverEmail)
+                : Optional.empty();
         if (existingEmailMember.isPresent()) {
             Member existingMember = existingEmailMember.get();
             validateActiveMember(existingMember);
@@ -361,7 +430,7 @@ public class MemberService {
         Member member = new Member();
         member.setUsername(generateNaverUsername(naverUserProfile.getId()));
         member.setNickname(trimToNull(signupForm.getNickname()));
-        member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        member.setEmail(resolveNaverRegistrationEmail(signupForm, naverUserProfile));
         member.setGender(signupForm.getGender());
         member.setBirthDate(signupForm.getBirthDate());
         member.setHeightCm(signupForm.getHeightCm());
@@ -454,6 +523,11 @@ public class MemberService {
         return normalizeIdentity(value);
     }
 
+    private String normalizeAdminKeyword(String value) {
+        String trimmed = trimToNull(value);
+        return trimmed == null ? null : trimmed.toLowerCase(Locale.ROOT);
+    }
+
     private String normalizeIdentity(String value) {
         String trimmed = trimToNull(value);
         return trimmed == null ? null : trimmed.toLowerCase();
@@ -469,6 +543,40 @@ public class MemberService {
     private void validateActiveMember(Member member) {
         if (member.getStatus() != Member.Status.ACTIVE) {
             throw new IllegalStateException("비활성화된 계정은 로그인할 수 없습니다.");
+        }
+    }
+
+    private boolean matchesAdminKeyword(Member member, String normalizedKeyword) {
+        if (!StringUtils.hasText(normalizedKeyword)) {
+            return true;
+        }
+
+        return containsIgnoreCase(member.getUsername(), normalizedKeyword)
+                || containsIgnoreCase(member.getNickname(), normalizedKeyword)
+                || containsIgnoreCase(member.getEmail(), normalizedKeyword);
+    }
+
+    private boolean containsIgnoreCase(String source, String normalizedKeyword) {
+        return source != null && source.toLowerCase(Locale.ROOT).contains(normalizedKeyword);
+    }
+
+    private void validateWithdrawalRequest(Member member, WithdrawalForm withdrawalForm) {
+        if (StringUtils.hasText(member.getPasswordHash())) {
+            if (!verifyPassword(withdrawalForm.getCurrentPassword(), member.getPasswordHash())) {
+                throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            }
+            return;
+        }
+
+        if (!WITHDRAWAL_CONFIRMATION_TEXT.equals(trimToNull(withdrawalForm.getConfirmationText()))) {
+            throw new IllegalArgumentException("확인 문구를 정확히 입력해 주세요.");
+        }
+    }
+
+    private void clearLinkedSocialAccounts(Long memberId) {
+        for (SocialAccount.Provider provider : SocialAccount.Provider.values()) {
+            socialAccountRepository.findByMemberMemberIdAndProvider(memberId, provider)
+                    .ifPresent(socialAccountRepository::delete);
         }
     }
 
@@ -582,7 +690,10 @@ public class MemberService {
     }
 
     private void refreshNaverProfile(Member member, NaverUserProfile naverUserProfile) {
-        member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (StringUtils.hasText(naverEmail)) {
+            member.setEmail(naverEmail);
+        }
         if (member.getLoginType() == null) {
             member.setLoginType(Member.LoginType.NAVER);
         }
@@ -691,8 +802,9 @@ public class MemberService {
     }
 
     private void applyNaverProfileDefaultsForLinkedMember(Member member, NaverUserProfile naverUserProfile) {
-        if (!StringUtils.hasText(member.getEmail())) {
-            member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (!StringUtils.hasText(member.getEmail()) && StringUtils.hasText(naverEmail)) {
+            member.setEmail(naverEmail);
         }
         if (member.getLoginType() == null) {
             member.setLoginType(Member.LoginType.NAVER);
@@ -743,6 +855,22 @@ public class MemberService {
         int atIndex = email.indexOf('@');
         String localPart = atIndex > 0 ? email.substring(0, atIndex) : email;
         return localPart.length() > 50 ? localPart.substring(0, 50) : localPart;
+    }
+
+    private String resolveNaverRegistrationEmail(SignupForm signupForm, NaverUserProfile naverUserProfile) {
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (StringUtils.hasText(naverEmail)) {
+            return naverEmail;
+        }
+        return normalizeIdentity(signupForm.getEmail());
+    }
+
+    private String buildDeletedUsername(Long memberId) {
+        return "deleted_" + memberId;
+    }
+
+    private String buildDeletedNickname(Long memberId) {
+        return "탈퇴한 회원 #" + memberId;
     }
 
     private boolean hasGoalChanges(Member member, MyPageForm myPageForm) {

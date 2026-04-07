@@ -3,6 +3,7 @@ package com.ownlife.dto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.util.StringUtils;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -40,7 +41,7 @@ public class PendingNaverSignup implements Serializable {
     }
 
     public NaverUserProfile toNaverUserProfile() {
-        return new NaverUserProfile(id, email, name, nickname, profileImageUrl, true);
+        return new NaverUserProfile(id, email, name, nickname, profileImageUrl, StringUtils.hasText(email));
     }
 }
 

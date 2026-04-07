@@ -60,6 +60,15 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("회원탈퇴 완료 후 로그인 페이지에 성공 안내를 표시한다")
+    void loginPageAfterWithdrawalShowsSuccessMessage() throws Exception {
+        mockMvc.perform(get("/login").param("withdrawSuccess", "true"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("withdrawSuccess", true));
+    }
+
+    @Test
     @DisplayName("정상 로그인 시 세션에 회원 정보를 저장하고 메인으로 이동한다")
     void loginSuccess() throws Exception {
         MockHttpSession session = new MockHttpSession();
@@ -237,6 +246,23 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("이메일이 없는 신규 네이버 계정도 추가정보 회원가입 페이지로 이동한다")
+    void naverLoginWithoutEmailRedirectsToNaverSignup() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("naverOauthState", "naver-state");
+
+        mockMvc.perform(get("/login/naver/auth")
+                        .session(session)
+                        .param("state", "naver-state")
+                        .param("code", "valid-naver-code-no-email"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/signup/naver"));
+
+        Object pendingSignup = session.getAttribute(AuthController.PENDING_NAVER_SIGNUP);
+        assertNotNull(pendingSignup);
+    }
+
+    @Test
     @DisplayName("마이페이지 네이버 연동 콜백이 성공하면 마이페이지로 이동한다")
     void naverLinkSuccess() throws Exception {
         MockHttpSession session = new MockHttpSession();
@@ -401,6 +427,16 @@ class AuthControllerTest {
                         "네이버닉네임",
                         null,
                         true
+                ));
+            }
+            if ("valid-naver-code-no-email".equals(code) && "naver-state".equals(state)) {
+                return Optional.of(new NaverUserProfile(
+                        "naver-user-no-email",
+                        null,
+                        "네이버테스터",
+                        "네이버닉네임",
+                        null,
+                        false
                 ));
             }
             return Optional.empty();
