@@ -185,17 +185,14 @@ public class NaverAuthService {
             if (!StringUtils.hasText(id)) {
                 throw new IllegalStateException("네이버 사용자 식별 정보를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
             }
-            if (!StringUtils.hasText(email)) {
-                throw new IllegalStateException("네이버 계정 이메일 제공 동의가 필요합니다. 네이버에서 이메일 제공에 동의한 뒤 다시 시도해 주세요.");
-            }
 
             return Optional.of(new NaverUserProfile(
                     id,
-                    email.toLowerCase(Locale.ROOT),
+                    email == null ? null : email.toLowerCase(Locale.ROOT),
                     name,
                     nickname,
                     profileImageUrl,
-                    true
+                    StringUtils.hasText(email)
             ));
         } catch (IOException exception) {
             throw new IllegalStateException("네이버 사용자 정보 응답을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.", exception);

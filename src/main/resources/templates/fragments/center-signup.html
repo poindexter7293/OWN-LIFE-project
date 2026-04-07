@@ -97,8 +97,9 @@
                                autocomplete="email"
                                data-validate="email"
                                th:attr="data-check-url=${!socialSignupMode ? '/signup/check-email' : null}"
-                               th:readonly="${socialSignupMode}">
-                        <p class="field-hint" th:if="${socialSignupMode}" th:text="|${socialProviderLabel} 계정 이메일은 변경할 수 없습니다.|">소셜 계정 이메일은 변경할 수 없습니다.</p>
+                               th:readonly="${socialEmailReadonly}">
+                        <p class="field-hint" th:if="${socialSignupMode and socialEmailReadonly}" th:text="|${socialProviderLabel} 계정 이메일은 변경할 수 없습니다.|">소셜 계정 이메일은 변경할 수 없습니다.</p>
+                        <p class="field-hint" th:if="${socialSignupMode and !socialEmailReadonly}">네이버에서 이메일을 제공하지 않아 가입용 이메일을 직접 입력해 주세요.</p>
                         <p class="field-hint" th:if="${!socialSignupMode}" data-feedback="email"></p>
                         <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
                     </div>

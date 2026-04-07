@@ -263,9 +263,6 @@ public class MemberService {
         if (naverUserProfile == null) {
             throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
         }
-        if (!naverUserProfile.isEmailVerified()) {
-            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 연동할 수 있습니다.");
-        }
 
         Member member = findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
@@ -308,9 +305,6 @@ public class MemberService {
         if (naverUserProfile == null) {
             throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
         }
-        if (!naverUserProfile.isEmailVerified()) {
-            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 사용할 수 있습니다.");
-        }
 
         Optional<SocialAccount> existingSocialAccount = socialAccountRepository.findByProviderAndProviderUserId(SocialAccount.Provider.NAVER, naverUserProfile.getId());
         if (existingSocialAccount.isPresent()) {
@@ -321,7 +315,12 @@ public class MemberService {
             return Optional.of(memberRepository.saveAndFlush(member));
         }
 
-        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (!StringUtils.hasText(naverEmail)) {
+            return Optional.empty();
+        }
+
+        Optional<Member> existingEmailMember = memberRepository.findByEmail(naverEmail);
         if (existingEmailMember.isPresent()) {
             Member member = existingEmailMember.get();
             validateActiveMember(member);
@@ -340,11 +339,11 @@ public class MemberService {
         if (naverUserProfile == null) {
             throw new IllegalArgumentException("네이버 인증 정보가 올바르지 않습니다.");
         }
-        if (!naverUserProfile.isEmailVerified()) {
-            throw new IllegalArgumentException("이메일 인증이 완료된 네이버 계정만 사용할 수 있습니다.");
-        }
 
-        Optional<Member> existingEmailMember = memberRepository.findByEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        Optional<Member> existingEmailMember = StringUtils.hasText(naverEmail)
+                ? memberRepository.findByEmail(naverEmail)
+                : Optional.empty();
         if (existingEmailMember.isPresent()) {
             Member existingMember = existingEmailMember.get();
             validateActiveMember(existingMember);
@@ -361,7 +360,7 @@ public class MemberService {
         Member member = new Member();
         member.setUsername(generateNaverUsername(naverUserProfile.getId()));
         member.setNickname(trimToNull(signupForm.getNickname()));
-        member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        member.setEmail(resolveNaverRegistrationEmail(signupForm, naverUserProfile));
         member.setGender(signupForm.getGender());
         member.setBirthDate(signupForm.getBirthDate());
         member.setHeightCm(signupForm.getHeightCm());
@@ -582,7 +581,10 @@ public class MemberService {
     }
 
     private void refreshNaverProfile(Member member, NaverUserProfile naverUserProfile) {
-        member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (StringUtils.hasText(naverEmail)) {
+            member.setEmail(naverEmail);
+        }
         if (member.getLoginType() == null) {
             member.setLoginType(Member.LoginType.NAVER);
         }
@@ -691,8 +693,9 @@ public class MemberService {
     }
 
     private void applyNaverProfileDefaultsForLinkedMember(Member member, NaverUserProfile naverUserProfile) {
-        if (!StringUtils.hasText(member.getEmail())) {
-            member.setEmail(normalizeIdentity(naverUserProfile.getEmail()));
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (!StringUtils.hasText(member.getEmail()) && StringUtils.hasText(naverEmail)) {
+            member.setEmail(naverEmail);
         }
         if (member.getLoginType() == null) {
             member.setLoginType(Member.LoginType.NAVER);
@@ -743,6 +746,14 @@ public class MemberService {
         int atIndex = email.indexOf('@');
         String localPart = atIndex > 0 ? email.substring(0, atIndex) : email;
         return localPart.length() > 50 ? localPart.substring(0, 50) : localPart;
+    }
+
+    private String resolveNaverRegistrationEmail(SignupForm signupForm, NaverUserProfile naverUserProfile) {
+        String naverEmail = normalizeIdentity(naverUserProfile.getEmail());
+        if (StringUtils.hasText(naverEmail)) {
+            return naverEmail;
+        }
+        return normalizeIdentity(signupForm.getEmail());
     }
 
     private boolean hasGoalChanges(Member member, MyPageForm myPageForm) {

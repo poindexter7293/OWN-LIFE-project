@@ -273,6 +273,27 @@ class MemberControllerTest {
         org.junit.jupiter.api.Assertions.assertNotNull(session.getAttribute(AuthController.LOGIN_MEMBER));
     }
 
+    @Test
+    @DisplayName("네이버가 이메일을 제공하지 않으면 사용자가 입력한 이메일로 추가정보 회원가입을 완료한다")
+    void naverSignupSuccessWithManualEmail() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(AuthController.PENDING_NAVER_SIGNUP, new PendingNaverSignup("naver-user-2", null, "네이버이름", "네이버닉네임", null));
+
+        mockMvc.perform(post("/signup/naver")
+                        .session(session)
+                        .param("nickname", "네이버수동헬서")
+                        .param("email", "manual-naver@example.com")
+                        .param("gender", "F")
+                        .param("heightCm", "164.5")
+                        .param("weightKg", "55.0"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/main"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, memberService.naverRegisterCallCount);
+        org.junit.jupiter.api.Assertions.assertEquals("manual-naver@example.com", memberService.lastNaverSignupEmail);
+        org.junit.jupiter.api.Assertions.assertNotNull(session.getAttribute(AuthController.LOGIN_MEMBER));
+    }
+
     private static class StubMemberService extends MemberService {
 
         private String duplicateUsername;
@@ -282,6 +303,7 @@ class MemberControllerTest {
         private int googleRegisterCallCount;
         private int kakaoRegisterCallCount;
         private int naverRegisterCallCount;
+        private String lastNaverSignupEmail;
 
         StubMemberService() {
             super(null, null, null);
@@ -337,12 +359,13 @@ class MemberControllerTest {
         @Override
         public Member registerNaverMember(SignupForm signupForm, NaverUserProfile naverUserProfile) {
             naverRegisterCallCount++;
+            lastNaverSignupEmail = signupForm.getEmail();
             Member member = new Member();
             member.setMemberId(101L);
             member.setUsername("naver_generated_101");
             member.setNickname(signupForm.getNickname());
             member.setRole(Member.Role.USER);
-            member.setEmail(naverUserProfile.getEmail());
+            member.setEmail(signupForm.getEmail());
             member.setLoginType(Member.LoginType.NAVER);
             return member;
         }

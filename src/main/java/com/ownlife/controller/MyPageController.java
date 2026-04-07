@@ -314,6 +314,7 @@ public class MyPageController {
         model.addAttribute("naverUnlinkUrl", "/mypage/unlink/naver");
         model.addAttribute("naverLinked", naverAccount.isPresent());
         model.addAttribute("naverLinkedEmail", naverAccount.map(SocialAccount::getProviderEmail).orElse(null));
+        model.addAttribute("naverLinkedProviderUserId", naverAccount.map(SocialAccount::getProviderUserId).orElse(null));
         model.addAttribute("naverLinkedAt", naverAccount.map(SocialAccount::getConnectedAt).orElse(null));
         model.addAttribute("naverLastLoginAt", naverAccount.map(SocialAccount::getLastLoginAt).orElse(null));
         model.addAttribute("naverLinkSuccessMessage", naverLinkSuccessMessage);

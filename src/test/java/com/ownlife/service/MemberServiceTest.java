@@ -527,6 +527,64 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("네이버가 이메일을 제공하지 않아도 수동 이메일로 가입하고 식별자로 로그인할 수 있다")
+    void registerNaverMemberWithoutProviderEmail() {
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-user-no-email",
+                null,
+                "네이버사용자",
+                "네이버닉네임",
+                "https://example.com/naver-profile.png",
+                false
+        );
+
+        SignupForm signupForm = new SignupForm();
+        signupForm.setNickname("네이버수동가입");
+        signupForm.setEmail("manual-naver@example.com");
+        signupForm.setGender(Member.Gender.F);
+        signupForm.setHeightCm(new BigDecimal("164.0"));
+        signupForm.setWeightKg(new BigDecimal("55.5"));
+
+        Member createdMember = memberService.registerNaverMember(signupForm, naverUserProfile);
+        Member loggedInMember = memberService.findNaverMemberForLogin(naverUserProfile).orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertEquals("manual-naver@example.com", createdMember.getEmail());
+        org.junit.jupiter.api.Assertions.assertEquals(createdMember.getMemberId(), loggedInMember.getMemberId());
+        org.junit.jupiter.api.Assertions.assertEquals("manual-naver@example.com", loggedInMember.getEmail());
+        SocialAccount socialAccount = socialAccountHandler.storage.values().iterator().next();
+        org.junit.jupiter.api.Assertions.assertNull(socialAccount.getProviderEmail());
+        org.junit.jupiter.api.Assertions.assertEquals("naver-user-no-email", socialAccount.getProviderUserId());
+    }
+
+    @Test
+    @DisplayName("네이버가 이메일을 제공하지 않아도 기존 로컬 이메일은 연동 후 유지된다")
+    void linkNaverAccountWithoutProviderEmailKeepsMemberEmail() {
+        SignupForm localSignupForm = new SignupForm();
+        localSignupForm.setUsername("naverlinknoemail");
+        localSignupForm.setPassword("Password123!");
+        localSignupForm.setNickname("네이버무이메일연동");
+        localSignupForm.setEmail("local-keep@example.com");
+
+        Member member = memberService.register(localSignupForm);
+
+        NaverUserProfile naverUserProfile = new NaverUserProfile(
+                "naver-link-no-email",
+                null,
+                "네이버연동",
+                "네이버닉네임",
+                null,
+                false
+        );
+
+        Member linkedMember = memberService.linkNaverAccount(member.getMemberId(), naverUserProfile);
+
+        org.junit.jupiter.api.Assertions.assertEquals("local-keep@example.com", linkedMember.getEmail());
+        SocialAccount socialAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNull(socialAccount.getProviderEmail());
+        org.junit.jupiter.api.Assertions.assertEquals("naver-link-no-email", socialAccount.getProviderUserId());
+    }
+
+    @Test
     @DisplayName("로컬 로그인 수단이 있는 회원은 네이버 연동을 해제할 수 있다")
     void unlinkNaverAccountFromLocalMember() {
         SignupForm signupForm = new SignupForm();

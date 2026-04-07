@@ -204,7 +204,7 @@
                         </div>
 
                         <div class="mypage-social-meta" th:if="${naverLinked}">
-                            <span th:text="|연동 이메일: ${naverLinkedEmail != null ? naverLinkedEmail : '정보 없음'}|">연동 이메일</span>
+                            <span th:text="${naverLinkedEmail != null ? '연동 이메일: ' + naverLinkedEmail : '연동 식별자: ' + (naverLinkedProviderUserId != null ? naverLinkedProviderUserId : '정보 없음')}">연동 정보</span>
                             <span th:text="${naverLinkedAt != null ? '연동일: ' + #temporals.format(naverLinkedAt, 'yyyy.MM.dd HH:mm') : '연동일 정보 없음'}">연동일</span>
                             <span th:text="${naverLastLoginAt != null ? '마지막 네이버 로그인: ' + #temporals.format(naverLastLoginAt, 'yyyy.MM.dd HH:mm') : '네이버 로그인 기록 없음'}">마지막 로그인</span>
                         </div>
