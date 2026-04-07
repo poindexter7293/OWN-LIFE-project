@@ -681,3 +681,74 @@
     gap: 8px;
     margin-bottom: 14px;
 }
+
+.route-address-modal[hidden] {
+    display: none !important;
+}
+
+.route-address-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+
+.route-address-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.route-address-modal__dialog {
+    position: relative;
+    width: min(92vw, 520px);
+    height: min(82vh, 650px);
+    margin: 5vh auto 0;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+.route-address-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.route-address-modal__header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.route-address-modal__close {
+    border: 0;
+    background: #f3f4f6;
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.route-address-modal__body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.route-postcode-wrap {
+    flex: 1;
+    min-height: 420px;
+}
+
+.route-address-selected {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    color: #444;
+    background: #fafafa;
+}
