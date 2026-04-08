@@ -311,20 +311,27 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const burnedPercent = Number(data.burnedPercent || 0);
-    const intakePercent = Number(data.intakePercent || 0);
+    const burnedTargetCalories = Number(data.burnedTargetCalories ?? 0);
+    const intakeTargetCalories = Number(data.intakeTargetCalories ?? 0);
 
-    createProgressDoughnut(
-        document.getElementById('burnedProgressChart'),
-        burnedPercent,
-        'burned'
-    );
+    const burnedPercent = Number(data.burnedPercent ?? 0);
+    const intakePercent = Number(data.intakePercent ?? 0);
 
-    createProgressDoughnut(
-        document.getElementById('intakeProgressChart'),
-        intakePercent,
-        'intake'
-    );
+    if (burnedTargetCalories > 0) {
+        createProgressDoughnut(
+            document.getElementById('burnedProgressChart'),
+            burnedPercent,
+            'burned'
+        );
+    }
+
+    if (intakeTargetCalories > 0) {
+        createProgressDoughnut(
+            document.getElementById('intakeProgressChart'),
+            intakePercent,
+            'intake'
+        );
+    }
 
     const macroCanvas = document.getElementById('macroChart');
     if (macroCanvas) {

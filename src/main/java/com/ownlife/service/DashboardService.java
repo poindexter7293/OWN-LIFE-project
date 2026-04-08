@@ -44,27 +44,53 @@ public class DashboardService {
     private void applyWeightSection(DashboardSummaryDto dto, Long memberId, Member member) {
         List<WeightLog> recentLogs = weightLogRepository.findTop2ByMember_MemberIdOrderByLogDateDesc(memberId);
 
-        if (!recentLogs.isEmpty()) {
-            double latestWeight = recentLogs.get(0).getWeightKg().doubleValue();
-            dto.setWeight(latestWeight);
+        Double currentWeight = null;
 
-            if (recentLogs.size() >= 2) {
-                double prevWeight = recentLogs.get(1).getWeightKg().doubleValue();
-                double diff = latestWeight - prevWeight;
-                dto.setWeightDiff(diff);
-                dto.setWeightDiffText(String.format("전일 대비 %+.1fkg", diff));
-            } else {
-                dto.setWeightDiff(0.0);
-                dto.setWeightDiffText("이전 기록 없음");
-            }
+        if (!recentLogs.isEmpty() && recentLogs.get(0).getWeightKg() != null) {
+            currentWeight = recentLogs.get(0).getWeightKg().doubleValue();
+        } else if (member.getWeightKg() != null) {
+            currentWeight = member.getWeightKg().doubleValue();
+        }
+
+        dto.setWeight(currentWeight != null ? currentWeight : 0.0);
+        dto.setWeightDiff(0.0);
+        dto.setWeightDiffTone("muted");
+        dto.setWeightDiffText("체중 로그 없음");
+
+        if (currentWeight == null) {
+            dto.setWeightDiffText("체중 로그 없음");
             return;
         }
 
-        if (member.getWeightKg() != null) {
-            dto.setWeight(member.getWeightKg().doubleValue());
-            dto.setWeightDiff(0.0);
-            dto.setWeightDiffText("체중 로그 없음");
+        Double goalWeight = member.getGoalWeight() != null
+                ? member.getGoalWeight().doubleValue()
+                : null;
+
+        if (goalWeight == null || goalWeight <= 0) {
+            dto.setWeightDiffText("목표 체중 미설정");
+            return;
         }
+
+        double diff = Math.abs(currentWeight - goalWeight);
+        dto.setWeightDiff(diff);
+
+        long currentWeightInt = (long) Math.floor(currentWeight);
+        long goalWeightInt = (long) Math.floor(goalWeight);
+
+        if (currentWeightInt == goalWeightInt) {
+            dto.setWeightDiffTone("accent");
+            dto.setWeightDiffText("목표체중 달성!");
+            return;
+        }
+
+        if (diff <= 3.0) {
+            dto.setWeightDiffTone("accent");
+            dto.setWeightDiffText("달성 임박! 목표 체중까지 " + formatKg(diff) + "kg!");
+            return;
+        }
+
+        dto.setWeightDiffTone("muted");
+        dto.setWeightDiffText("목표 체중까지 " + formatKg(diff) + "kg");
     }
 
     private void applyExerciseSection(DashboardSummaryDto dto, Long memberId, Member member, LocalDate today) {
@@ -172,5 +198,15 @@ public class DashboardService {
 
         dto.setWeightLabels(labels);
         dto.setWeightData(data);
+    }
+
+    private String formatKg(double value) {
+        double rounded = Math.round(value * 10.0) / 10.0;
+
+        if (rounded == Math.floor(rounded)) {
+            return String.valueOf((long) rounded);
+        }
+
+        return String.format("%.1f", rounded);
     }
 }

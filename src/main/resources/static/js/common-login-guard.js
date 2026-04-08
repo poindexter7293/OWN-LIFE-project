@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
             event.stopImmediatePropagation();
 
             alert('로그인이 필요한 서비스입니다.');
-            return false;
+            window.location.href = '/login';
         }, true);
     });
 });

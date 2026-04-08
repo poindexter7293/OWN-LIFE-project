@@ -9,12 +9,14 @@
 
             <section class="dashboard-top-grid">
                 <div class="summary-column">
+
+                    <!-- 체중 카드 -->
                     <article class="summary-card metric-card metric-card--center hover-card dashboard-link-card"
                              tabindex="0"
                              role="button"
                              data-dashboard-link
                              data-href="/mypage?focus=weightKg"
-                             data-confirm-message="마이페이지로 이동하시겠습니까?">
+                             data-confirm-message="체중을 수정하시겠습니까?">
                         <div class="metric-card__header">
                             <span class="metric-card__title">체중</span>
                             <span class="metric-card__icon">⚖</span>
@@ -24,46 +26,76 @@
                             <strong class="metric-card__value count-up-weight"
                                     th:attr="data-target=${dashboard.weight != null ? dashboard.weight : 0}"
                                     th:text="${dashboard.weight != null ? dashboard.weight + 'kg' : '0kg'}">0kg</strong>
-                            <p class="metric-card__meta"
-                               th:text="${dashboard.weightDiffText}">기록 없음</p>
+
+                            <p class="metric-card__meta metric-card__meta--accent"
+                               th:if="${dashboard.weightDiffTone == 'accent'}"
+                               th:text="${dashboard.weightDiffText}">
+                                기록 없음
+                            </p>
+
+                            <p class="metric-card__meta metric-card__meta--muted"
+                               th:unless="${dashboard.weightDiffTone == 'accent'}"
+                               th:text="${dashboard.weightDiffText}">
+                                기록 없음
+                            </p>
                         </div>
                     </article>
 
+                    <!-- 소모 칼로리 카드 -->
                     <article class="summary-card progress-card hover-card dashboard-link-card"
                              tabindex="0"
                              role="button"
+                             th:with="goalBurned=${dashboard.burnedTargetCalories != null ? dashboard.burnedTargetCalories : 0}"
                              data-dashboard-link
-                             data-href="/exercise"
-                             data-confirm-message="운동일지 페이지로 이동하시겠습니까?">
+                             th:data-href="${goalBurned > 0 ? '/exercise' : '/mypage?focus=goalBurnedKcal'}"
+                             th:data-confirm-message="${goalBurned > 0 ? '운동일지 페이지로 이동하시겠습니까?' : '목표 소모 칼로리를 설정하시겠습니까?'}">
+
                         <div class="progress-card__header">
                             <span class="progress-card__title">소모 칼로리</span>
                             <span class="metric-card__icon metric-card__icon--mint">🔥</span>
                         </div>
 
-                        <div class="progress-card__chart-wrap">
-                            <canvas id="burnedProgressChart"></canvas>
-                            <div class="progress-card__center">
+                        <div class="progress-card__chart-wrap"
+                             th:classappend="${goalBurned <= 0} ? ' progress-card__chart-wrap--empty' : ''">
+
+                            <canvas id="burnedProgressChart" th:if="${goalBurned > 0}"></canvas>
+
+                            <div class="progress-card__center" th:if="${goalBurned > 0}">
                                 <strong class="count-up-percent"
                                         th:attr="data-target=${dashboard.burnedPercent}"
                                         th:text="${dashboard.burnedPercent} + '%'">0%</strong>
                                 <span>달성</span>
                             </div>
+
+                            <div class="progress-card__empty-state" th:if="${goalBurned <= 0}">
+                                <div class="progress-card__empty-ring">
+                                    <span class="progress-card__empty-label">목표 설정</span>
+                                </div>
+                            </div>
                         </div>
 
                         <p class="progress-card__meta"
+                           th:if="${goalBurned > 0}"
                            th:text="|${dashboard.burnedCalories} / ${dashboard.burnedTargetCalories} kcal|">
                             0 / 0 kcal
+                        </p>
+
+                        <p class="progress-card__meta progress-card__meta--muted"
+                           th:if="${goalBurned <= 0}">
+                            목표 소모 칼로리를 입력해주세요.
                         </p>
                     </article>
                 </div>
 
                 <div class="summary-column">
+
+                    <!-- 연속 기록 카드 -->
                     <article class="summary-card metric-card metric-card--center hover-card dashboard-link-card"
                              tabindex="0"
                              role="button"
                              data-dashboard-link
                              data-href="/exercise"
-                             data-confirm-message="운동일지 페이지로 이동하시겠습니까?">
+                             data-confirm-message="오늘의 운동을 기록하시겠습니까?">
                         <div class="metric-card__header">
                             <span class="metric-card__title">연속 기록</span>
                             <span class="metric-card__icon">🔗</span>
@@ -81,34 +113,53 @@
                         </div>
                     </article>
 
+                    <!-- 섭취 칼로리 카드 -->
                     <article class="summary-card progress-card hover-card dashboard-link-card"
                              tabindex="0"
                              role="button"
+                             th:with="goalEat=${dashboard.intakeTargetCalories != null ? dashboard.intakeTargetCalories : 0}"
                              data-dashboard-link
-                             data-href="/diet"
-                             data-confirm-message="식단관리 페이지로 이동하시겠습니까?">
+                             th:data-href="${goalEat > 0 ? '/diet' : '/mypage?focus=goalEatKcal'}"
+                             th:data-confirm-message="${goalEat > 0 ? '식단관리 페이지로 이동하시겠습니까?' : '목표 섭취 칼로리를 입력하시겠습니까?'}">
+
                         <div class="progress-card__header">
                             <span class="progress-card__title">섭취 칼로리</span>
                             <span class="metric-card__icon">🍽️</span>
                         </div>
 
-                        <div class="progress-card__chart-wrap">
-                            <canvas id="intakeProgressChart"></canvas>
-                            <div class="progress-card__center">
+                        <div class="progress-card__chart-wrap"
+                             th:classappend="${goalEat <= 0} ? ' progress-card__chart-wrap--empty' : ''">
+
+                            <canvas id="intakeProgressChart" th:if="${goalEat > 0}"></canvas>
+
+                            <div class="progress-card__center" th:if="${goalEat > 0}">
                                 <strong class="count-up-percent"
                                         th:attr="data-target=${dashboard.intakePercent}"
                                         th:text="${dashboard.intakePercent} + '%'">0%</strong>
                                 <span>섭취</span>
                             </div>
+
+                            <div class="progress-card__empty-state" th:if="${goalEat <= 0}">
+                                <div class="progress-card__empty-ring">
+                                    <span class="progress-card__empty-label">목표 설정</span>
+                                </div>
+                            </div>
                         </div>
 
                         <p class="progress-card__meta"
+                           th:if="${goalEat > 0}"
                            th:text="|${dashboard.intakeCalories} / ${dashboard.intakeTargetCalories} kcal|">
                             0 / 0 kcal
+                        </p>
+
+                        <p class="progress-card__meta progress-card__meta--muted"
+                           th:if="${goalEat <= 0}">
+                            목표 섭취 칼로리를 입력해주세요.
                         </p>
                     </article>
                 </div>
 
+                <!-- 오늘의 영양소 -->
                 <article class="summary-card nutrition-panel hover-card dashboard-link-card"
                          tabindex="0"
                          role="button"
@@ -116,6 +167,7 @@
                          data-href="/diet"
                          data-confirm-message="식단관리 페이지로 이동하시겠습니까?">
                     <div class="nutrition-panel__title">오늘의 영양소</div>
+
                     <div class="nutrition-panel__body">
                         <div class="nutrition-panel__chart-wrap">
                             <canvas id="macroChart"></canvas>
@@ -128,12 +180,14 @@
                                         th:attr="data-target=${dashboard.carbGram}"
                                         th:text="${dashboard.carbGram} + 'g'">0g</strong>
                             </div>
+
                             <div class="macro-item macro-item--fat">
                                 <span class="macro-item__label">지방</span>
                                 <strong class="count-up-gram"
                                         th:attr="data-target=${dashboard.fatGram}"
                                         th:text="${dashboard.fatGram} + 'g'">0g</strong>
                             </div>
+
                             <div class="macro-item macro-item--protein">
                                 <span class="macro-item__label">단백질</span>
                                 <strong class="count-up-gram"
@@ -145,6 +199,7 @@
                 </article>
             </section>
 
+            <!-- 주간 체중 -->
             <section class="summary-card chart-panel hover-card">
                 <div class="chart-panel__title">주간 체중</div>
                 <div class="chart-panel__body">
@@ -153,11 +208,12 @@
             </section>
         </div>
 
+        <!-- 비로그인 오버레이 -->
         <div class="dashboard-login-overlay" th:if="${session.loginMember == null}">
             <div class="dashboard-login-card">
                 <div class="dashboard-login-card__icon">🔒</div>
                 <h3>로그인 후 대시보드를 이용할 수 있어요</h3>
-                <p>운동, 식단, 체중 기록을 한눈에 확인하려면 로그인해 주세요.</p>
+                <p>운동, 식단, 체중 기록을 한눈에 확인하실 수 있습니다.</p>
                 <div class="dashboard-login-card__actions">
                     <a class="dashboard-login-btn dashboard-login-btn--primary" th:href="@{/login}">로그인</a>
                     <a class="dashboard-login-btn" th:href="@{/signup}">회원가입</a>
