@@ -294,9 +294,21 @@
     border-radius: 50%;
 }
 
-.dot.carb { background: #22c55e; }
-.dot.protein { background: #6a5cff; }
-.dot.fat { background: #c4b5fd; }
+.dot.carb { background: #4c57e8; }
+.dot.protein { background: #22c55e; }
+.dot.fat { background: #f5a000; }
+
+.macro-item.carb strong {
+    color: #4c57e8;
+}
+
+.macro-item.protein strong {
+    color: #22c55e;
+}
+
+.macro-item.fat strong {
+    color: #f5a000;
+}
 /* =========================
    테이블
    ========================= */

@@ -20,7 +20,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const selectedFoodsJson = document.getElementById("selectedFoodsJson");
 
     let selectedFoods = [];
-
     let dietIntakeChart = null;
     let macroRatioChart = null;
 
@@ -72,7 +71,6 @@ document.addEventListener("DOMContentLoaded", function () {
             function update(currentTime) {
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-
                 const easeOut = 1 - Math.pow(1 - progress, 3);
                 const currentValue = target * easeOut;
 
@@ -97,12 +95,68 @@ document.addEventListener("DOMContentLoaded", function () {
         return calories.map(value => Number(value) > Number(goalKcal) ? "#dc2626" : "#16a34a");
     }
 
-    function renderDietIntakeChart() {
+    function createBarOnlyAnimations() {
+        return {
+            y: {
+                easing: "easeOutCubic",
+                duration: 850,
+                from(ctx) {
+                    if (ctx.type !== "data") return;
+
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    const isLineDataset = dataset.type === "line";
+
+                    if (isLineDataset) {
+                        return undefined;
+                    }
+
+                    return ctx.chart.scales.y.getPixelForValue(0);
+                },
+                delay(ctx) {
+                    if (ctx.type !== "data") return 0;
+
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    const isLineDataset = dataset.type === "line";
+
+                    if (isLineDataset || ctx.yStarted) return 0;
+                    ctx.yStarted = true;
+                    return ctx.dataIndex * 90;
+                }
+            },
+            base: {
+                easing: "easeOutCubic",
+                duration: 850,
+                from(ctx) {
+                    if (ctx.type !== "data") return;
+
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    const isLineDataset = dataset.type === "line";
+
+                    if (isLineDataset) {
+                        return undefined;
+                    }
+
+                    return ctx.chart.scales.y.getPixelForValue(0);
+                },
+                delay(ctx) {
+                    if (ctx.type !== "data") return 0;
+
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    const isLineDataset = dataset.type === "line";
+
+                    if (isLineDataset || ctx.baseStarted) return 0;
+                    ctx.baseStarted = true;
+                    return ctx.dataIndex * 90;
+                }
+            }
+        };
+    }
+
+    function renderDietIntakeChart(period = "day") {
         const chartCanvas = document.getElementById("dietIntakeChart");
         if (!chartCanvas || !window.dietChartDataMap) return;
 
-        const defaultPeriod = "day";
-        const chartData = window.dietChartDataMap[defaultPeriod];
+        const chartData = window.dietChartDataMap[period];
         if (!chartData) return;
 
         const { labels, calories, goalKcal } = chartData;
@@ -111,10 +165,15 @@ document.addEventListener("DOMContentLoaded", function () {
         const barColors = getBarColors(calories, goalKcal);
         const barHoverColors = getBarHoverColors(calories, goalKcal);
 
+        if (dietIntakeChart) {
+            dietIntakeChart.destroy();
+            dietIntakeChart = null;
+        }
+
         dietIntakeChart = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: labels,
+                labels,
                 datasets: [
                     {
                         label: "섭취 칼로리",
@@ -123,7 +182,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         hoverBackgroundColor: barHoverColors,
                         borderRadius: 10,
                         borderSkipped: false,
-                        maxBarThickness: 34
+                        maxBarThickness: 34,
+                        order: 2
                     },
                     {
                         type: "line",
@@ -134,17 +194,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         pointRadius: 0,
                         pointHoverRadius: 0,
                         fill: false,
-                        tension: 0.25
+                        tension: 0,
+                        order: 1
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: {
-                    duration: 600,
-                    easing: "easeOutCubic"
-                },
+                animations: createBarOnlyAnimations(),
                 plugins: {
                     legend: {
                         display: true,
@@ -193,21 +251,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function updateDietChart(period) {
-        if (!dietIntakeChart || !window.dietChartDataMap) return;
+        if (!window.dietChartDataMap || !window.dietChartDataMap[period]) return;
 
-        const chartData = window.dietChartDataMap[period];
-        if (!chartData) return;
-
-        const { labels, calories, goalKcal } = chartData;
-
-        dietIntakeChart.data.labels = labels;
-        dietIntakeChart.data.datasets[0].data = calories;
-        dietIntakeChart.data.datasets[0].backgroundColor = getBarColors(calories, goalKcal);
-        dietIntakeChart.data.datasets[0].hoverBackgroundColor = getBarHoverColors(calories, goalKcal);
-        dietIntakeChart.data.datasets[1].data = labels.map(() => goalKcal);
-        dietIntakeChart.update();
-
+        renderDietIntakeChart(period);
         updateDietChartTitle(period);
+        updateDietChartSubText(period);
     }
 
     function updateDietChartTitle(period) {
@@ -222,6 +270,21 @@ document.addEventListener("DOMContentLoaded", function () {
             titleEl.textContent = "월간 평균 섭취량";
         } else if (period === "year") {
             titleEl.textContent = "연간 평균 섭취량";
+        }
+    }
+
+    function updateDietChartSubText(period) {
+        const subTextEl = document.getElementById("dietChartSubText");
+        if (!subTextEl) return;
+
+        if (period === "day") {
+            subTextEl.textContent = "선택한 기간 기준 일별 섭취 칼로리를 보여줍니다.";
+        } else if (period === "week") {
+            subTextEl.textContent = "각 주차별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
+        } else if (period === "month") {
+            subTextEl.textContent = "각 월별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
+        } else if (period === "year") {
+            subTextEl.textContent = "각 연도별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
         }
     }
 
@@ -282,14 +345,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const chartValues = isEmpty ? [1, 1, 1] : [carb, protein, fat];
         const chartColors = isEmpty
             ? ["#eef3f9", "#eef3f9", "#eef3f9"]
-            : ["#22c55e", "#6a5cff", "#c4b5fd"];
+            : ["#4c57e8", "#22c55e", "#f5a000"];
 
         if (macroRatioChart) {
-            macroRatioChart.data.datasets[0].data = chartValues;
-            macroRatioChart.data.datasets[0].backgroundColor = chartColors;
-            macroRatioChart.options.plugins.tooltip.enabled = !isEmpty;
-            macroRatioChart.update();
-            return;
+            macroRatioChart.destroy();
+            macroRatioChart = null;
         }
 
         macroRatioChart = new Chart(ctx, {
@@ -307,10 +367,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 responsive: true,
                 maintainAspectRatio: false,
                 cutout: "72%",
+                rotation: -90,
                 animation: {
+                    duration: 1200,
+                    easing: "easeOutCubic",
                     animateRotate: true,
-                    duration: 1100,
-                    easing: "easeOutCubic"
+                    animateScale: false
                 },
                 plugins: {
                     legend: {
@@ -535,36 +597,36 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    if (addSelectedFoodBtn) {
-        addSelectedFoodBtn.addEventListener("click", addSelectedFood);
+    function bindGoalCard() {
+        const goalCard = document.getElementById("goal-card");
+
+        if (!goalCard) return;
+
+        goalCard.addEventListener("click", (e) => {
+            e.stopPropagation();
+
+            const confirmMove = confirm("마이페이지로 이동해서 목표를 설정하시겠습니까?");
+            if (confirmMove) {
+                window.location.href = "/mypage";
+            }
+        });
     }
 
-    form.addEventListener("submit", function (e) {
-        const mode = document.querySelector('input[name="inputMode"]:checked')?.value;
+    function bindIntakeCard() {
+        const intakeCard = document.getElementById("intake-card");
+        const inputBox = document.getElementById("diet-input-box");
 
-        if (mode === "custom") {
-            const name = document.getElementById("customFoodName").value.trim();
-            const base = document.getElementById("customBaseAmountG").value;
+        if (!intakeCard || !inputBox) return;
 
-            if (!name) {
-                alert("음식명을 입력해 주세요.");
-                e.preventDefault();
-                return;
-            }
+        intakeCard.addEventListener("click", (e) => {
+            e.stopPropagation();
 
-            if (!base || base <= 0) {
-                alert("기준량을 올바르게 입력해 주세요.");
-                e.preventDefault();
-                return;
-            }
-        } else {
-            if (selectedFoods.length === 0) {
-                alert("담긴 음식이 없습니다. 음식을 선택한 뒤 '선택 음식 담기'를 눌러주세요.");
-                e.preventDefault();
-                return;
-            }
-        }
-    });
+            inputBox.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        });
+    }
 
     function bindMealGroupDeleteButtons() {
         document.addEventListener("click", async function (e) {
@@ -735,20 +797,48 @@ document.addEventListener("DOMContentLoaded", function () {
         renderMacroRatioChart(window.macroRatioData);
     }
 
-    function updateDietChartSubText(period) {
-        const subTextEl = document.getElementById("dietChartSubText");
-        if (!subTextEl) return;
+    modeRadios.forEach((radio) => {
+        radio.addEventListener("change", toggleDietInputMode);
+    });
 
-        if (period === "day") {
-            subTextEl.textContent = "선택한 기간 기준 일별 섭취 칼로리를 보여줍니다.";
-        } else if (period === "week") {
-            subTextEl.textContent = "각 주차별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
-        } else if (period === "month") {
-            subTextEl.textContent = "각 월별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
-        } else if (period === "year") {
-            subTextEl.textContent = "각 연도별 기록일 기준 평균 섭취 칼로리를 보여줍니다.";
-        }
+    if (foodSelect) {
+        foodSelect.addEventListener("change", fillSelectedFoodInfo);
     }
+
+    if (foodSearchKeyword) {
+        foodSearchKeyword.addEventListener("input", filterFoodOptions);
+    }
+
+    if (addSelectedFoodBtn) {
+        addSelectedFoodBtn.addEventListener("click", addSelectedFood);
+    }
+
+    form.addEventListener("submit", function (e) {
+        const mode = document.querySelector('input[name="inputMode"]:checked')?.value;
+
+        if (mode === "custom") {
+            const name = document.getElementById("customFoodName").value.trim();
+            const base = document.getElementById("customBaseAmountG").value;
+
+            if (!name) {
+                alert("음식명을 입력해 주세요.");
+                e.preventDefault();
+                return;
+            }
+
+            if (!base || base <= 0) {
+                alert("기준량을 올바르게 입력해 주세요.");
+                e.preventDefault();
+                return;
+            }
+        } else {
+            if (selectedFoods.length === 0) {
+                alert("담긴 음식이 없습니다. 음식을 선택한 뒤 '선택 음식 담기'를 눌러주세요.");
+                e.preventDefault();
+                return;
+            }
+        }
+    });
 
     toggleDietInputMode();
     fillSelectedFoodInfo();
@@ -756,11 +846,12 @@ document.addEventListener("DOMContentLoaded", function () {
     renderSelectedFoods();
     bindSelectedFoodEvents();
     animateCountUp();
-    renderDietIntakeChart();
+    renderDietIntakeChart("day");
     renderMacroRatioChart();
     bindDietChartTabs();
     bindGoalCard();
     bindIntakeCard();
     bindMealGroupDeleteButtons();
-    updateDietChartSubText();
+    updateDietChartTitle("day");
+    updateDietChartSubText("day");
 });
