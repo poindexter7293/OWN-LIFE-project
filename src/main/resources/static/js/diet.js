@@ -458,7 +458,7 @@ document.addEventListener("DOMContentLoaded", function () {
             carbG: parseFloat(selectedOption.dataset.carb || "0"),
             proteinG: parseFloat(selectedOption.dataset.protein || "0"),
             fatG: parseFloat(selectedOption.dataset.fat || "0"),
-            count: 1
+            count: 1.0
         };
     }
 
@@ -480,8 +480,8 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="selected-food-item">
                 <div class="selected-food-name">${food.foodName}</div>
                 <input type="number"
-                       min="1"
-                       step="1"
+                       min="0.5"
+                       step="0.5"
                        value="${food.count}"
                        class="selected-food-amount"
                        data-index="${index}">
@@ -505,7 +505,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const existsIndex = selectedFoods.findIndex(food => String(food.foodId) === String(selectedFood.foodId));
 
         if (existsIndex !== -1) {
-            selectedFoods[existsIndex].count += 1;
+            selectedFoods[existsIndex].count += 0.5;
         } else {
             selectedFoods.push(selectedFood);
         }
@@ -528,9 +528,9 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!e.target.classList.contains("selected-food-amount")) return;
 
             const index = Number(e.target.dataset.index);
-            const value = parseInt(e.target.value || "1", 10);
+            const value = parseFloat(e.target.value || "1");
 
-            selectedFoods[index].count = value > 0 ? value : 1;
+            selectedFoods[index].count = value > 0 ? value : 1.0;
             renderSelectedFoods();
         });
     }
@@ -762,5 +762,5 @@ document.addEventListener("DOMContentLoaded", function () {
     bindGoalCard();
     bindIntakeCard();
     bindMealGroupDeleteButtons();
-    updateDietChartSubText(period);
+    updateDietChartSubText();
 });
