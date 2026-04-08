@@ -32,14 +32,80 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const setupDashboardCardLinks = () => {
+        const moveWithConfirm = (card) => {
+            if (!card) return;
+
+            const href = card.dataset.href;
+            const confirmMessage = card.dataset.confirmMessage || '해당 페이지로 이동하시겠습니까?';
+
+            if (!href) return;
+
+            const ok = window.confirm(confirmMessage);
+            if (ok) {
+                window.location.href = href;
+            }
+        };
+
+        document.addEventListener('click', (event) => {
+            const card = event.target.closest('[data-dashboard-link]');
+            if (!card) return;
+
+            moveWithConfirm(card);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            const card = event.target.closest('[data-dashboard-link]');
+            if (!card) return;
+
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                moveWithConfirm(card);
+            }
+        });
+    };
+
+    const setupFocusFromQuery = () => {
+        const params = new URLSearchParams(window.location.search);
+        const focusTarget = params.get('focus');
+
+        if (!focusTarget) return;
+
+        const targetElement = document.getElementById(focusTarget);
+        if (!targetElement) return;
+
+        requestAnimationFrame(() => {
+            targetElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+
+            setTimeout(() => {
+                targetElement.focus();
+
+                if (typeof targetElement.select === 'function') {
+                    targetElement.select();
+                }
+            }, 250);
+        });
+
+        if (window.history && typeof window.history.replaceState === 'function') {
+            params.delete('focus');
+            const nextQuery = params.toString();
+            const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
+            window.history.replaceState({}, '', nextUrl);
+        }
+    };
+
     showAuthFlowAlert();
+    setupDashboardCardLinks();
+    setupFocusFromQuery();
 
     if (!window.dashboardData || typeof Chart === 'undefined') {
         return;
     }
 
     const data = window.dashboardData;
-
 
     const animateNumber = ({
                                element,
@@ -283,22 +349,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const burnedCalories = Number(data.burnedCalories || 0);
-    const targetCalories = Number(data.targetCalories || 0);
-    const burnedPercent = Number(data.burnedPercent || 0);
-    const intakePercent = Number(data.intakePercent || 0);
-
-    createProgressDoughnut(
-        document.getElementById('burnedProgressChart'),
-        burnedPercent,
-        'burned'
+    const burnedTargetCalories = Number(
+        data.burnedTargetCalories ??
+        data.goalBurnedKcal ??
+        data.targetBurnedCalories ??
+        0
     );
 
-    createProgressDoughnut(
-        document.getElementById('intakeProgressChart'),
-        intakePercent,
-        'intake'
+    const intakeTargetCalories = Number(
+        data.intakeTargetCalories ??
+        data.goalEatKcal ??
+        data.targetIntakeCalories ??
+        0
     );
+
+    const burnedPercent = Number(data.burnedPercent ?? 0);
+    const intakePercent = Number(data.intakePercent ?? 0);
+
+    const burnedCanvas = document.getElementById('burnedProgressChart');
+    const intakeCanvas = document.getElementById('intakeProgressChart');
+
+    if (burnedCanvas && burnedTargetCalories > 0) {
+        createProgressDoughnut(burnedCanvas, burnedPercent, 'burned');
+    }
+
+    if (intakeCanvas && intakeTargetCalories > 0) {
+        createProgressDoughnut(intakeCanvas, intakePercent, 'intake');
+    }
 
     const macroCanvas = document.getElementById('macroChart');
     if (macroCanvas) {

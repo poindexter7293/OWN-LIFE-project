@@ -26,21 +26,101 @@
 
 <script th:inline="javascript">
     window.dashboardData = {
-        weight: /*[[${weight}]]*/ null,
-        weightDiff: /*[[${weightDiff}]]*/ 0,
-        streakDays: /*[[${streakDays}]]*/ 0,
-        burnedCalories: /*[[${burnedCalories}]]*/ 0,
-        intakeCalories: /*[[${intakeCalories}]]*/ 0,
-        targetCalories: /*[[${targetCalories}]]*/ 0,
-        intakePercent: /*[[${intakePercent}]]*/ 0,
-        carbPercent: /*[[${carbPercent}]]*/ 0,
-        fatPercent: /*[[${fatPercent}]]*/ 0,
-        proteinPercent: /*[[${proteinPercent}]]*/ 0,
-        carbGram: /*[[${carbGram}]]*/ 0,
-        fatGram: /*[[${fatGram}]]*/ 0,
-        proteinGram: /*[[${proteinGram}]]*/ 0,
-        weightLabels: /*[[${weightLabels}]]*/ [],
-        weightData: /*[[${weightData}]]*/ []
+        weight: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.weight
+            : (#ctx.containsVariable('weight') ? weight : null)}]]*/ null,
+
+        weightDiff: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.weightDiff
+            : (#ctx.containsVariable('weightDiff') ? weightDiff : 0)}]]*/ 0,
+
+        weightDiffText: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.weightDiffText
+            : ''}]]*/ '',
+
+        weightDiffTone: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.weightDiffTone
+            : 'muted'}]]*/ 'muted',
+
+        goalWeightText: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.goalWeightText
+            : ''}]]*/ '',
+
+        streakDays: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.streakDays
+            : (#ctx.containsVariable('streakDays') ? streakDays : 0)}]]*/ 0,
+
+        streakMessage: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.streakMessage
+            : ''}]]*/ '',
+
+        streakTone: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.streakTone
+            : 'danger'}]]*/ 'danger',
+
+        burnedCalories: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.burnedCalories
+            : (#ctx.containsVariable('burnedCalories') ? burnedCalories : 0)}]]*/ 0,
+
+        burnedTargetCalories: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.burnedTargetCalories
+            : (#ctx.containsVariable('burnedTargetCalories')
+                ? burnedTargetCalories
+                : (#ctx.containsVariable('targetBurnedCalories')
+                    ? targetBurnedCalories
+                    : 0))}]]*/ 0,
+
+        burnedPercent: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.burnedPercent
+            : (#ctx.containsVariable('burnedPercent') ? burnedPercent : 0)}]]*/ 0,
+
+        intakeCalories: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.intakeCalories
+            : (#ctx.containsVariable('intakeCalories') ? intakeCalories : 0)}]]*/ 0,
+
+        intakeTargetCalories: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.intakeTargetCalories
+            : (#ctx.containsVariable('intakeTargetCalories')
+                ? intakeTargetCalories
+                : (#ctx.containsVariable('targetCalories')
+                    ? targetCalories
+                    : 0))}]]*/ 0,
+
+        intakePercent: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.intakePercent
+            : (#ctx.containsVariable('intakePercent') ? intakePercent : 0)}]]*/ 0,
+
+        carbPercent: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.carbPercent
+            : (#ctx.containsVariable('carbPercent') ? carbPercent : 0)}]]*/ 0,
+
+        fatPercent: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.fatPercent
+            : (#ctx.containsVariable('fatPercent') ? fatPercent : 0)}]]*/ 0,
+
+        proteinPercent: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.proteinPercent
+            : (#ctx.containsVariable('proteinPercent') ? proteinPercent : 0)}]]*/ 0,
+
+        carbGram: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.carbGram
+            : (#ctx.containsVariable('carbGram') ? carbGram : 0)}]]*/ 0,
+
+        fatGram: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.fatGram
+            : (#ctx.containsVariable('fatGram') ? fatGram : 0)}]]*/ 0,
+
+        proteinGram: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.proteinGram
+            : (#ctx.containsVariable('proteinGram') ? proteinGram : 0)}]]*/ 0,
+
+        weightLabels: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.weightLabels
+            : (#ctx.containsVariable('weightLabels') ? weightLabels : {})}]]*/ [],
+
+        weightData: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.weightData
+            : (#ctx.containsVariable('weightData') ? weightData : {})}]]*/ []
     };
 
     window.isLoginMember = /*[[${session.loginMember != null}]]*/ false;
