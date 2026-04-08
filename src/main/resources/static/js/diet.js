@@ -370,7 +370,7 @@ document.addEventListener("DOMContentLoaded", function () {
         goalCard.addEventListener("click", (e) => {
             e.stopPropagation();
 
-            const confirmMove = confirm("마이페이지로 이동해서 목표를 설정하시겠습니까?");
+            const confirmMove = confirm("목표 섭취 칼로리를 수정하시겠습니까?");
             if (confirmMove) {
                 window.location.href = "/mypage";
             }

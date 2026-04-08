@@ -5,7 +5,7 @@
     <div style="max-width:900px; margin:0 auto; padding:20px;">
         <h1 style="font-size:28px; font-weight:800; margin-bottom:20px;">글수정</h1>
 
-        <form th:action="@{/board/edit/{id}(id=${post.postId})}" method="post">
+        <form th:action="@{/board/edit/{id}(id=${post.postId})}" method="post" enctype="multipart/form-data">
             <label>제목</label>
             <input type="text" name="title" th:value="${post.title}" required
                    style="width:100%; padding:12px; margin:10px 0 20px; border:1px solid #ddd; border-radius:8px;">
@@ -15,6 +15,36 @@
                       style="width:100%; height:250px; padding:12px; margin:10px 0 20px; border:1px solid #ddd; border-radius:8px; resize:none;"
                       th:text="${post.content}"></textarea>
 
+            <!-- 기존 이미지 -->
+            <div th:if="${post.images != null and !#lists.isEmpty(post.images)}" class="board-edit-image-section">
+                <label class="board-upload-label">현재 이미지</label>
+
+                <div class="post-image-list">
+                    <div th:each="img : ${post.images}" class="post-image-card board-edit-image-card">
+                        <img th:src="${img.imagePath}" alt="게시글 이미지" class="post-image">
+
+                        <label class="board-delete-check">
+                            <input type="checkbox" name="deleteImageIds" th:value="${img.imageId}">
+                            삭제
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 새 이미지 추가 -->
+            <div class="board-upload-section">
+                <label class="board-upload-label">새 이미지 추가</label>
+
+                <div class="board-upload-row">
+                    <label for="newImages" class="board-btn board-btn-secondary">파일 선택</label>
+                    <span id="editFileName" class="board-file-name">선택된 파일 없음</span>
+                </div>
+
+                <input type="file" id="newImages" name="newImages" accept="image/*" multiple class="board-file-hidden">
+
+                <p class="board-upload-guide">기존 이미지 포함 최대 3장까지 유지할 수 있습니다.</p>
+            </div>
+
             <div class="board-form-actions">
                 <button type="submit" class="board-btn board-btn-primary">수정완료</button>
                 <a th:href="@{/board/{id}(id=${post.postId})}" class="board-btn board-btn-secondary">취소</a>
@@ -22,5 +52,24 @@
         </form>
     </div>
 </section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const fileInput = document.getElementById("newImages");
+        const fileName = document.getElementById("editFileName");
+
+        if (fileInput && fileName) {
+            fileInput.addEventListener("change", function () {
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    fileName.textContent = "선택된 파일 없음";
+                } else if (fileInput.files.length === 1) {
+                    fileName.textContent = fileInput.files[0].name;
+                } else {
+                    fileName.textContent = fileInput.files[0].name + " 외 " + (fileInput.files.length - 1) + "개";
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>
