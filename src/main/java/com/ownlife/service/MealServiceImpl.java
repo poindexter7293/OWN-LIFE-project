@@ -73,7 +73,7 @@ public class MealServiceImpl implements MealService {
      식단 추가 (핵심 로직)
      */
     @Override
-    public void addMeal(Long memberId, LocalDate date, String mealType, Long foodId, int count) {
+    public void addMeal(Long memberId, LocalDate date, String mealType, Long foodId, double count) {
 
         // 1. 음식 조회
         Food food = foodRepository.findById(foodId)
@@ -105,6 +105,7 @@ public class MealServiceImpl implements MealService {
         mealLog.setCarbG(carb);
         mealLog.setProteinG(protein);
         mealLog.setFatG(fat);
+        mealLog.setIntakeCount(count);
 
         // 5. 저장
         mealLogRepository.save(mealLog);
@@ -125,7 +126,7 @@ public class MealServiceImpl implements MealService {
 
             for (Map<String, Object> foodData : foods) {
                 Long foodId = Long.valueOf(String.valueOf(foodData.get("foodId")));
-                int count = Integer.parseInt(String.valueOf(foodData.get("count")));
+                double count = Integer.parseInt(String.valueOf(foodData.get("count")));
 
                 addMeal(memberId, date, mealType, foodId, count);
             }
@@ -160,7 +161,7 @@ public class MealServiceImpl implements MealService {
                               String mealType,
                               String customFoodName,
                               Double customBaseAmountG,
-                              int count,
+                              double count,
                               Double customCaloriesKcal,
                               Double customCarbG,
                               Double customProteinG,
@@ -229,6 +230,7 @@ public class MealServiceImpl implements MealService {
         mealLog.setCarbG(carb);
         mealLog.setProteinG(protein);
         mealLog.setFatG(fat);
+        mealLog.setIntakeCount(count);
 
         mealLogRepository.save(mealLog);
     }
@@ -326,7 +328,7 @@ public class MealServiceImpl implements MealService {
         double goalKcal = member.getGoalEatKcal() != null ? member.getGoalEatKcal() : 0;
 
         LocalDate startDate = date.minusWeeks(3);
-        LocalDate endDate = date;
+        LocalDate endDate = date.plusDays(6);
 
         List<MealLog> allLogs = mealLogRepository.findByMemberIdAndMealDateBetween(memberId, startDate, endDate);
 

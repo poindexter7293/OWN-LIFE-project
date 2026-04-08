@@ -14,15 +14,22 @@
 
             <div style="min-height:200px; white-space:pre-wrap;" th:text="${post.content}">내용</div>
 
-            <div style="margin-top:20px; display:flex; gap:10px;">
-                <a th:href="@{/board}" style="padding:10px 16px; background:#999; color:white; border-radius:6px; text-decoration:none;">목록</a>
-                <th:block th:if="${post.memberId == loginMemberId}">
-                    <a th:href="@{/board/edit/{id}(id=${post.postId})}">
-                        수정
-                    </a>
+            <div th:if="${post.images != null and !#lists.isEmpty(post.images)}" class="post-image-list">
+                <div th:each="img : ${post.images}" class="post-image-card">
+                    <img th:src="${img.imagePath}"
+                         alt="게시글 이미지"
+                         class="post-image">
+                </div>
+            </div>
 
-                    <form th:action="@{/board/delete/{id}(id=${post.postId})}" method="post">
-                        <button type="submit">삭제</button>
+            <div class="board-detail-actions">
+                <a th:href="@{/board}" class="board-btn board-btn-secondary">목록</a>
+
+                <th:block th:if="${post.memberId == loginMemberId}">
+                    <a th:href="@{/board/edit/{id}(id=${post.postId})}" class="board-btn board-btn-edit">수정</a>
+
+                    <form th:action="@{/board/delete/{id}(id=${post.postId})}" method="post" class="board-inline-form">
+                        <button type="submit" class="board-btn board-btn-delete">삭제</button>
                     </form>
                 </th:block>
             </div>
