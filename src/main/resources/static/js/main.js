@@ -1,73 +1,45 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const setupDashboardCardLinks = () => {
-        const cards = document.querySelectorAll('[data-dashboard-link]');
+    const showAuthFlowAlert = () => {
+        const currentUrl = new URL(window.location.href);
+        const params = currentUrl.searchParams;
+        const consumedParams = [];
+        let message = window.postRedirectAlertMessage || null;
 
-        cards.forEach((card) => {
-            const href = card.dataset.href;
-            const confirmMessage = card.dataset.confirmMessage || '해당 페이지로 이동하시겠습니까?';
+        if (params.get('googleLinkStatus') === 'success') {
+            message = 'Google 계정이 연동되었습니다.';
+            consumedParams.push('googleLinkStatus');
+        }
 
-            if (!href) return;
+        if (params.get('kakaoLinkStatus') === 'success') {
+            message = '카카오 계정이 연동되었습니다.';
+            consumedParams.push('kakaoLinkStatus');
+        }
 
-            const moveWithConfirm = () => {
-                const ok = window.confirm(confirmMessage);
-                if (ok) {
-                    window.location.href = href;
-                }
-            };
+        if (params.get('naverLinkStatus') === 'success') {
+            message = '네이버 계정이 연동되었습니다.';
+            consumedParams.push('naverLinkStatus');
+        }
 
-            card.addEventListener('click', () => {
-                moveWithConfirm();
-            });
+        if (message) {
+            alert(message);
+        }
 
-            card.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    moveWithConfirm();
-                }
-            });
-        });
-    };
-
-    const setupFocusFromQuery = () => {
-        const params = new URLSearchParams(window.location.search);
-        const focusTarget = params.get('focus');
-
-        if (!focusTarget) return;
-
-        const targetElement = document.getElementById(focusTarget);
-        if (!targetElement) return;
-
-        requestAnimationFrame(() => {
-            targetElement.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-
-            setTimeout(() => {
-                targetElement.focus();
-
-                if (typeof targetElement.select === 'function') {
-                    targetElement.select();
-                }
-            }, 250);
-        });
-
-        if (window.history && typeof window.history.replaceState === 'function') {
-            params.delete('focus');
-            const nextQuery = params.toString();
-            const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
-            window.history.replaceState({}, '', nextUrl);
+        if (consumedParams.length > 0) {
+            consumedParams.forEach((key) => params.delete(key));
+            const cleanedQuery = params.toString();
+            const cleanedUrl = `${currentUrl.pathname}${cleanedQuery ? `?${cleanedQuery}` : ''}${currentUrl.hash}`;
+            window.history.replaceState({}, document.title, cleanedUrl);
         }
     };
 
-    setupDashboardCardLinks();
-    setupFocusFromQuery();
+    showAuthFlowAlert();
 
     if (!window.dashboardData || typeof Chart === 'undefined') {
         return;
     }
 
     const data = window.dashboardData;
+
 
     const animateNumber = ({
                                element,
@@ -311,27 +283,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const burnedTargetCalories = Number(data.burnedTargetCalories ?? 0);
-    const intakeTargetCalories = Number(data.intakeTargetCalories ?? 0);
+    const burnedCalories = Number(data.burnedCalories || 0);
+    const targetCalories = Number(data.targetCalories || 0);
+    const burnedPercent = Number(data.burnedPercent || 0);
+    const intakePercent = Number(data.intakePercent || 0);
 
-    const burnedPercent = Number(data.burnedPercent ?? 0);
-    const intakePercent = Number(data.intakePercent ?? 0);
+    createProgressDoughnut(
+        document.getElementById('burnedProgressChart'),
+        burnedPercent,
+        'burned'
+    );
 
-    if (burnedTargetCalories > 0) {
-        createProgressDoughnut(
-            document.getElementById('burnedProgressChart'),
-            burnedPercent,
-            'burned'
-        );
-    }
-
-    if (intakeTargetCalories > 0) {
-        createProgressDoughnut(
-            document.getElementById('intakeProgressChart'),
-            intakePercent,
-            'intake'
-        );
-    }
+    createProgressDoughnut(
+        document.getElementById('intakeProgressChart'),
+        intakePercent,
+        'intake'
+    );
 
     const macroCanvas = document.getElementById('macroChart');
     if (macroCanvas) {
