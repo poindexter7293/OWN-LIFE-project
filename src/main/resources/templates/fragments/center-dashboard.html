@@ -9,7 +9,12 @@
 
             <section class="dashboard-top-grid">
                 <div class="summary-column">
-                    <article class="summary-card metric-card metric-card--center hover-card">
+                    <article class="summary-card metric-card metric-card--center hover-card dashboard-link-card"
+                             tabindex="0"
+                             role="button"
+                             data-dashboard-link
+                             data-href="/mypage?focus=weightKg"
+                             data-confirm-message="마이페이지로 이동하시겠습니까?">
                         <div class="metric-card__header">
                             <span class="metric-card__title">체중</span>
                             <span class="metric-card__icon">⚖</span>
@@ -24,7 +29,12 @@
                         </div>
                     </article>
 
-                    <article class="summary-card progress-card hover-card">
+                    <article class="summary-card progress-card hover-card dashboard-link-card"
+                             tabindex="0"
+                             role="button"
+                             data-dashboard-link
+                             data-href="/exercise"
+                             data-confirm-message="운동일지 페이지로 이동하시겠습니까?">
                         <div class="progress-card__header">
                             <span class="progress-card__title">소모 칼로리</span>
                             <span class="metric-card__icon metric-card__icon--mint">🔥</span>
@@ -48,7 +58,12 @@
                 </div>
 
                 <div class="summary-column">
-                    <article class="summary-card metric-card metric-card--center hover-card">
+                    <article class="summary-card metric-card metric-card--center hover-card dashboard-link-card"
+                             tabindex="0"
+                             role="button"
+                             data-dashboard-link
+                             data-href="/exercise"
+                             data-confirm-message="운동일지 페이지로 이동하시겠습니까?">
                         <div class="metric-card__header">
                             <span class="metric-card__title">연속 기록</span>
                             <span class="metric-card__icon">🔗</span>
@@ -66,7 +81,12 @@
                         </div>
                     </article>
 
-                    <article class="summary-card progress-card hover-card">
+                    <article class="summary-card progress-card hover-card dashboard-link-card"
+                             tabindex="0"
+                             role="button"
+                             data-dashboard-link
+                             data-href="/diet"
+                             data-confirm-message="식단관리 페이지로 이동하시겠습니까?">
                         <div class="progress-card__header">
                             <span class="progress-card__title">섭취 칼로리</span>
                             <span class="metric-card__icon">🍽️</span>
@@ -89,7 +109,12 @@
                     </article>
                 </div>
 
-                <article class="summary-card nutrition-panel hover-card">
+                <article class="summary-card nutrition-panel hover-card dashboard-link-card"
+                         tabindex="0"
+                         role="button"
+                         data-dashboard-link
+                         data-href="/diet"
+                         data-confirm-message="식단관리 페이지로 이동하시겠습니까?">
                     <div class="nutrition-panel__title">오늘의 영양소</div>
                     <div class="nutrition-panel__body">
                         <div class="nutrition-panel__chart-wrap">

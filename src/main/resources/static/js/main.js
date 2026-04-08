@@ -1,10 +1,73 @@
 document.addEventListener('DOMContentLoaded', function () {
+    const setupDashboardCardLinks = () => {
+        const cards = document.querySelectorAll('[data-dashboard-link]');
+
+        cards.forEach((card) => {
+            const href = card.dataset.href;
+            const confirmMessage = card.dataset.confirmMessage || '해당 페이지로 이동하시겠습니까?';
+
+            if (!href) return;
+
+            const moveWithConfirm = () => {
+                const ok = window.confirm(confirmMessage);
+                if (ok) {
+                    window.location.href = href;
+                }
+            };
+
+            card.addEventListener('click', () => {
+                moveWithConfirm();
+            });
+
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    moveWithConfirm();
+                }
+            });
+        });
+    };
+
+    const setupFocusFromQuery = () => {
+        const params = new URLSearchParams(window.location.search);
+        const focusTarget = params.get('focus');
+
+        if (!focusTarget) return;
+
+        const targetElement = document.getElementById(focusTarget);
+        if (!targetElement) return;
+
+        requestAnimationFrame(() => {
+            targetElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+
+            setTimeout(() => {
+                targetElement.focus();
+
+                if (typeof targetElement.select === 'function') {
+                    targetElement.select();
+                }
+            }, 250);
+        });
+
+        if (window.history && typeof window.history.replaceState === 'function') {
+            params.delete('focus');
+            const nextQuery = params.toString();
+            const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
+            window.history.replaceState({}, '', nextUrl);
+        }
+    };
+
+    setupDashboardCardLinks();
+    setupFocusFromQuery();
+
     if (!window.dashboardData || typeof Chart === 'undefined') {
         return;
     }
 
     const data = window.dashboardData;
-
 
     const animateNumber = ({
                                element,
@@ -248,8 +311,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const burnedCalories = Number(data.burnedCalories || 0);
-    const targetCalories = Number(data.targetCalories || 0);
     const burnedPercent = Number(data.burnedPercent || 0);
     const intakePercent = Number(data.intakePercent || 0);
 
