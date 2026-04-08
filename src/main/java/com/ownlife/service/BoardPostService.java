@@ -66,10 +66,46 @@ public class BoardPostService {
         return savedPost;
     }
 
-    public void update(Long postId, String title, String content) {
+    public void update(Long postId, String title, String content,
+                       MultipartFile[] newImages, List<Long> deleteImageIds) {
+
         BoardPost boardPost = findById(postId);
         boardPost.setTitle(title);
         boardPost.setContent(content);
+
+        // 1. 삭제할 이미지 처리
+        if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
+            List<BoardImage> existingImages = boardImageRepository.findByPostPostId(postId);
+
+            for (BoardImage image : existingImages) {
+                if (deleteImageIds.contains(image.getImageId())) {
+                    deleteImageFile(image.getStoredName());
+                }
+            }
+
+            boardImageRepository.deleteByImageIdIn(deleteImageIds);
+        }
+
+        // 2. 현재 남아있는 이미지 개수 확인
+        int remainImageCount = boardImageRepository.findByPostPostId(postId).size();
+
+        // 3. 새 이미지 개수 계산
+        int newImageCount = 0;
+        if (newImages != null) {
+            for (MultipartFile image : newImages) {
+                if (image != null && !image.isEmpty()) {
+                    newImageCount++;
+                }
+            }
+        }
+
+        // 4. 최대 3장 제한
+        if (remainImageCount + newImageCount > 3) {
+            throw new IllegalArgumentException("이미지는 최대 3장까지 유지할 수 있습니다.");
+        }
+
+        // 5. 새 이미지 저장
+        saveBoardImages(boardPost, newImages);
     }
 
     public void delete(Long postId, Long loginMemberId) {
@@ -100,7 +136,7 @@ public class BoardPostService {
             throw new RuntimeException("업로드 폴더 생성 실패", e);
         }
 
-        int sortOrder = 0;
+        int sortOrder = boardImageRepository.findByPostPostId(post.getPostId()).size();
         int uploadedCount = 0;
 
         for (MultipartFile image : images) {
@@ -139,6 +175,15 @@ public class BoardPostService {
 
             boardImageRepository.save(boardImage);
             uploadedCount++;
+        }
+    }
+
+    private void deleteImageFile(String storedName) {
+        try {
+            Path filePath = Paths.get(uploadDir, "board", storedName);
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            throw new RuntimeException("이미지 파일 삭제 실패", e);
         }
     }
 }

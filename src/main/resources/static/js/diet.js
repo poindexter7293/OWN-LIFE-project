@@ -392,6 +392,69 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    modeRadios.forEach((radio) => {
+        radio.addEventListener("change", toggleDietInputMode);
+    });
+
+    if (foodSelect) {
+        foodSelect.addEventListener("change", fillSelectedFoodInfo);
+    }
+
+    if (foodSearchKeyword) {
+        foodSearchKeyword.addEventListener("input", filterFoodOptions);
+    }
+
+    form.addEventListener("submit", function (e) {
+        const mode = document.querySelector('input[name="inputMode"]:checked')?.value;
+
+        if (mode === "custom") {
+            const name = document.getElementById("customFoodName").value.trim();
+            const base = document.getElementById("customBaseAmountG").value;
+
+            if (!name) {
+                alert("음식명을 입력해 주세요.");
+                e.preventDefault();
+                return;
+            }
+
+            if (!base || base <= 0) {
+                alert("기준량을 올바르게 입력해 주세요.");
+                e.preventDefault();
+            }
+        }
+    });
+
+    function bindGoalCard() {
+        const goalCard = document.getElementById("goal-card");
+
+        if (!goalCard) return;
+
+        goalCard.addEventListener("click", (e) => {
+            e.stopPropagation();
+
+            const confirmMove = confirm("목표 섭취 칼로리를 수정하시겠습니까?");
+            if (confirmMove) {
+                window.location.href = "/mypage";
+            }
+        });
+    }
+
+    function bindIntakeCard() {
+        const intakeCard = document.getElementById("intake-card");
+        const inputBox = document.getElementById("diet-input-box");
+
+        if (!intakeCard || !inputBox) return;
+
+        intakeCard.addEventListener("click", (e) => {
+            e.stopPropagation();
+
+            inputBox.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        });
+    }
+
     function filterFoodOptions() {
         if (!foodSelect || !foodSearchKeyword) return;
 

@@ -89,6 +89,106 @@
     font-weight: 800;
 }
 
+.mypage-pattern-card {
+    padding: 28px 32px;
+    border-radius: 24px;
+    border: 1px solid rgba(109, 158, 231, 0.1);
+    background: linear-gradient(180deg, rgba(248, 250, 255, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.mypage-pattern-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.mypage-pattern-card__period {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(109, 158, 231, 0.1);
+    color: #4a6fa5;
+    font-size: 0.84rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.mypage-pattern-card__summary {
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: rgba(109, 158, 231, 0.06);
+    border: 1px solid rgba(109, 158, 231, 0.08);
+}
+
+.mypage-pattern-card__summary strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #21365e;
+    font-size: 1.08rem;
+    font-weight: 800;
+}
+
+.mypage-pattern-card__summary p {
+    color: #667998;
+    line-height: 1.6;
+}
+
+.mypage-pattern-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.mypage-pattern-insight {
+    padding: 18px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid rgba(124, 153, 196, 0.16);
+    box-shadow: 0 10px 24px rgba(70, 88, 142, 0.04);
+}
+
+.mypage-pattern-insight h3 {
+    margin-bottom: 8px;
+    color: #243a63;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.mypage-pattern-insight p {
+    color: #6d7f99;
+    font-size: 0.92rem;
+    line-height: 1.6;
+}
+
+.mypage-pattern-insight--accent {
+    background: linear-gradient(180deg, rgba(96, 165, 250, 0.08), rgba(255, 255, 255, 0.98));
+    border-color: rgba(59, 130, 246, 0.18);
+}
+
+.mypage-pattern-insight--balance {
+    background: linear-gradient(180deg, rgba(34, 197, 94, 0.08), rgba(255, 255, 255, 0.98));
+    border-color: rgba(34, 197, 94, 0.16);
+}
+
+.mypage-pattern-insight--caution {
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), rgba(255, 255, 255, 0.98));
+    border-color: rgba(245, 158, 11, 0.18);
+}
+
+.mypage-pattern-insight--weekend {
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.08), rgba(255, 255, 255, 0.98));
+    border-color: rgba(139, 92, 246, 0.16);
+}
+
+.mypage-pattern-insight--muted {
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.08), rgba(255, 255, 255, 0.98));
+    border-color: rgba(148, 163, 184, 0.18);
+}
+
 .mypage-grid {
     display: grid;
     grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.25fr);
@@ -729,6 +829,7 @@
 
 @media (max-width: 768px) {
     .mypage-hero-card,
+    .mypage-pattern-card,
     .mypage-profile-card,
     .mypage-settings-card {
         padding: 22px 18px;
@@ -736,6 +837,7 @@
 
     .mypage-hero-card__header,
     .mypage-stat-grid,
+    .mypage-pattern-grid,
     .mypage-profile-list,
     .mypage-form-grid {
         grid-template-columns: 1fr;
@@ -760,7 +862,12 @@
         margin-bottom: 18px;
     }
 
+    .mypage-pattern-card__header {
+        flex-direction: column;
+    }
+
     .mypage-stat-grid,
+    .mypage-pattern-grid,
     .mypage-profile-list,
     .mypage-form-grid {
         gap: 12px;
