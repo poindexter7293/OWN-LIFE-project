@@ -1,6 +1,7 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.LifestylePatternAnalysisDto;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.dto.WithdrawalForm;
@@ -8,6 +9,7 @@ import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
+import com.ownlife.service.LifestylePatternService;
 import com.ownlife.service.MemberService;
 import com.ownlife.service.NaverAuthService;
 import jakarta.servlet.http.HttpSession;
@@ -38,6 +40,7 @@ public class MyPageController {
     private final GoogleAuthService googleAuthService;
     private final KakaoAuthService kakaoAuthService;
     private final NaverAuthService naverAuthService;
+    private final LifestylePatternService lifestylePatternService;
 
     @GetMapping("/mypage")
     public String myPage(@RequestParam(value = "success", defaultValue = "false") boolean success,
@@ -324,11 +327,13 @@ public class MyPageController {
         Optional<SocialAccount> googleAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.GOOGLE);
         Optional<SocialAccount> kakaoAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO);
         Optional<SocialAccount> naverAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER);
+        LifestylePatternAnalysisDto lifePatternAnalysis = lifestylePatternService.analyze(member.getMemberId());
 
         model.addAttribute("pageTitle", "마이페이지");
         model.addAttribute("centerFragment", "fragments/center-mypage :: centerMyPage");
         model.addAttribute("extraCssFiles", List.of("/css/mypage.css"));
         model.addAttribute("extraJsFiles", List.of("/js/mypage.js"));
+        model.addAttribute("lifePatternAnalysis", lifePatternAnalysis);
         model.addAttribute("member", member);
         model.addAttribute("settingsUpdated", success);
         model.addAttribute("withdrawalRequiresPassword", StringUtils.hasText(member.getPasswordHash()));
