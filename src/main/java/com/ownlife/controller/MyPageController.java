@@ -328,6 +328,7 @@ public class MyPageController {
         model.addAttribute("pageTitle", "마이페이지");
         model.addAttribute("centerFragment", "fragments/center-mypage :: centerMyPage");
         model.addAttribute("extraCssFiles", List.of("/css/mypage.css"));
+        model.addAttribute("extraJsFiles", List.of("/js/mypage.js"));
         model.addAttribute("member", member);
         model.addAttribute("settingsUpdated", success);
         model.addAttribute("withdrawalRequiresPassword", StringUtils.hasText(member.getPasswordHash()));

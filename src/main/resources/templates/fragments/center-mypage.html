@@ -3,6 +3,7 @@
 <body>
 <!--/*@thymesVar id="member" type="com.ownlife.entity.Member"*/-->
 <!--/*@thymesVar id="myPageForm" type="com.ownlife.dto.MyPageForm"*/-->
+<!--/*@thymesVar id="withdrawalForm" type="com.ownlife.dto.WithdrawalForm"*/-->
 <section th:fragment="centerMyPage" class="mypage-page">
     <div class="mypage-shell">
         <article class="summary-card mypage-hero-card">
@@ -17,19 +18,35 @@
             </div>
 
             <div class="mypage-stat-grid">
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="weightKg"
+                     data-focus-target="weightKg">
                     <span>현재 체중</span>
                     <strong th:text="${myPageForm.weightKg != null ? myPageForm.weightKg + ' kg' : '미설정'}">미설정</strong>
                 </div>
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="goalWeight"
+                     data-focus-target="goalWeight">
                     <span>목표 체중</span>
                     <strong th:text="${myPageForm.goalWeight != null ? myPageForm.goalWeight + ' kg' : '미설정'}">미설정</strong>
                 </div>
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="goalEatKcal"
+                     data-focus-target="goalEatKcal">
                     <span>목표 섭취</span>
                     <strong th:text="${myPageForm.goalEatKcal != null ? myPageForm.goalEatKcal + ' kcal' : '미설정'}">미설정</strong>
                 </div>
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="goalBurnedKcal"
+                     data-focus-target="goalBurnedKcal">
                     <span>목표 소모</span>
                     <strong th:text="${myPageForm.goalBurnedKcal != null ? myPageForm.goalBurnedKcal + ' kcal' : '미설정'}">미설정</strong>
                 </div>
@@ -108,15 +125,20 @@
                     </div>
 
                     <div class="mypage-social-card-list">
-                    <div class="mypage-social-card">
+                    <div class="mypage-social-card mypage-social-card--google">
                         <div class="mypage-social-card__info">
-                            <div>
-                                <strong>Google 계정</strong>
-                                <p th:if="${googleLinked}">현재 계정에 Google 로그인을 연결해 두었습니다.</p>
-                                <p th:if="${!googleLinked}">연동하면 기존 계정으로 Google 로그인을 함께 사용할 수 있어요.</p>
+                            <div class="mypage-social-brand mypage-social-brand--google">
+                                <span class="mypage-social-brand__icon mypage-social-brand__icon--google">
+                                    <img th:src="@{/images/google_btn.png}" alt="구글 로고">
+                                </span>
+                                <div class="mypage-social-brand__text">
+                                    <strong>Google 계정</strong>
+                                    <p th:if="${googleLinked}">현재 계정에 Google 로그인이 연결되어 있어 빠르게 로그인할 수 있어요.</p>
+                                    <p th:if="${!googleLinked}">Google 계정을 연결하면 기존 OWN LIFE 계정으로 더 편하게 로그인할 수 있어요.</p>
+                                </div>
                             </div>
                             <span class="mypage-social-badge" th:classappend="${googleLinked} ? ' is-linked' : ' is-unlinked'"
-                                  th:text="${googleLinked} ? '연동 완료' : '미연동'">미연동</span>
+                                  th:text="${googleLinked} ? '연동 완료' : '연동 가능'">연동 가능</span>
                         </div>
 
                         <div class="mypage-social-meta" th:if="${googleLinked}">
@@ -127,6 +149,9 @@
 
                         <p class="mypage-social-help" th:if="${googleLinked}">
                             연동을 해제하면 현재 계정에서 Google 간편로그인을 사용할 수 없어요.
+                        </p>
+                        <p class="mypage-social-help" th:if="${!googleLinked}">
+                            Google 인증을 마치면 지금 사용 중인 계정에 바로 연결됩니다.
                         </p>
 
                         <div class="mypage-social-actions" th:if="${googleAuthEnabled and !googleLinked}">
@@ -156,13 +181,18 @@
 
                     <div class="mypage-social-card mypage-social-card--kakao">
                         <div class="mypage-social-card__info">
-                            <div>
-                                <strong>카카오 계정</strong>
-                                <p th:if="${kakaoLinked}">현재 계정에 카카오 로그인을 연결해 두었습니다.</p>
-                                <p th:if="${!kakaoLinked}">연동하면 기존 계정으로 카카오 로그인을 함께 사용할 수 있어요.</p>
+                            <div class="mypage-social-brand mypage-social-brand--kakao">
+                                <span class="mypage-social-brand__icon mypage-social-brand__icon--kakao">
+                                    <img th:src="@{/images/kakaotalk_btn_small.png}" alt="카카오 로고">
+                                </span>
+                                <div class="mypage-social-brand__text">
+                                    <strong>카카오 계정</strong>
+                                    <p th:if="${kakaoLinked}">현재 계정에 카카오 로그인이 연결되어 있어 간편하게 로그인할 수 있어요.</p>
+                                    <p th:if="${!kakaoLinked}">카카오 계정을 연결하면 기존 OWN LIFE 계정으로 더 빠르게 로그인할 수 있어요.</p>
+                                </div>
                             </div>
                             <span class="mypage-social-badge" th:classappend="${kakaoLinked} ? ' is-linked' : ' is-unlinked'"
-                                  th:text="${kakaoLinked} ? '연동 완료' : '미연동'">미연동</span>
+                                  th:text="${kakaoLinked} ? '연동 완료' : '연동 가능'">연동 가능</span>
                         </div>
 
                         <div class="mypage-social-meta" th:if="${kakaoLinked}">
@@ -174,10 +204,13 @@
                         <p class="mypage-social-help" th:if="${kakaoLinked}">
                             연동을 해제하면 현재 계정에서 카카오 간편로그인을 사용할 수 없어요.
                         </p>
+                        <p class="mypage-social-help" th:if="${!kakaoLinked}">
+                            카카오 인증을 마치면 지금 사용 중인 계정에 바로 연결됩니다.
+                        </p>
 
                         <div class="mypage-social-actions" th:if="${kakaoAuthEnabled and !kakaoLinked}">
                             <a th:href="${kakaoLinkUrl}" class="mypage-social-link-button mypage-social-link-button--kakao">
-                                <span class="mypage-social-link-button__badge">K</span>
+                                <span class="mypage-social-link-button__badge mypage-social-link-button__badge--kakao"><img th:src="@{/images/kakaotalk_btn_small.png}" alt="카카오"></span>
                                 <span>카카오 계정 연동하기</span>
                             </a>
                         </div>
@@ -194,13 +227,18 @@
 
                     <div class="mypage-social-card mypage-social-card--naver">
                         <div class="mypage-social-card__info">
-                            <div>
-                                <strong>네이버 계정</strong>
-                                <p th:if="${naverLinked}">현재 계정에 네이버 로그인을 연결해 두었습니다.</p>
-                                <p th:if="${!naverLinked}">연동하면 기존 계정으로 네이버 로그인을 함께 사용할 수 있어요.</p>
+                            <div class="mypage-social-brand mypage-social-brand--naver">
+                                <span class="mypage-social-brand__icon mypage-social-brand__icon--naver">
+                                    <img th:src="@{/images/naver_btn.png}" alt="네이버 로고">
+                                </span>
+                                <div class="mypage-social-brand__text">
+                                    <strong>네이버 계정</strong>
+                                    <p th:if="${naverLinked}">현재 계정에 네이버 로그인이 연결되어 있어 간편하게 로그인할 수 있어요.</p>
+                                    <p th:if="${!naverLinked}">네이버 계정을 연결하면 기존 OWN LIFE 계정으로 빠르게 로그인할 수 있어요.</p>
+                                </div>
                             </div>
                             <span class="mypage-social-badge" th:classappend="${naverLinked} ? ' is-linked' : ' is-unlinked'"
-                                  th:text="${naverLinked} ? '연동 완료' : '미연동'">미연동</span>
+                                  th:text="${naverLinked} ? '연동 완료' : '연동 가능'">연동 가능</span>
                         </div>
 
                         <div class="mypage-social-meta" th:if="${naverLinked}">
@@ -212,10 +250,13 @@
                         <p class="mypage-social-help" th:if="${naverLinked}">
                             연동을 해제하면 현재 계정에서 네이버 간편로그인을 사용할 수 없어요.
                         </p>
+                        <p class="mypage-social-help" th:if="${!naverLinked}">
+                            네이버 인증을 마치면 지금 사용 중인 계정에 바로 연결됩니다.
+                        </p>
 
                         <div class="mypage-social-actions" th:if="${naverAuthEnabled and !naverLinked}">
                             <a th:href="${naverLinkUrl}" class="mypage-social-link-button mypage-social-link-button--naver">
-                                <span class="mypage-social-link-button__badge mypage-social-link-button__badge--naver">N</span>
+                                <span class="mypage-social-link-button__badge mypage-social-link-button__badge--naver"><img th:src="@{/images/naver_btn.png}" alt="네이버"></span>
                                 <span>네이버 계정 연동하기</span>
                             </a>
                         </div>
@@ -233,7 +274,7 @@
                 </div>
             </article>
 
-            <article class="summary-card mypage-settings-card">
+            <article class="summary-card mypage-settings-card" id="mypageGoalSettings">
                 <div class="mypage-card-title-wrap">
                     <p class="mypage-card-kicker">설정</p>
                     <h2>건강 목표 관리</h2>
@@ -295,8 +336,8 @@
                     </p>
 
                     <form th:action="@{/mypage/withdraw}" method="post" th:object="${withdrawalForm}" class="mypage-withdrawal-form">
-                        <div class="mypage-alert mypage-alert-error" th:if="${#fields.hasGlobalErrors()}" th:errors="*{global}">
-                            회원탈퇴 처리 중 오류가 발생했습니다.
+                        <div class="mypage-alert mypage-alert-error" th:if="${#fields.hasGlobalErrors()}">
+                            <p th:each="error : ${#fields.globalErrors()}" th:text="${error}">회원탈퇴 처리 중 오류가 발생했습니다.</p>
                         </div>
 
                         <div class="mypage-form-field" th:if="${withdrawalRequiresPassword}">
