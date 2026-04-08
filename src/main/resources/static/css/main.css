@@ -669,3 +669,57 @@ button.auth-pill {
             0 14px 28px rgba(91, 61, 245, 0.08);
     border-color: #e4defd;
 }
+
+.progress-card__chart-wrap--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 124px;
+    padding: 2px 0 0;
+}
+
+.progress-card__empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.progress-card__empty-ring {
+    width: 82px;
+    height: 82px;
+    border: 5px solid #d9dce3;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+.progress-card__empty-label {
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+}
+
+.progress-card__meta--muted {
+    color: #b0b7c3;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+.metric-card__meta--muted {
+    color: #9aa0ad;
+}
+
+.metric-card__meta--accent {
+    color: #4c57e8;
+    font-weight: 700;
+}

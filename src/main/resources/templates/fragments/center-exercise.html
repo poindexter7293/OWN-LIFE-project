@@ -28,8 +28,12 @@
               th:text="${exerciseData.todayBurnedKcal}">0</span><small>kcal</small>
             </div>
         </article>
+        <article class="exercise-summary-card exercise-summary-card--clickable"
+                 id="goalBurnedCard"
+                 tabindex="0"
+                 role="button"
+                 aria-label="목표 소모 칼로리 설정으로 이동">
 
-        <article class="exercise-summary-card" id="goalBurnedCard">
             <div class="exercise-summary-card__label">목표 소모 칼로리</div>
 
             <div class="exercise-summary-card__value exercise-summary-card__value--green"
@@ -304,7 +308,6 @@
             chartApiUrl: /*[[@{/exercise/chart}]]*/ '/exercise/chart',
             initialPeriod: 'WEEK'
         };
-
     </script>
 </div>
 </body>

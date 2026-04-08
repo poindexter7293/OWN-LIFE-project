@@ -476,19 +476,35 @@ function initSummaryCardActions() {
     if (goalBurnedCard) {
         goalBurnedCard.style.cursor = 'pointer';
 
-        goalBurnedCard.addEventListener('click', function () {
-            const confirmed = window.confirm('마이페이지로 이동하시겠습니까?');
+        const moveToGoalBurnedSetting = function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
 
-            if (confirmed) {
-                const myPageUrl = window.exercisePageData && window.exercisePageData.myPageUrl
-                    ? window.exercisePageData.myPageUrl
-                    : '/mypage';
+            const confirmed = window.confirm('목표 소모 칼로리를 수정하시겠습니까?');
+            if (!confirmed) {
+                return;
+            }
 
-                window.location.href = myPageUrl;
+            const myPageUrl = window.exercisePageData && window.exercisePageData.myPageUrl
+                ? window.exercisePageData.myPageUrl
+                : '/mypage';
+
+            window.location.href = myPageUrl + '?focus=goalBurnedKcal';
+        };
+
+        goalBurnedCard.addEventListener('click', moveToGoalBurnedSetting);
+
+        goalBurnedCard.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                moveToGoalBurnedSetting(event);
             }
         });
     }
 }
+
+
 
 let routeMapInstance = null;
 let routePolyline = null;

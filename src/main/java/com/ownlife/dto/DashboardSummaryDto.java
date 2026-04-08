@@ -13,6 +13,7 @@ public class DashboardSummaryDto {
     private Double weight = 0.0;
     private Double weightDiff = 0.0;
     private String weightDiffText = "기록 없음";
+    private String weightDiffTone = "muted";
 
     private int streakDays = 0;
     private String streakMessage = "기록 없음";
