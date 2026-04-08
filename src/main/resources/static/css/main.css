@@ -198,6 +198,20 @@ button.auth-pill {
 .progress-card {
     min-height: 158px;
     padding: 18px 18px;
+    transition:
+            transform 0.22s ease,
+            box-shadow 0.22s ease,
+            border-color 0.22s ease,
+            background-color 0.22s ease;
+}
+
+.nutrition-panel,
+.chart-panel {
+    transition:
+            transform 0.22s ease,
+            box-shadow 0.22s ease,
+            border-color 0.22s ease,
+            background-color 0.22s ease;
 }
 
 .metric-card__header,
@@ -208,19 +222,12 @@ button.auth-pill {
 }
 
 .metric-card__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     margin-bottom: 10px;
 }
 
-.metric-card__title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #7f8695;
+.progress-card__header {
+    margin-bottom: 6px;
 }
-
-
 
 .metric-card__title,
 .progress-card__title {
@@ -239,6 +246,7 @@ button.auth-pill {
     background: #f4efff;
     font-size: 16px;
     opacity: 0.9;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .metric-card__icon--mint {
@@ -276,16 +284,91 @@ button.auth-pill {
     font-weight: 600;
 }
 
-/* 추가: 원형그래프 카드 */
+.metric-card--center {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.metric-card__center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+.metric-card__center-content--raised {
+    transform: translateY(-12%);
+}
+
+.metric-card--center .metric-card__value {
+    font-size: 2.6rem;
+}
+
+.metric-card--center .streak-row {
+    justify-content: center;
+}
+
+.metric-card--center .metric-card__meta {
+    text-align: center;
+}
+
+.metric-card__center-content--weight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.metric-card__center-content--weight .metric-card__value {
+    font-size: 2.55rem;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+}
+
+.metric-card__goal-text {
+    margin-top: 2px;
+    font-size: 0.82rem;
+    line-height: 1.15;
+    font-weight: 600;
+    color: #8f95a3;
+}
+
+.metric-card__meta--weight {
+    margin-top: 6px;
+    font-size: 0.9rem;
+    line-height: 1.25;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: -0.02em;
+}
+
+.metric-card__meta--muted {
+    color: #9aa0ad;
+}
+
+.metric-card__meta--accent {
+    color: #4c57e8;
+    font-weight: 700;
+}
+
+.metric-card__meta--danger {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* progress card */
 .progress-card {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-}
-
-.progress-card__header {
-    margin-bottom: 6px;
+    position: relative;
+    overflow: hidden;
 }
 
 .progress-card__chart-wrap {
@@ -325,6 +408,52 @@ button.auth-pill {
     font-weight: 700;
 }
 
+.progress-card__chart-wrap--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 124px;
+    padding: 2px 0 0;
+}
+
+.progress-card__empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.progress-card__empty-ring {
+    width: 82px;
+    height: 82px;
+    border: 5px solid #d9dce3;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+.progress-card__empty-label {
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+}
+
+.progress-card__meta--muted {
+    color: #b0b7c3;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+/* nutrition / chart */
 .nutrition-panel {
     padding: 18px 20px;
     min-height: 430px;
@@ -398,105 +527,7 @@ button.auth-pill {
     height: 310px;
 }
 
-@media (max-width: 1100px) {
-    .dashboard-top-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .nutrition-panel {
-        grid-column: 1 / -1;
-        min-height: 346px;
-    }
-}
-
-@media (max-width: 768px) {
-    .main-shell {
-        padding: 14px 10px 28px;
-    }
-
-    .top-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .nav-inner {
-        flex-wrap: wrap;
-    }
-
-    .dashboard-top-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .summary-column {
-        grid-template-rows: unset;
-    }
-
-    .nutrition-panel__body {
-        grid-template-columns: 1fr;
-    }
-
-    .nutrition-panel__legend {
-        gap: 20px;
-    }
-
-    .metric-card__value {
-        font-size: 2.4rem;
-    }
-
-    .brand-text {
-        font-size: 1.6rem;
-    }
-}
-
-/* 중앙 정렬 카드 */
-.metric-card--center {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-/* 중앙 영역 */
-.metric-card__center-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-}
-
-/* 숫자 중앙 강조 */
-.metric-card--center .metric-card__value {
-    font-size: 2.6rem;
-}
-
-/* 연속기록 중앙 정렬 */
-.metric-card--center .streak-row {
-    justify-content: center;
-}
-
-/* 메타 텍스트 중앙 */
-.metric-card--center .metric-card__meta {
-    text-align: center;
-}
-
-.metric-card__center-content {
-    gap: 4px;
-}
-
-.metric-card,
-.progress-card,
-.nutrition-panel,
-.chart-panel {
-    transition:
-            transform 0.22s ease,
-            box-shadow 0.22s ease,
-            border-color 0.22s ease,
-            background-color 0.22s ease;
-}
-
+/* hover */
 .hover-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 14px 28px rgba(91, 61, 245, 0.08);
@@ -505,48 +536,6 @@ button.auth-pill {
 
 .hover-card:hover .metric-card__icon {
     transform: scale(1.06);
-}
-
-.metric-card__icon {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card--center {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.metric-card__center-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-}
-
-/* 숫자를 10~15% 정도 위로 */
-.metric-card__center-content--raised {
-    transform: translateY(-12%);
-}
-
-.metric-card--center .metric-card__value {
-    font-size: 2.6rem;
-}
-
-.metric-card--center .streak-row {
-    justify-content: center;
-}
-
-.metric-card--center .metric-card__meta {
-    text-align: center;
-}
-
-.progress-card {
-    position: relative;
-    overflow: hidden;
 }
 
 .progress-card::after,
@@ -586,6 +575,7 @@ button.auth-pill {
     transform: scale(1.01);
 }
 
+/* login overlay */
 .dashboard-guard {
     position: relative;
 }
@@ -670,6 +660,7 @@ button.auth-pill {
     box-shadow: 0 10px 18px rgba(91, 61, 245, 0.22);
 }
 
+/* link cards */
 .dashboard-link-card {
     cursor: pointer;
 }
@@ -682,114 +673,54 @@ button.auth-pill {
     border-color: #e4defd;
 }
 
-.progress-card__chart-wrap--empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 124px;
-    padding: 2px 0 0;
+/* responsive */
+@media (max-width: 1100px) {
+    .dashboard-top-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .nutrition-panel {
+        grid-column: 1 / -1;
+        min-height: 346px;
+    }
 }
 
-.progress-card__empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-}
+@media (max-width: 768px) {
+    .main-shell {
+        padding: 14px 10px 28px;
+    }
 
-.progress-card__empty-ring {
-    width: 82px;
-    height: 82px;
-    border: 5px solid #d9dce3;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fafafa;
-    box-sizing: border-box;
-}
+    .top-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
 
-.progress-card__empty-label {
-    color: #9ca3af;
-    font-size: 12px;
-    font-weight: 800;
-    text-align: center;
-    line-height: 1.3;
-    letter-spacing: -0.02em;
-}
+    .nav-inner {
+        flex-wrap: wrap;
+    }
 
-.progress-card__meta--muted {
-    color: #b0b7c3;
-    text-align: center;
-    font-size: 11px;
-    font-weight: 700;
-    margin-top: 4px;
-}
+    .dashboard-top-grid {
+        grid-template-columns: 1fr;
+    }
 
-.metric-card__meta--muted {
-    color: #9aa0ad;
-}
+    .summary-column {
+        grid-template-rows: unset;
+    }
 
-.metric-card__meta--accent {
-    color: #4c57e8;
-    font-weight: 700;
-}
+    .nutrition-panel__body {
+        grid-template-columns: 1fr;
+    }
 
-.metric-card__goal-direction {
-    margin-top: 4px;
-    margin-bottom: 2px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #7b8190;
-}
+    .nutrition-panel__legend {
+        gap: 20px;
+    }
 
-.metric-card__center-content--weight {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-}
+    .metric-card__value {
+        font-size: 2.4rem;
+    }
 
-.metric-card__center-content--weight .metric-card__value {
-    font-size: 2.55rem;
-    line-height: 1;
-    font-weight: 800;
-    letter-spacing: -0.05em;
-}
-
-.metric-card__goal-text {
-    margin-top: 2px;
-    font-size: 0.82rem;
-    line-height: 1.15;
-    font-weight: 600;
-    color: #8f95a3;
-}
-
-.metric-card__meta--weight {
-    margin-top: 6px;
-    font-size: 0.9rem;
-    line-height: 1.25;
-    font-weight: 700;
-    text-align: center;
-    letter-spacing: -0.02em;
-}
-
-.metric-card__meta--muted {
-    color: #9aa0ad;
-}
-
-.metric-card__meta--accent {
-    color: #4c57e8;
-    font-weight: 700;
-}
-
-.metric-card__meta--danger {
-    color: #ef4444;
-    font-weight: 700;
-}
-
-.metric-card__meta--accent {
-    color: #4c57e8;
-    font-weight: 700;
+    .brand-text {
+        font-size: 1.6rem;
+    }
 }
