@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+
 <body>
 <div th:fragment="centerDashboard" class="dashboard-container">
 
@@ -17,24 +19,40 @@
                              data-dashboard-link
                              data-href="/mypage?focus=weightKg"
                              data-confirm-message="체중을 수정하시겠습니까?">
+
                         <div class="metric-card__header">
                             <span class="metric-card__title">체중</span>
-                            <span class="metric-card__icon">⚖</span>
+                            <span class="metric-card__icon">⚖️</span>
                         </div>
 
-                        <div class="metric-card__center-content metric-card__center-content--raised">
-                            <strong class="metric-card__value count-up-weight"
-                                    th:attr="data-target=${dashboard.weight != null ? dashboard.weight : 0}"
-                                    th:text="${dashboard.weight != null ? dashboard.weight + 'kg' : '0kg'}">0kg</strong>
+                        <div class="metric-card__center-content metric-card__center-content--raised metric-card__center-content--weight">
 
-                            <p class="metric-card__meta metric-card__meta--accent"
-                               th:if="${dashboard.weightDiffTone == 'accent'}"
+
+                            <p class="metric-card__goal-text"
+                               th:if="${dashboard.goalWeightText != null and !#strings.isEmpty(dashboard.goalWeightText)}"
+                               th:text="${dashboard.goalWeightText}">
+                                목표체중 : 0kg
+                            </p>
+
+                            <p class="metric-card__goal-text"
+                               th:unless="${dashboard.goalWeightText != null and !#strings.isEmpty(dashboard.goalWeightText)}">
+                                목표체중 미설정
+                            </p>
+
+                            <strong class="metric-card__value count-up-weight"
+                                    th:data-target="${dashboard.weight != null ? dashboard.weight : 0}"
+                                    th:text="${dashboard.weight != null ? dashboard.weight : 0} + 'kg'">
+                                0kg
+                            </strong>
+
+                            <p class="metric-card__meta metric-card__meta--accent metric-card__meta--weight"
+                               th:if="${dashboard.weightDiffTone != null and dashboard.weightDiffTone == 'accent'}"
                                th:text="${dashboard.weightDiffText}">
                                 기록 없음
                             </p>
 
-                            <p class="metric-card__meta metric-card__meta--muted"
-                               th:unless="${dashboard.weightDiffTone == 'accent'}"
+                            <p class="metric-card__meta metric-card__meta--muted metric-card__meta--weight"
+                               th:unless="${dashboard.weightDiffTone != null and dashboard.weightDiffTone == 'accent'}"
                                th:text="${dashboard.weightDiffText}">
                                 기록 없음
                             </p>
@@ -108,8 +126,17 @@
                                         th:text="${dashboard.streakDays}">0</strong>
                                 <span class="metric-card__unit">일</span>
                             </div>
-                            <p class="metric-card__meta"
-                               th:text="${dashboard.streakMessage}">기록 없음</p>
+                            <p class="metric-card__meta metric-card__meta--accent"
+                               th:if="${dashboard.streakTone == 'accent'}"
+                               th:text="${dashboard.streakMessage}">
+                                기록 없음
+                            </p>
+
+                            <p class="metric-card__meta metric-card__meta--danger"
+                               th:unless="${dashboard.streakTone == 'accent'}"
+                               th:text="${dashboard.streakMessage}">
+                                기록 없음
+                            </p>
                         </div>
                     </article>
 
@@ -222,6 +249,10 @@
         </div>
     </div>
 
+
+
+
 </div>
+
 </body>
 </html>

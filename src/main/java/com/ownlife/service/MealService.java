@@ -30,14 +30,14 @@ public interface MealService {
 
     Map<String, Object> getDietYearChart(Long memberId, LocalDate date);
 
-    void addMeal(Long memberId, LocalDate date, String mealType, Long foodId, int count);
+    void addMeal(Long memberId, LocalDate date, String mealType, Long foodId, double count);
 
     void deleteMeal(Long memberId, Long mealLogId);
 
     void addMeals(Long memberId, LocalDate date, String mealType, String selectedFoodsJson);
 
     void addCustomMeal(Long memberId, LocalDate date, String mealType, String customFoodName,
-                       Double customBaseAmountG, int count, Double customCaloriesKcal, Double customCarbG,
+                       Double customBaseAmountG, double count, Double customCaloriesKcal, Double customCarbG,
                        Double customProteinG, Double customFatG, boolean saveAsFood);
 
     void deleteMealGroup(Long memberId, LocalDate date, String mealType);

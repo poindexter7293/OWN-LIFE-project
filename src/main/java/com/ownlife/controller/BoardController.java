@@ -1,5 +1,7 @@
 package com.ownlife.controller;
 
+import com.ownlife.dto.BoardPostViewDto;
+import com.ownlife.entity.BoardPost;
 import com.ownlife.service.BoardCommentService;
 import com.ownlife.service.BoardPostService;
 import jakarta.servlet.http.HttpSession;
@@ -7,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 
 @Controller
 @RequiredArgsConstructor
@@ -38,8 +42,12 @@ public class BoardController {
 
         boardPostService.increaseViewCount(id);
 
+        BoardPostViewDto post = boardPostService.findViewById(id);
+        BoardPost boardPost = boardPostService.findById(id);
+        post.setImages(boardPost.getImages());
+
         model.addAttribute("pageTitle", "게시글 상세");
-        model.addAttribute("post", boardPostService.findViewById(id));
+        model.addAttribute("post", post);
         model.addAttribute("comments", boardCommentService.findViewByPostId(id));
         model.addAttribute("loginMemberId", loginMemberId);
         model.addAttribute("centerFragment", "fragments/center-board-detail :: centerBoardDetail");
@@ -57,6 +65,7 @@ public class BoardController {
     @PostMapping("/write")
     public String write(@RequestParam("title") String title,
                         @RequestParam("content") String content,
+                        @RequestParam(value = "images", required = false) MultipartFile[] images,
                         HttpSession session) {
 
         var loginMember = (com.ownlife.dto.SessionMember) session.getAttribute("loginMember");
@@ -65,7 +74,7 @@ public class BoardController {
             return "redirect:/login";
         }
 
-        boardPostService.save(loginMember.getMemberId(), title, content);
+        boardPostService.save(loginMember.getMemberId(), title, content,images);
 
         return "redirect:/board";
     }

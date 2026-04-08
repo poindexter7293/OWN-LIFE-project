@@ -72,7 +72,7 @@
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 20px;
 }
 
@@ -80,9 +80,15 @@
     background: #ffffff;
     border-radius: 16px;
     padding: 20px;
-    text-align: center;
     border: 1px solid #eef1f6;
     transition: all 0.2s ease;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 110px;
+    text-align: center;
 }
 
 .dashboard-item:hover {
@@ -94,35 +100,50 @@
     display: block;
     font-size: 14px;
     color: #6f7d95;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+}
+
+.kcal-value-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
 }
 
 .dashboard-item strong {
-    font-size: 28px;
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+.dashboard-item .unit {
+    font-size: 18px;
     font-weight: 700;
+    color: #8c9bb3;
 }
 
 /* 카드별 숫자 색 */
 .dashboard-item strong.kcal-goal {
-    color: #6a5cff;   /* 목표 = 보라 */
+    color: #6a5cff;
 }
 
 .dashboard-item strong.kcal-intake {
-    color: #22c55e;   /* 현재 섭취 = 초록 */
+    color: #22c55e;
 }
 
 .dashboard-item strong.kcal-remaining {
-    color: #22c55e;   /* 남은 칼로리 기본 = 초록 */
+    color: #22c55e;
 }
 
 .dashboard-item strong.kcal-remaining.kcal-over {
-    color: #ef4444;   /* 초과 시 = 빨강 */
+    color: #ef4444;
 }
 
 .dashboard-item .unit {
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: 700;
     color: #8c9bb3;
-    margin-left: 4px;
 }
 
 .diet-dashboard-card {
@@ -325,7 +346,16 @@ select:focus {
 }
 
 .dashboard-item {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #eef1f6;
     transition: all 0.2s ease;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .dashboard-item:hover {
@@ -553,6 +583,14 @@ select:focus {
 .meal-group-delete-btn:hover {
     background: #ffd7d7;
 }
+
+.kcal-value-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+}
 /* =========================
    반응형
    ========================= */
@@ -563,4 +601,5 @@ select:focus {
     .dashboard-grid {
         grid-template-columns: 1fr;
     }
+
 }

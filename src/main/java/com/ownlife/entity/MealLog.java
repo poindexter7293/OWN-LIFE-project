@@ -48,4 +48,7 @@ public class MealLog {
 
     @Column(name = "fat_g", nullable = false)
     private Double fatG;
+
+    @Column(name = "intake_count", nullable = false)
+    private Double intakeCount;
 }

@@ -53,7 +53,7 @@ public class DietController {
                           @RequestParam("mealType") String mealType,
                           @RequestParam("inputMode") String inputMode,
                           @RequestParam(value = "foodId", required = false) Long foodId,
-                          @RequestParam(value = "count", defaultValue = "1") int count,
+                          @RequestParam(value = "count", defaultValue = "1.0") double count,
                           @RequestParam(value = "saveAsFood", required = false) String saveAsFood,
                           @RequestParam(value = "customFoodName", required = false) String customFoodName,
                           @RequestParam(value = "customBaseAmountG", required = false) Double customBaseAmountG,

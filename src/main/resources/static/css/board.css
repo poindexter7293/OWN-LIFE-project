@@ -1,0 +1,141 @@
+/* 버튼 공통 - 글쓰기 버튼 느낌 */
+.board-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 74px;
+    height: 40px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.18s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.board-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(0.98);
+}
+
+.board-btn:active {
+    transform: translateY(0);
+}
+
+/* 글쓰기/등록 계열 */
+.board-btn-primary {
+    background: #5b8def;
+    color: #fff;
+}
+
+/* 목록/취소/파일선택 같은 중립 계열 */
+.board-btn-secondary {
+    background: #9aa0a6;
+    color: #fff;
+}
+
+/* 수정 버튼 */
+.board-btn-edit {
+    background: #7c6cf2;
+    color: #fff;
+}
+
+/* 삭제 버튼 */
+.board-btn-delete {
+    background: #ef6b73;
+    color: #fff;
+}
+
+/* 버튼 줄 */
+.board-form-actions,
+.board-detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.board-inline-form {
+    margin: 0;
+}
+
+/* 상세 버튼 영역 */
+.board-detail-actions {
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* 파일 업로드 영역 */
+.board-upload-section {
+    margin: 18px 0 10px;
+}
+
+.board-upload-label {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #222;
+}
+
+.board-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.board-file-hidden {
+    display: none;
+}
+
+.board-file-name {
+    font-size: 14px;
+    color: #666;
+}
+
+.board-upload-guide {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #777;
+}
+
+
+/* 게시글 이미지 */
+.post-image-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 22px;
+}
+
+.post-image-card {
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.post-image {
+    display: block;
+    max-width: 100%;
+    width: 520px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* 수정/글쓰기 버튼 줄도 통일 가능 */
+.board-form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
