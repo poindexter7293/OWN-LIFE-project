@@ -11,6 +11,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 
 @Controller
 @RequiredArgsConstructor
@@ -90,8 +92,11 @@ public class BoardController {
     @PostMapping("/edit/{id}")
     public String edit(@PathVariable("id") Long id,
                        @RequestParam("title") String title,
-                       @RequestParam("content") String content) {
-        boardPostService.update(id, title, content);
+                       @RequestParam("content") String content,
+                       @RequestParam(value = "newImages", required = false) MultipartFile[] newImages,
+                       @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds) {
+
+        boardPostService.update(id, title, content, newImages, deleteImageIds);
         return "redirect:/board/" + id;
     }
 
