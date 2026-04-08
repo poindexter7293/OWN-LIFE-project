@@ -56,6 +56,7 @@ public class DashboardService {
         dto.setWeightDiff(0.0);
         dto.setWeightDiffTone("muted");
         dto.setWeightDiffText("체중 로그 없음");
+        dto.setGoalWeightText("목표체중 미설정");
 
         if (currentWeight == null) {
             dto.setWeightDiffText("체중 로그 없음");
@@ -66,16 +67,26 @@ public class DashboardService {
                 ? member.getGoalWeight().doubleValue()
                 : null;
 
+        if (goalWeight != null && goalWeight > 0) {
+            dto.setGoalWeightText("목표체중 : " + formatKg(goalWeight) + "kg");
+        } else {
+            dto.setGoalWeightText("목표체중 미설정");
+        }
+
         if (goalWeight == null || goalWeight <= 0) {
             dto.setWeightDiffText("목표 체중 미설정");
             return;
         }
 
-        double diff = Math.abs(currentWeight - goalWeight);
-        dto.setWeightDiff(diff);
+        double signedDiff = goalWeight - currentWeight;
+        double absDiff = Math.abs(signedDiff);
+
+        dto.setWeightDiff(absDiff);
 
         long currentWeightInt = (long) Math.floor(currentWeight);
         long goalWeightInt = (long) Math.floor(goalWeight);
+
+        String signedDiffText = (signedDiff > 0 ? "+" : "") + formatKg(signedDiff) + "kg";
 
         if (currentWeightInt == goalWeightInt) {
             dto.setWeightDiffTone("accent");
@@ -83,14 +94,14 @@ public class DashboardService {
             return;
         }
 
-        if (diff <= 3.0) {
+        if (absDiff <= 3.0) {
             dto.setWeightDiffTone("accent");
-            dto.setWeightDiffText("달성 임박! 목표 체중까지 " + formatKg(diff) + "kg!");
+            dto.setWeightDiffText("달성 임박! 목표 체중까지 " + signedDiffText);
             return;
         }
 
         dto.setWeightDiffTone("muted");
-        dto.setWeightDiffText("목표 체중까지 " + formatKg(diff) + "kg");
+        dto.setWeightDiffText("목표 체중까지 " + signedDiffText);
     }
 
     private void applyExerciseSection(DashboardSummaryDto dto, Long memberId, Member member, LocalDate today) {
@@ -171,7 +182,14 @@ public class DashboardService {
         }
 
         dto.setStreakDays(streakDays);
-        dto.setStreakMessage(streakDays > 0 ? "연속 기록 중" : "오늘 기록 없음");
+
+        if (streakDays > 0) {
+            dto.setStreakMessage("연속 기록 중");
+            dto.setStreakTone("accent");
+        } else {
+            dto.setStreakMessage("오늘 기록 없음");
+            dto.setStreakTone("danger");
+        }
     }
 
     private void applyWeeklyWeightSection(DashboardSummaryDto dto, Long memberId, LocalDate today) {

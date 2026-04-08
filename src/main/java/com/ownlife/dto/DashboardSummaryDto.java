@@ -14,9 +14,11 @@ public class DashboardSummaryDto {
     private Double weightDiff = 0.0;
     private String weightDiffText = "기록 없음";
     private String weightDiffTone = "muted";
+    private String goalWeightText = "";
 
     private int streakDays = 0;
     private String streakMessage = "기록 없음";
+    private String streakTone = "danger";
 
     private int burnedCalories = 0;
     private int burnedTargetCalories = 0;

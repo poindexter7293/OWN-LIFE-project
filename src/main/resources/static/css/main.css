@@ -208,8 +208,19 @@ button.auth-pill {
 }
 
 .metric-card__header {
-    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
 }
+
+.metric-card__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #7f8695;
+}
+
+
 
 .metric-card__title,
 .progress-card__title {
@@ -226,7 +237,8 @@ button.auth-pill {
     align-items: center;
     justify-content: center;
     background: #f4efff;
-    font-size: 14px;
+    font-size: 16px;
+    opacity: 0.9;
 }
 
 .metric-card__icon--mint {
@@ -717,6 +729,64 @@ button.auth-pill {
 
 .metric-card__meta--muted {
     color: #9aa0ad;
+}
+
+.metric-card__meta--accent {
+    color: #4c57e8;
+    font-weight: 700;
+}
+
+.metric-card__goal-direction {
+    margin-top: 4px;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #7b8190;
+}
+
+.metric-card__center-content--weight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.metric-card__center-content--weight .metric-card__value {
+    font-size: 2.55rem;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+}
+
+.metric-card__goal-text {
+    margin-top: 2px;
+    font-size: 0.82rem;
+    line-height: 1.15;
+    font-weight: 600;
+    color: #8f95a3;
+}
+
+.metric-card__meta--weight {
+    margin-top: 6px;
+    font-size: 0.9rem;
+    line-height: 1.25;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: -0.02em;
+}
+
+.metric-card__meta--muted {
+    color: #9aa0ad;
+}
+
+.metric-card__meta--accent {
+    color: #4c57e8;
+    font-weight: 700;
+}
+
+.metric-card__meta--danger {
+    color: #ef4444;
+    font-weight: 700;
 }
 
 .metric-card__meta--accent {
