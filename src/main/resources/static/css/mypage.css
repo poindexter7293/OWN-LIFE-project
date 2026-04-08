@@ -58,6 +58,21 @@
     border: 1px solid rgba(108, 125, 214, 0.12);
     border-radius: 18px;
     padding: 18px 16px;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.mypage-stat-box:hover {
+    transform: translateY(-2px);
+    border-color: rgba(109, 158, 231, 0.3);
+    box-shadow: 0 10px 22px rgba(76, 87, 232, 0.08);
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.mypage-stat-box:focus-visible {
+    outline: none;
+    border-color: #6d9ee7;
+    box-shadow: 0 0 0 3px rgba(109, 158, 231, 0.16), 0 10px 22px rgba(76, 87, 232, 0.08);
 }
 
 .mypage-stat-box span {
@@ -599,6 +614,11 @@
     box-shadow: 0 0 0 3px rgba(109, 158, 231, 0.1);
 }
 
+.mypage-form-field.is-focus-target-active input {
+    border-color: #6d9ee7;
+    box-shadow: 0 0 0 4px rgba(109, 158, 231, 0.16);
+}
+
 .mypage-field-hint {
     color: #7f92ad;
     font-size: 0.87rem;
@@ -678,6 +698,22 @@
     color: #ffffff;
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
     cursor: pointer;
+}
+
+@keyframes mypageFocusPulse {
+    0% {
+        transform: translateY(0);
+    }
+    35% {
+        transform: translateY(-1px);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}
+
+.mypage-form-field.is-focus-target-active {
+    animation: mypageFocusPulse 0.7s ease;
 }
 
 @media (max-width: 1100px) {

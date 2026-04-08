@@ -18,19 +18,35 @@
             </div>
 
             <div class="mypage-stat-grid">
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="weightKg"
+                     data-focus-target="weightKg">
                     <span>현재 체중</span>
                     <strong th:text="${myPageForm.weightKg != null ? myPageForm.weightKg + ' kg' : '미설정'}">미설정</strong>
                 </div>
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="goalWeight"
+                     data-focus-target="goalWeight">
                     <span>목표 체중</span>
                     <strong th:text="${myPageForm.goalWeight != null ? myPageForm.goalWeight + ' kg' : '미설정'}">미설정</strong>
                 </div>
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="goalEatKcal"
+                     data-focus-target="goalEatKcal">
                     <span>목표 섭취</span>
                     <strong th:text="${myPageForm.goalEatKcal != null ? myPageForm.goalEatKcal + ' kcal' : '미설정'}">미설정</strong>
                 </div>
-                <div class="mypage-stat-box">
+                <div class="mypage-stat-box"
+                     role="button"
+                     tabindex="0"
+                     aria-controls="goalBurnedKcal"
+                     data-focus-target="goalBurnedKcal">
                     <span>목표 소모</span>
                     <strong th:text="${myPageForm.goalBurnedKcal != null ? myPageForm.goalBurnedKcal + ' kcal' : '미설정'}">미설정</strong>
                 </div>
@@ -258,7 +274,7 @@
                 </div>
             </article>
 
-            <article class="summary-card mypage-settings-card">
+            <article class="summary-card mypage-settings-card" id="mypageGoalSettings">
                 <div class="mypage-card-title-wrap">
                     <p class="mypage-card-kicker">설정</p>
                     <h2>건강 목표 관리</h2>
