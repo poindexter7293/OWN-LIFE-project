@@ -1,6 +1,8 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.LifestyleInsightDto;
+import com.ownlife.dto.LifestylePatternAnalysisDto;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SessionMember;
 import com.ownlife.dto.WithdrawalForm;
@@ -8,6 +10,7 @@ import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
 import com.ownlife.service.KakaoAuthService;
+import com.ownlife.service.LifestylePatternService;
 import com.ownlife.service.MemberService;
 import com.ownlife.service.NaverAuthService;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +42,8 @@ class MyPageControllerTest {
         StubGoogleAuthService googleAuthService = new StubGoogleAuthService();
         StubKakaoAuthService kakaoAuthService = new StubKakaoAuthService();
         StubNaverAuthService naverAuthService = new StubNaverAuthService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService, naverAuthService)).build();
+        StubLifestylePatternService lifestylePatternService = new StubLifestylePatternService();
+        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService, naverAuthService, lifestylePatternService)).build();
         session = new MockHttpSession();
         session.setAttribute(AuthController.LOGIN_MEMBER, new SessionMember(1L, "tester01", "테스터", Member.Role.USER));
     }
@@ -59,6 +63,7 @@ class MyPageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("main"))
                 .andExpect(model().attributeExists("myPageForm"))
+                .andExpect(model().attributeExists("lifePatternAnalysis"))
                 .andExpect(model().attribute("pageTitle", "마이페이지"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-mypage :: centerMyPage"))
                 .andExpect(model().attribute("googleLinked", false))
@@ -468,6 +473,29 @@ class MyPageControllerTest {
         public String prepareAuthorizationUrl(jakarta.servlet.http.HttpSession session) {
             session.setAttribute("naverOauthState", "test-naver-state");
             return "https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=test-naver-id&redirect_uri=http%3A%2F%2Flocalhost%3A8081%2Flogin%2Fnaver%2Fauth&state=test-naver-state";
+        }
+    }
+
+    private static class StubLifestylePatternService extends LifestylePatternService {
+
+        StubLifestylePatternService() {
+            super(null, null);
+        }
+
+        @Override
+        public LifestylePatternAnalysisDto analyze(Long memberId) {
+            return LifestylePatternAnalysisDto.builder()
+                    .periodLabel("최근 28일 기준")
+                    .title("주말 몰아형 루틴이 눈에 띄어요")
+                    .description("운동과 식단 기록을 바탕으로 생활 패턴을 분석했어요.")
+                    .insights(java.util.List.of(
+                            LifestyleInsightDto.builder()
+                                    .title("주말 몰아 운동형")
+                                    .description("주말 활동량이 평일보다 높아요.")
+                                    .tone("weekend")
+                                    .build()
+                    ))
+                    .build();
         }
     }
 }
