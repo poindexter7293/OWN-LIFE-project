@@ -101,11 +101,22 @@ document.addEventListener('DOMContentLoaded', function () {
     setupDashboardCardLinks();
     setupFocusFromQuery();
 
-    if (!window.dashboardData || typeof Chart === 'undefined') {
+    if (typeof Chart === 'undefined') {
         return;
     }
 
-    const data = window.dashboardData;
+    const data = window.dashboardData || {};
+
+    const weightCanvas = document.getElementById('weightChart');
+    const burnedCanvas = document.getElementById('burnedProgressChart');
+    const intakeCanvas = document.getElementById('intakeProgressChart');
+    const macroCanvas = document.getElementById('macroChart');
+
+    const hasDashboardDom = !!(weightCanvas || burnedCanvas || intakeCanvas || macroCanvas);
+
+    if (!hasDashboardDom) {
+        return;
+    }
 
     const animateNumber = ({
                                element,
@@ -313,7 +324,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return chart;
     };
 
-    const weightCanvas = document.getElementById('weightChart');
     if (weightCanvas) {
         new Chart(weightCanvas, {
             type: 'line',
@@ -366,9 +376,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const burnedPercent = Number(data.burnedPercent ?? 0);
     const intakePercent = Number(data.intakePercent ?? 0);
 
-    const burnedCanvas = document.getElementById('burnedProgressChart');
-    const intakeCanvas = document.getElementById('intakeProgressChart');
-
     if (burnedCanvas && burnedTargetCalories > 0) {
         createProgressDoughnut(burnedCanvas, burnedPercent, 'burned');
     }
@@ -377,7 +384,6 @@ document.addEventListener('DOMContentLoaded', function () {
         createProgressDoughnut(intakeCanvas, intakePercent, 'intake');
     }
 
-    const macroCanvas = document.getElementById('macroChart');
     if (macroCanvas) {
         const carbPercent = Number(data.carbPercent || 0);
         const fatPercent = Number(data.fatPercent || 0);
