@@ -132,6 +132,7 @@
 <script th:if="${extraJsFiles != null}"
         th:each="jsFile : ${extraJsFiles}"
         th:src="${jsFile}"></script>
+<script th:src="@{/js/board.js}"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

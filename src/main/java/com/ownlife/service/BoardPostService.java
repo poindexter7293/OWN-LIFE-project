@@ -160,8 +160,12 @@ public class BoardPostService {
             String storedName = UUID.randomUUID() + "_" + originalName;
             Path savePath = boardUploadPath.resolve(storedName);
 
+            System.out.println("uploadDir = " + uploadDir);
+            System.out.println("savePath = " + savePath.toAbsolutePath());
+
             try {
                 image.transferTo(savePath.toFile());
+                System.out.println("exists after save = " + Files.exists(savePath));
             } catch (IOException e) {
                 throw new RuntimeException("이미지 저장 실패", e);
             }
