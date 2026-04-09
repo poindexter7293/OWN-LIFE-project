@@ -18,5 +18,8 @@ public class AiOneLineCommentDto {
     private String tone;
     private String badgeLabel;
     private boolean fallback;
+    private int remainingRefreshCount;
+    private int dailyRefreshLimit;
+    private boolean refreshAllowed;
 }
 

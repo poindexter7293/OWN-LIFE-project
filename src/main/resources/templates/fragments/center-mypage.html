@@ -54,14 +54,19 @@
         </article>
 
         <article class="summary-card mypage-ai-comment-card"
-                 th:attr="data-ai-comment-endpoint=${aiCommentEndpoint}">
+                 th:attr="data-ai-comment-endpoint=${aiCommentEndpoint},data-ai-comment-refresh-endpoint=${aiCommentRefreshEndpoint}">
             <div class="mypage-ai-comment-card__header">
                 <div>
                     <p class="mypage-card-kicker">AI COMMENT</p>
                     <h2>AI 한 줄 코멘트</h2>
                 </div>
-                <span class="mypage-ai-comment-card__badge mypage-ai-comment-card__badge--loading"
-                      data-ai-comment-badge>불러오는 중</span>
+                <div class="mypage-ai-comment-card__header-actions">
+                    <span class="mypage-ai-comment-card__badge mypage-ai-comment-card__badge--loading"
+                          data-ai-comment-badge>불러오는 중</span>
+                    <button type="button"
+                            class="mypage-ai-comment-card__refresh"
+                            data-ai-comment-refresh-button>새 코멘트 받기</button>
+                </div>
             </div>
 
             <div class="mypage-ai-comment-card__body mypage-ai-comment-card__body--muted"
@@ -69,6 +74,7 @@
                  aria-live="polite">
                 <strong data-ai-comment-message>AI 한 줄 코멘트를 가져오는 중이에요...</strong>
                 <p data-ai-comment-detail>마이페이지는 먼저 표시되고, AI 코멘트는 잠시 후 자동으로 불러옵니다.</p>
+                <p class="mypage-ai-comment-card__meta" data-ai-comment-meta>오늘 새 코멘트는 최대 5번까지 받을 수 있어요.</p>
                 <button type="button"
                         class="mypage-ai-comment-card__retry"
                         data-ai-comment-retry

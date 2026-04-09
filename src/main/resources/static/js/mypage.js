@@ -85,14 +85,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const endpoint = card.dataset.aiCommentEndpoint;
+        const refreshEndpoint = card.dataset.aiCommentRefreshEndpoint;
         const badge = card.querySelector('[data-ai-comment-badge]');
         const body = card.querySelector('[data-ai-comment-body]');
         const message = card.querySelector('[data-ai-comment-message]');
         const detail = card.querySelector('[data-ai-comment-detail]');
+        const meta = card.querySelector('[data-ai-comment-meta]');
+        const refreshButton = card.querySelector('[data-ai-comment-refresh-button]');
         const retryButton = card.querySelector('[data-ai-comment-retry]');
         const toneClassPrefix = 'mypage-ai-comment-card__body--';
 
-        if (!endpoint || !badge || !body || !message || !detail || !retryButton) {
+        if (!endpoint || !badge || !body || !message || !detail || !meta) {
             return;
         }
 
@@ -117,12 +120,31 @@ document.addEventListener('DOMContentLoaded', function () {
             badge.classList.toggle('mypage-ai-comment-card__badge--loading', Boolean(isLoading));
         };
 
+        const updateRefreshControls = (comment, isLoading) => {
+            const remaining = comment && Number.isInteger(comment.remainingRefreshCount)
+                ? comment.remainingRefreshCount
+                : 5;
+            const limit = comment && Number.isInteger(comment.dailyRefreshLimit)
+                ? comment.dailyRefreshLimit
+                : 5;
+            const refreshAllowed = comment ? Boolean(comment.refreshAllowed) : true;
+
+            meta.textContent = '오늘 남은 새 코멘트 횟수: ' + remaining + ' / ' + limit;
+            if (refreshButton) {
+                refreshButton.disabled = isLoading || !refreshAllowed;
+                refreshButton.textContent = refreshAllowed ? '새 코멘트 받기' : '오늘 횟수 소진';
+            }
+        };
+
         const renderLoading = () => {
             applyTone('muted');
             setBadge('불러오는 중', false, true);
             message.textContent = 'AI 한 줄 코멘트를 가져오는 중이에요...';
             detail.textContent = '마이페이지는 먼저 표시되고, AI 코멘트는 잠시 후 자동으로 불러옵니다.';
-            retryButton.hidden = true;
+            updateRefreshControls(null, true);
+            if (retryButton) {
+                retryButton.hidden = true;
+            }
         };
 
         const renderComment = (comment) => {
@@ -130,7 +152,10 @@ document.addEventListener('DOMContentLoaded', function () {
             setBadge(comment.badgeLabel || (comment.fallback ? '기본 코멘트' : 'AI 코멘트'), comment.fallback, false);
             message.textContent = comment.message || 'AI 코멘트를 준비했어요.';
             detail.textContent = comment.detail || '최근 기록을 바탕으로 요약한 코멘트예요.';
-            retryButton.hidden = true;
+            updateRefreshControls(comment, false);
+            if (retryButton) {
+                retryButton.hidden = true;
+            }
         };
 
         const renderUnauthorized = () => {
@@ -138,7 +163,14 @@ document.addEventListener('DOMContentLoaded', function () {
             setBadge('로그인 필요', true, false);
             message.textContent = '세션이 만료되어 AI 코멘트를 불러올 수 없어요.';
             detail.textContent = '다시 로그인한 뒤 마이페이지에 들어오면 코멘트를 확인할 수 있어요.';
-            retryButton.hidden = true;
+            meta.textContent = '로그인 후 다시 시도해 주세요.';
+            if (refreshButton) {
+                refreshButton.disabled = true;
+                refreshButton.textContent = '새 코멘트 받기';
+            }
+            if (retryButton) {
+                retryButton.hidden = true;
+            }
         };
 
         const renderError = () => {
@@ -146,15 +178,22 @@ document.addEventListener('DOMContentLoaded', function () {
             setBadge('재시도 가능', true, false);
             message.textContent = 'AI 코멘트를 아직 불러오지 못했어요.';
             detail.textContent = '잠시 후 다시 시도하면 코멘트를 가져올 수 있어요.';
-            retryButton.hidden = false;
+            meta.textContent = '네트워크 상태를 확인한 뒤 다시 시도해 주세요.';
+            if (refreshButton) {
+                refreshButton.disabled = false;
+                refreshButton.textContent = '새 코멘트 받기';
+            }
+            if (retryButton) {
+                retryButton.hidden = false;
+            }
         };
 
-        const loadComment = async () => {
+        const requestComment = async (url, method) => {
             renderLoading();
 
             try {
-                const response = await fetch(endpoint, {
-                    method: 'GET',
+                const response = await fetch(url, {
+                    method: method,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
                     },
@@ -178,15 +217,33 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        retryButton.addEventListener('click', function () {
-            loadComment();
-        });
+        const loadComment = async () => requestComment(endpoint, 'GET');
+        const refreshComment = async () => {
+            if (!refreshEndpoint) {
+                renderError();
+                return;
+            }
+            return requestComment(refreshEndpoint, 'POST');
+        };
 
-        if (typeof window.requestIdleCallback === 'function') {
-            window.requestIdleCallback(loadComment, { timeout: 1200 });
-        } else {
-            window.setTimeout(loadComment, 120);
+        if (retryButton) {
+            retryButton.addEventListener('click', function () {
+                loadComment();
+            });
         }
+
+        if (refreshButton) {
+            refreshButton.addEventListener('click', function () {
+                if (refreshButton.disabled) {
+                    return;
+                }
+                refreshComment();
+            });
+        }
+
+        window.setTimeout(function () {
+            loadComment();
+        }, 60);
     }
 });
 
