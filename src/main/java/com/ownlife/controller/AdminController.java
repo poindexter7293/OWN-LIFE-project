@@ -43,13 +43,23 @@ public class AdminController {
             return handleUnauthorizedAccess(session);
         }
 
+        List<Member> members = memberService.findMembersForAdmin(keyword, status);
+        List<Member> allMembers = memberService.findMembersForAdmin(null, null);
+
         model.addAttribute("pageTitle", "회원 관리");
         model.addAttribute("centerFragment", "fragments/center-admin-members :: centerAdminMembers");
         model.addAttribute("extraCssFiles", List.of("/css/admin.css"));
-        model.addAttribute("members", memberService.findMembersForAdmin(keyword, status));
+        model.addAttribute("members", members);
         model.addAttribute("keyword", keyword);
         model.addAttribute("selectedStatus", status);
         model.addAttribute("manageableStatuses", manageableStatuses());
+        model.addAttribute("totalMemberCount", allMembers.size());
+        model.addAttribute("filteredMemberCount", members.size());
+        model.addAttribute("activeMemberCount", countByStatus(members, Member.Status.ACTIVE));
+        model.addAttribute("inactiveMemberCount", countByStatus(members, Member.Status.INACTIVE));
+        model.addAttribute("suspendedMemberCount", countByStatus(members, Member.Status.SUSPENDED));
+        model.addAttribute("adminMemberCount", countByRole(members, Member.Role.ADMIN));
+        model.addAttribute("socialMemberCount", countSocialMembers(members));
         model.addAttribute("memberStatusUpdateSuccessMessage", resolveStatusUpdateSuccessMessage(statusUpdate));
         model.addAttribute("memberStatusUpdateErrorMessage", resolveStatusUpdateErrorMessage(statusError));
         return "main";
@@ -94,6 +104,24 @@ public class AdminController {
         return Arrays.stream(Member.Status.values())
                 .filter(status -> status != Member.Status.DELETED)
                 .toList();
+    }
+
+    private long countByStatus(List<Member> members, Member.Status status) {
+        return members.stream()
+                .filter(member -> member.getStatus() == status)
+                .count();
+    }
+
+    private long countByRole(List<Member> members, Member.Role role) {
+        return members.stream()
+                .filter(member -> member.getRole() == role)
+                .count();
+    }
+
+    private long countSocialMembers(List<Member> members) {
+        return members.stream()
+                .filter(member -> member.getLoginType() != null && member.getLoginType() != Member.LoginType.LOCAL)
+                .count();
     }
 
     private String resolveStatusUpdateSuccessMessage(String statusUpdate) {
