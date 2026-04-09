@@ -21,6 +21,16 @@ public class AdminController {
 
     private final MemberService memberService;
 
+    @GetMapping({"/admin", "/admin/"})
+    public String adminRoot(HttpSession session) {
+        SessionMember adminMember = getAdminMember(session);
+        if (adminMember == null) {
+            return handleUnauthorizedAccess(session);
+        }
+
+        return "redirect:/admin/members";
+    }
+
     @GetMapping("/admin/members")
     public String memberManagement(@RequestParam(value = "keyword", required = false) String keyword,
                                    @RequestParam(value = "status", required = false) Member.Status status,
