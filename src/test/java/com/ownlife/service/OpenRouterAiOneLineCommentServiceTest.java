@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -28,6 +29,7 @@ class OpenRouterAiOneLineCommentServiceTest {
                 "",
                 "https://openrouter.ai/api/v1/chat/completions",
                 "z-ai/glm-4.5-air:free",
+                "",
                 "http://localhost:8081",
                 "OWN LIFE"
         );
@@ -48,6 +50,7 @@ class OpenRouterAiOneLineCommentServiceTest {
                 "test-key",
                 "https://openrouter.ai/api/v1/chat/completions",
                 "z-ai/glm-4.5-air:free",
+                "",
                 "http://localhost:8081",
                 "OWN LIFE"
         ) {
@@ -64,6 +67,45 @@ class OpenRouterAiOneLineCommentServiceTest {
     }
 
     @Test
+    @DisplayName("같은 날 기본 코멘트가 먼저 나와도 이후 AI 호출이 가능해지면 다시 시도한다")
+    void retriesWhenCachedCommentIsFallback() {
+        AtomicInteger requestCount = new AtomicInteger();
+
+        OpenRouterAiOneLineCommentService service = new OpenRouterAiOneLineCommentService(
+                new StubDashboardService(buildDashboardSummary(280, 1800, 88, 72, 4)),
+                new ObjectMapper(),
+                true,
+                "test-key",
+                "https://openrouter.ai/api/v1/chat/completions",
+                "z-ai/glm-4.5-air:free",
+                "",
+                "http://localhost:8081",
+                "OWN LIFE"
+        ) {
+            @Override
+            protected String requestAiMessage(com.ownlife.dto.AiOneLineCommentPromptDto promptDto) throws IOException {
+                if (requestCount.getAndIncrement() == 0) {
+                    throw new IOException("temporary failure");
+                }
+                return "오늘은 운동 리듬이 좋아요. 지금처럼 꾸준히 이어가 보세요.";
+            }
+
+            @Override
+            protected LocalDate currentDate() {
+                return LocalDate.of(2026, 4, 9);
+            }
+        };
+
+        AiOneLineCommentDto first = service.generateComment(buildMember(), buildLifestylePattern(), "목표 체중까지 -4.0kg");
+        AiOneLineCommentDto second = service.generateComment(buildMember(), buildLifestylePattern(), "목표 체중까지 -4.0kg");
+
+        assertTrue(first.isFallback());
+        assertFalse(second.isFallback());
+        assertEquals(2, requestCount.get());
+        assertTrue(second.getMessage().contains("운동 리듬이 좋아요"));
+    }
+
+    @Test
     @DisplayName("같은 회원의 AI 코멘트는 하루 동안 한 번만 호출하고 캐시를 재사용한다")
     void reusesDailyCachedComment() {
         AtomicInteger requestCount = new AtomicInteger();
@@ -75,6 +117,7 @@ class OpenRouterAiOneLineCommentServiceTest {
                 "test-key",
                 "https://openrouter.ai/api/v1/chat/completions",
                 "z-ai/glm-4.5-air:free",
+                "",
                 "http://localhost:8081",
                 "OWN LIFE"
         ) {
@@ -95,6 +138,39 @@ class OpenRouterAiOneLineCommentServiceTest {
 
         assertEquals(1, requestCount.get());
         assertEquals(first.getMessage(), second.getMessage());
+    }
+
+    @Test
+    @DisplayName("기본 모델이 실패하면 fallback 모델로 다시 시도한다")
+    void retriesWithFallbackModelWhenPrimaryFails() {
+        AtomicInteger requestCount = new AtomicInteger();
+
+        OpenRouterAiOneLineCommentService service = new OpenRouterAiOneLineCommentService(
+                new StubDashboardService(buildDashboardSummary(280, 1800, 88, 72, 4)),
+                new ObjectMapper(),
+                true,
+                "test-key",
+                "https://openrouter.ai/api/v1/chat/completions",
+                "primary-model",
+                "secondary-model",
+                "http://localhost:8081",
+                "OWN LIFE"
+        ) {
+            @Override
+            protected String requestAiMessageWithModel(com.ownlife.dto.AiOneLineCommentPromptDto promptDto, String targetModel) throws IOException {
+                requestCount.incrementAndGet();
+                if ("primary-model".equals(targetModel)) {
+                    throw new IOException("primary failed");
+                }
+                return "대체 모델 응답이에요. 오늘도 꾸준히 이어가 보세요.";
+            }
+        };
+
+        AiOneLineCommentDto result = service.generateComment(buildMember(), buildLifestylePattern(), "목표 체중까지 -4.0kg");
+
+        assertFalse(result.isFallback());
+        assertEquals(2, requestCount.get());
+        assertTrue(result.getMessage().contains("대체 모델 응답"));
     }
 
     private Member buildMember() {

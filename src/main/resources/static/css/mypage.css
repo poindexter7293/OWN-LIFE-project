@@ -124,6 +124,11 @@
     color: #4a6fa5;
 }
 
+.mypage-ai-comment-card__badge--loading {
+    background: rgba(148, 163, 184, 0.14);
+    color: #5f6f86;
+}
+
 .mypage-ai-comment-card__body {
     padding: 22px 24px;
     border-radius: 20px;
@@ -144,6 +149,24 @@
     color: #6d7f99;
     font-size: 0.92rem;
     line-height: 1.6;
+}
+
+.mypage-ai-comment-card__retry {
+    margin-top: 14px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(91, 61, 245, 0.12);
+    color: #5645c7;
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.mypage-ai-comment-card__retry:hover {
+    background: rgba(91, 61, 245, 0.18);
+    transform: translateY(-1px);
 }
 
 .mypage-ai-comment-card__body--accent {

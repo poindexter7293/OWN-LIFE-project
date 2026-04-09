@@ -22,6 +22,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +42,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
     private final String apiKey;
     private final String apiUrl;
     private final String model;
+    private final List<String> fallbackModels;
     private final String siteUrl;
     private final String appName;
     private final Map<Long, CachedAiComment> dailyCommentCache = new ConcurrentHashMap<>();
@@ -50,6 +53,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
                                              @Value("${openrouter.api-key:}") String apiKey,
                                              @Value("${openrouter.api-url:https://openrouter.ai/api/v1/chat/completions}") String apiUrl,
                                              @Value("${openrouter.model:z-ai/glm-4.5-air:free}") String model,
+                                             @Value("${openrouter.fallback-models:}") String fallbackModels,
                                              @Value("${openrouter.site-url:http://localhost:8081}") String siteUrl,
                                              @Value("${openrouter.app-name:OWN LIFE}") String appName) {
         this.dashboardService = dashboardService;
@@ -58,6 +62,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
         this.apiKey = apiKey;
         this.apiUrl = apiUrl;
         this.model = model;
+        this.fallbackModels = parseFallbackModels(fallbackModels);
         this.siteUrl = siteUrl;
         this.appName = appName;
         this.httpClient = HttpClient.newBuilder()
@@ -74,8 +79,9 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
         }
 
         LocalDate today = currentDate();
+        boolean aiAvailable = isAiAvailable();
         AiOneLineCommentDto cachedComment = getCachedComment(member.getMemberId(), today);
-        if (cachedComment != null) {
+        if (cachedComment != null && (!cachedComment.isFallback() || !aiAvailable)) {
             return cachedComment;
         }
 
@@ -89,7 +95,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
 
         AiOneLineCommentPromptDto promptDto = toPromptDto(member, dashboardSummary, lifestylePatternAnalysis, weightGoalMessage);
 
-        if (!isAiAvailable()) {
+        if (!aiAvailable) {
             return cacheComment(member.getMemberId(), today, fallbackComment(promptDto, lifestylePatternAnalysis, weightGoalMessage));
         }
 
@@ -117,8 +123,43 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
     }
 
     protected String requestAiMessage(AiOneLineCommentPromptDto promptDto) throws IOException, InterruptedException {
+        List<String> candidateModels = new ArrayList<>();
+        if (StringUtils.hasText(model)) {
+            candidateModels.add(model);
+        }
+        for (String fallbackModel : fallbackModels) {
+            if (StringUtils.hasText(fallbackModel) && !candidateModels.contains(fallbackModel)) {
+                candidateModels.add(fallbackModel);
+            }
+        }
+
+        IOException lastIOException = null;
+        InterruptedException lastInterruptedException = null;
+        for (String candidateModel : candidateModels) {
+            try {
+                return requestAiMessageWithModel(promptDto, candidateModel);
+            } catch (IOException exception) {
+                lastIOException = exception;
+                log.warn("OpenRouter 모델 호출에 실패했습니다. model={}", candidateModel, exception);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                lastInterruptedException = exception;
+                break;
+            }
+        }
+
+        if (lastInterruptedException != null) {
+            throw lastInterruptedException;
+        }
+        if (lastIOException != null) {
+            throw lastIOException;
+        }
+        return null;
+    }
+
+    protected String requestAiMessageWithModel(AiOneLineCommentPromptDto promptDto, String targetModel) throws IOException, InterruptedException {
         ObjectNode requestBody = objectMapper.createObjectNode();
-        requestBody.put("model", model);
+        requestBody.put("model", targetModel);
         requestBody.put("temperature", 0.4);
         requestBody.put("max_tokens", 120);
 
@@ -175,16 +216,28 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
         return null;
     }
 
+    private List<String> parseFallbackModels(String fallbackModelsValue) {
+        if (!StringUtils.hasText(fallbackModelsValue)) {
+            return List.of();
+        }
+
+        return java.util.Arrays.stream(fallbackModelsValue.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+    }
+
     private boolean isAiAvailable() {
         return enabled && StringUtils.hasText(apiKey) && StringUtils.hasText(apiUrl) && StringUtils.hasText(model);
     }
 
     private AiOneLineCommentDto getCachedComment(Long memberId, LocalDate date) {
         CachedAiComment cachedAiComment = dailyCommentCache.get(memberId);
-        if (cachedAiComment == null || !cachedAiComment.cachedDate().equals(date)) {
+        if (cachedAiComment == null || !cachedAiComment.getCachedDate().equals(date)) {
             return null;
         }
-        return copyComment(cachedAiComment.comment());
+        return copyComment(cachedAiComment.getComment());
     }
 
     private AiOneLineCommentDto cacheComment(Long memberId, LocalDate date, AiOneLineCommentDto comment) {
@@ -198,7 +251,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
     }
 
     private void clearExpiredCache(LocalDate today) {
-        dailyCommentCache.entrySet().removeIf(entry -> entry.getValue() == null || entry.getValue().cachedDate().isBefore(today));
+        dailyCommentCache.entrySet().removeIf(entry -> entry.getValue() == null || entry.getValue().getCachedDate().isBefore(today));
     }
 
     private AiOneLineCommentDto copyComment(AiOneLineCommentDto comment) {
@@ -312,7 +365,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
 
         return AiOneLineCommentDto.builder()
                 .message(message)
-                .detail("AI 응답이 없을 때는 최근 기록을 바탕으로 기본 코멘트를 보여드려요.")
+                .detail("최근 기록을 바탕으로 먼저 준비한 코멘트예요. 잠시 후 다시 보면 AI 코멘트가 반영될 수 있어요.")
                 .tone(tone)
                 .badgeLabel("기본 코멘트")
                 .fallback(true)
@@ -374,7 +427,23 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
         return StringUtils.hasText(value) ? value : "-";
     }
 
-    private record CachedAiComment(LocalDate cachedDate, AiOneLineCommentDto comment) {
+    private static final class CachedAiComment {
+
+        private final LocalDate cachedDate;
+        private final AiOneLineCommentDto comment;
+
+        private CachedAiComment(LocalDate cachedDate, AiOneLineCommentDto comment) {
+            this.cachedDate = cachedDate;
+            this.comment = comment;
+        }
+
+        private LocalDate getCachedDate() {
+            return cachedDate;
+        }
+
+        private AiOneLineCommentDto getComment() {
+            return comment;
+        }
     }
 }
 

@@ -16,6 +16,8 @@ import com.ownlife.service.MemberService;
 import com.ownlife.service.NaverAuthService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -25,10 +27,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @Controller
@@ -86,6 +90,29 @@ public class MyPageController {
                 resolveNaverErrorMessage(naverLinkStatus, naverUnlinkStatus, naverLinkErrorMessage)
         );
         return "main";
+    }
+
+    @GetMapping("/mypage/ai-comment")
+    @ResponseBody
+    public ResponseEntity<?> myPageAiComment(HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "로그인이 필요합니다."));
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "회원 정보를 찾을 수 없습니다."));
+        }
+
+        Member member = memberOptional.get();
+        LifestylePatternAnalysisDto lifePatternAnalysis = lifestylePatternService.analyze(member.getMemberId());
+        String weightGoalMessage = buildWeightGoalMessage(member);
+        AiOneLineCommentDto aiOneLineComment = aiOneLineCommentService.generateComment(member, lifePatternAnalysis, weightGoalMessage);
+        return ResponseEntity.ok(aiOneLineComment);
     }
 
     @PostMapping("/mypage")
@@ -332,13 +359,12 @@ public class MyPageController {
         Optional<SocialAccount> naverAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER);
         LifestylePatternAnalysisDto lifePatternAnalysis = lifestylePatternService.analyze(member.getMemberId());
         String weightGoalMessage = buildWeightGoalMessage(member);
-        AiOneLineCommentDto aiOneLineComment = aiOneLineCommentService.generateComment(member, lifePatternAnalysis, weightGoalMessage);
 
         model.addAttribute("pageTitle", "마이페이지");
         model.addAttribute("centerFragment", "fragments/center-mypage :: centerMyPage");
         model.addAttribute("extraCssFiles", List.of("/css/mypage.css"));
         model.addAttribute("extraJsFiles", List.of("/js/mypage.js"));
-        model.addAttribute("aiOneLineComment", aiOneLineComment);
+        model.addAttribute("aiCommentEndpoint", "/mypage/ai-comment");
         model.addAttribute("lifePatternAnalysis", lifePatternAnalysis);
         model.addAttribute("member", member);
         model.addAttribute("settingsUpdated", success);
