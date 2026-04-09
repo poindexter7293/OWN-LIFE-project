@@ -1,6 +1,7 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.AiOneLineCommentDto;
 import com.ownlife.dto.LifestyleInsightDto;
 import com.ownlife.dto.LifestylePatternAnalysisDto;
 import com.ownlife.dto.MyPageForm;
@@ -9,6 +10,7 @@ import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.AiOneLineCommentService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.LifestylePatternService;
 import com.ownlife.service.MemberService;
@@ -43,7 +45,8 @@ class MyPageControllerTest {
         StubKakaoAuthService kakaoAuthService = new StubKakaoAuthService();
         StubNaverAuthService naverAuthService = new StubNaverAuthService();
         StubLifestylePatternService lifestylePatternService = new StubLifestylePatternService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService, naverAuthService, lifestylePatternService)).build();
+        StubAiOneLineCommentService aiOneLineCommentService = new StubAiOneLineCommentService();
+        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService, naverAuthService, lifestylePatternService, aiOneLineCommentService)).build();
         session = new MockHttpSession();
         session.setAttribute(AuthController.LOGIN_MEMBER, new SessionMember(1L, "tester01", "테스터", Member.Role.USER));
     }
@@ -63,6 +66,7 @@ class MyPageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("main"))
                 .andExpect(model().attributeExists("myPageForm"))
+                .andExpect(model().attributeExists("aiOneLineComment"))
                 .andExpect(model().attributeExists("lifePatternAnalysis"))
                 .andExpect(model().attribute("pageTitle", "마이페이지"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-mypage :: centerMyPage"))
@@ -495,6 +499,20 @@ class MyPageControllerTest {
                                     .tone("weekend")
                                     .build()
                     ))
+                    .build();
+        }
+    }
+
+    private static class StubAiOneLineCommentService implements AiOneLineCommentService {
+
+        @Override
+        public AiOneLineCommentDto generateComment(Member member, LifestylePatternAnalysisDto lifestylePatternAnalysis, String weightGoalMessage) {
+            return AiOneLineCommentDto.builder()
+                    .message("최근 기록 흐름이 안정적이에요. 지금 페이스를 유지해 보세요.")
+                    .detail("테스트용 AI 코멘트")
+                    .tone("balance")
+                    .badgeLabel("AI 코멘트")
+                    .fallback(false)
                     .build();
         }
     }

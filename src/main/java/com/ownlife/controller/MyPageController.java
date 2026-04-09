@@ -1,6 +1,7 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.AiOneLineCommentDto;
 import com.ownlife.dto.LifestylePatternAnalysisDto;
 import com.ownlife.dto.MyPageForm;
 import com.ownlife.dto.SessionMember;
@@ -8,6 +9,7 @@ import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.AiOneLineCommentService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.LifestylePatternService;
 import com.ownlife.service.MemberService;
@@ -41,6 +43,7 @@ public class MyPageController {
     private final KakaoAuthService kakaoAuthService;
     private final NaverAuthService naverAuthService;
     private final LifestylePatternService lifestylePatternService;
+    private final AiOneLineCommentService aiOneLineCommentService;
 
     @GetMapping("/mypage")
     public String myPage(@RequestParam(value = "success", defaultValue = "false") boolean success,
@@ -328,18 +331,21 @@ public class MyPageController {
         Optional<SocialAccount> kakaoAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.KAKAO);
         Optional<SocialAccount> naverAccount = memberService.findSocialAccount(member.getMemberId(), SocialAccount.Provider.NAVER);
         LifestylePatternAnalysisDto lifePatternAnalysis = lifestylePatternService.analyze(member.getMemberId());
+        String weightGoalMessage = buildWeightGoalMessage(member);
+        AiOneLineCommentDto aiOneLineComment = aiOneLineCommentService.generateComment(member, lifePatternAnalysis, weightGoalMessage);
 
         model.addAttribute("pageTitle", "마이페이지");
         model.addAttribute("centerFragment", "fragments/center-mypage :: centerMyPage");
         model.addAttribute("extraCssFiles", List.of("/css/mypage.css"));
         model.addAttribute("extraJsFiles", List.of("/js/mypage.js"));
+        model.addAttribute("aiOneLineComment", aiOneLineComment);
         model.addAttribute("lifePatternAnalysis", lifePatternAnalysis);
         model.addAttribute("member", member);
         model.addAttribute("settingsUpdated", success);
         model.addAttribute("withdrawalRequiresPassword", StringUtils.hasText(member.getPasswordHash()));
         model.addAttribute("genderLabel", formatGender(member.getGender()));
         model.addAttribute("loginTypeLabel", formatLoginType(member.getLoginType()));
-        model.addAttribute("weightGoalMessage", buildWeightGoalMessage(member));
+        model.addAttribute("weightGoalMessage", weightGoalMessage);
         model.addAttribute("googleAuthEnabled", googleAuthService.isEnabled());
         model.addAttribute("googleClientId", googleAuthService.getGoogleClientId());
         model.addAttribute("googleLinkUrl", "/mypage/link/google");
