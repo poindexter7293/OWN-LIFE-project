@@ -97,9 +97,85 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const setupAiCoach = () => {
+        const aiCoachWrap = document.getElementById('aiCoachWrap');
+        const aiCoachFab = document.getElementById('aiCoachFab');
+        const aiCoachPanel = document.getElementById('aiCoachPanel');
+        const aiCoachClose = document.getElementById('aiCoachClose');
+        const aiCoachResult = document.getElementById('aiCoachResult');
+        const quickButtons = document.querySelectorAll('[data-ai-type]');
+
+        if (!aiCoachWrap || !aiCoachFab || !aiCoachPanel || !aiCoachClose) {
+            return;
+        }
+
+        // 패널 열기
+        aiCoachFab.addEventListener('click', function () {
+            aiCoachPanel.classList.toggle('hidden');
+        });
+
+        // 닫기
+        aiCoachClose.addEventListener('click', function () {
+            aiCoachPanel.classList.add('hidden');
+        });
+
+        // 바깥 클릭 시 닫기
+        document.addEventListener('click', function (e) {
+            if (!aiCoachWrap.contains(e.target)) {
+                aiCoachPanel.classList.add('hidden');
+            }
+        });
+
+        // ⭐ 여기부터 핵심 (API 연결)
+        quickButtons.forEach((button) => {
+            button.addEventListener('click', async function () {
+                const type = button.dataset.aiType;
+
+                if (!aiCoachResult) return;
+
+                aiCoachResult.innerHTML = `<p class="ai-coach-loading">분석 중...</p>`;
+
+                try {
+                    const response = await fetch(`/api/ai-coach/recommend?type=${type}`);
+                    const data = await response.json();
+
+                    let html = `
+                    <div class="ai-coach-result-box">
+                        <h4>${data.title}</h4>
+                        <p class="ai-coach-result-summary">${data.summary}</p>
+                        <ul>
+                `;
+
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach((message) => {
+                            html += `<li>${message}</li>`;
+                        });
+                    }
+
+                    html += `
+                        </ul>
+                    </div>
+                `;
+
+                    aiCoachResult.innerHTML = html;
+
+                } catch (error) {
+                    aiCoachResult.innerHTML = `
+                    <div class="ai-coach-result-box">
+                        <h4>오류 발생</h4>
+                        <p class="ai-coach-result-summary">AI 추천을 불러오는 중 문제가 발생했습니다.</p>
+                    </div>
+                `;
+                    console.error(error);
+                }
+            });
+        });
+    };
+
     showAuthFlowAlert();
     setupDashboardCardLinks();
     setupFocusFromQuery();
+    setupAiCoach();
 
     if (typeof Chart === 'undefined') {
         return;
