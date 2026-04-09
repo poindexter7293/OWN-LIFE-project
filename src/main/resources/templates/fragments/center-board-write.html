@@ -25,6 +25,8 @@
         <input type="file" id="images" name="images" accept="image/*" multiple class="board-file-hidden">
 
         <p class="board-upload-guide">이미지는 최대 3장까지 업로드할 수 있습니다.</p>
+
+        <div id="imagePreviewList" class="image-preview-list"></div>
       </div>
 
       <div class="board-form-actions">
@@ -34,23 +36,5 @@
     </form>
   </div>
 </section>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const fileInput = document.getElementById("images");
-    const fileName = document.getElementById("fileName");
-
-    if (fileInput && fileName) {
-      fileInput.addEventListener("change", function () {
-        if (!fileInput.files || fileInput.files.length === 0) {
-          fileName.textContent = "선택된 파일 없음";
-        } else if (fileInput.files.length === 1) {
-          fileName.textContent = fileInput.files[0].name;
-        } else {
-          fileName.textContent = fileInput.files[0].name + " 외 " + (fileInput.files.length - 1) + "개";
-        }
-      });
-    }
-  });
-</script>
 </body>
 </html>
