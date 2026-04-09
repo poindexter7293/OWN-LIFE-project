@@ -149,5 +149,42 @@
         });
     });
 </script>
+<div id="aiCoachWrap">
+    <button id="aiCoachFab" type="button" aria-label="AI 코치 열기">
+        💬
+    </button>
+
+    <div id="aiCoachPanel" class="hidden">
+        <div class="ai-coach-header">
+            <div>
+                <strong>AI 코치</strong>
+                <p>최근 기록을 바탕으로 식단과 운동을 추천해드릴게요.</p>
+            </div>
+            <button id="aiCoachClose" type="button">✕</button>
+        </div>
+
+        <div class="ai-coach-body">
+            <div class="ai-coach-summary-card">
+                <p class="summary-title">현재 상태</p>
+                <p class="summary-text">
+                    아직 AI 추천 기능은 준비 중입니다.<br>
+                    다음 단계에서 최근 7일 식단/운동 기록을 분석해서 보여줄 예정입니다.
+                </p>
+            </div>
+
+            <div class="ai-coach-quick-buttons">
+                <button type="button" data-ai-type="diet">오늘 식단 추천</button>
+                <button type="button" data-ai-type="exercise">오늘 운동 추천</button>
+                <button type="button" data-ai-type="analysis">최근 기록 분석</button>
+                <button type="button" data-ai-type="feedback">감량 피드백</button>
+            </div>
+            <div id="aiCoachResult" class="ai-coach-result">
+                <p class="ai-coach-placeholder">
+                    원하는 항목을 선택하면 맞춤 추천을 보여드릴게요.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
