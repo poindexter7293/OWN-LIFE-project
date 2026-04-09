@@ -4,14 +4,52 @@
 <section th:fragment="centerAdminMembers" class="admin-page">
     <div class="admin-shell">
         <article class="summary-card admin-hero-card">
-            <div>
+            <div class="admin-hero-card__content">
                 <p class="admin-eyebrow">ADMIN</p>
                 <h1>회원 관리</h1>
                 <p class="admin-description">회원 목록을 조회하고 계정 상태를 간단히 관리할 수 있습니다.</p>
             </div>
+            <div class="admin-hero-card__meta">
+                <span class="admin-hero-badge">전체 회원 <strong th:text="${totalMemberCount}">0</strong>명</span>
+                <span class="admin-hero-badge admin-hero-badge--sub">현재 결과 <strong th:text="${filteredMemberCount}">0</strong>명</span>
+            </div>
         </article>
 
+        <section class="admin-summary-grid">
+            <article class="summary-card admin-summary-stat admin-summary-stat--primary">
+                <span class="admin-summary-stat__label">전체 회원</span>
+                <strong class="admin-summary-stat__value" th:text="${totalMemberCount}">0</strong>
+                <p class="admin-summary-stat__desc">등록된 전체 계정 수</p>
+            </article>
+
+            <article class="summary-card admin-summary-stat admin-summary-stat--success">
+                <span class="admin-summary-stat__label">활성 회원</span>
+                <strong class="admin-summary-stat__value" th:text="${activeMemberCount}">0</strong>
+                <p class="admin-summary-stat__desc">현재 필터 기준 정상 이용 가능</p>
+            </article>
+
+            <article class="summary-card admin-summary-stat admin-summary-stat--warning">
+                <span class="admin-summary-stat__label">정지 회원</span>
+                <strong class="admin-summary-stat__value" th:text="${suspendedMemberCount}">0</strong>
+                <p class="admin-summary-stat__desc">관리자 조치가 필요한 계정</p>
+            </article>
+
+            <article class="summary-card admin-summary-stat admin-summary-stat--neutral">
+                <span class="admin-summary-stat__label">소셜 가입</span>
+                <strong class="admin-summary-stat__value" th:text="${socialMemberCount}">0</strong>
+                <p class="admin-summary-stat__desc">네이버 · 카카오 · 구글 연동 회원</p>
+            </article>
+        </section>
+
         <article class="summary-card admin-filter-card">
+            <div class="admin-section-heading">
+                <div>
+                    <p class="admin-section-heading__eyebrow">Filter</p>
+                    <h2>회원 검색 및 상태 필터</h2>
+                </div>
+                <p class="admin-section-heading__desc">아이디, 닉네임, 이메일 검색과 상태 필터를 함께 사용해 원하는 회원만 빠르게 찾을 수 있습니다.</p>
+            </div>
+
             <form th:action="@{/admin/members}" method="get" class="admin-filter-form">
                 <div class="admin-filter-field admin-filter-field--wide">
                     <label for="keyword">검색</label>
@@ -35,6 +73,24 @@
                     <a th:href="@{/admin/members}" class="admin-button admin-button-secondary">초기화</a>
                 </div>
             </form>
+
+            <div class="admin-filter-state">
+                <span class="admin-filter-chip">
+                    결과
+                    <strong th:text="${filteredMemberCount}">0</strong>건
+                </span>
+                <span class="admin-filter-chip" th:if="${keyword != null and !#strings.isEmpty(keyword)}">
+                    검색어
+                    <strong th:text="${keyword}">keyword</strong>
+                </span>
+                <span class="admin-filter-chip" th:if="${selectedStatus != null}">
+                    상태
+                    <strong th:text="${selectedStatus}">ACTIVE</strong>
+                </span>
+                <span class="admin-filter-chip admin-filter-chip--muted" th:if="${(keyword == null or #strings.isEmpty(keyword)) and selectedStatus == null}">
+                    현재 전체 회원을 표시 중입니다.
+                </span>
+            </div>
         </article>
 
         <div class="admin-alert admin-alert-success" th:if="${memberStatusUpdateSuccessMessage != null}" th:text="${memberStatusUpdateSuccessMessage}">
@@ -48,7 +104,11 @@
             <div class="admin-table-header">
                 <div>
                     <h2>회원 목록</h2>
-                    <p th:text="|총 ${#lists.size(members)}명|">총 0명</p>
+                    <p th:text="|현재 조건에 맞는 회원 ${filteredMemberCount}명|">현재 조건에 맞는 회원 0명</p>
+                </div>
+                <div class="admin-table-header__meta">
+                    <span class="admin-mini-stat">관리자 <strong th:text="${adminMemberCount}">0</strong></span>
+                    <span class="admin-mini-stat">비활성 <strong th:text="${inactiveMemberCount}">0</strong></span>
                 </div>
             </div>
 
@@ -60,10 +120,7 @@
                 <table class="admin-member-table">
                     <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>아이디</th>
-                        <th>닉네임</th>
-                        <th>이메일</th>
+                        <th>회원 정보</th>
                         <th>권한</th>
                         <th>상태</th>
                         <th>가입방식</th>
@@ -73,22 +130,43 @@
                     </thead>
                     <tbody>
                     <tr th:each="memberItem : ${members}">
-                        <td th:text="${memberItem.memberId}">1</td>
-                        <td th:text="${memberItem.username != null ? memberItem.username : '-'}">username</td>
-                        <td th:text="${memberItem.nickname}">nickname</td>
-                        <td th:text="${memberItem.email != null ? memberItem.email : '-'}">email</td>
                         <td>
-                            <span class="admin-role-badge" th:text="${memberItem.role}">USER</span>
+                            <div class="admin-member-identity">
+                                <div class="admin-member-identity__avatar"
+                                     th:text="${memberItem.nickname != null and !#strings.isEmpty(memberItem.nickname) ? memberItem.nickname.substring(0, 1) : (memberItem.username != null and !#strings.isEmpty(memberItem.username) ? memberItem.username.substring(0, 1) : 'M')}">M</div>
+                                <div class="admin-member-identity__content">
+                                    <div class="admin-member-identity__primary-row">
+                                        <strong th:text="${memberItem.nickname}">nickname</strong>
+                                        <span class="admin-member-id-tag" th:text="${'#' + memberItem.memberId}">#1</span>
+                                    </div>
+                                    <p th:text="${memberItem.username != null ? '@' + memberItem.username : '아이디 없음'}">@username</p>
+                                    <span th:text="${memberItem.email != null ? memberItem.email : '이메일 없음'}">email</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="admin-role-badge"
+                                  th:classappend="${memberItem.role == T(com.ownlife.entity.Member.Role).ADMIN} ? ' is-admin' : ' is-user'"
+                                  th:text="${memberItem.role == T(com.ownlife.entity.Member.Role).ADMIN ? '관리자' : '일반회원'}">일반회원</span>
                         </td>
                         <td>
                             <span class="admin-status-badge"
                                   th:classappend="${memberItem.status == T(com.ownlife.entity.Member.Status).ACTIVE ? ' is-active' : (memberItem.status == T(com.ownlife.entity.Member.Status).SUSPENDED ? ' is-suspended' : ' is-inactive')}"
-                                  th:text="${memberItem.status}">
+                                  th:text="${memberItem.status == T(com.ownlife.entity.Member.Status).ACTIVE ? '활성' : (memberItem.status == T(com.ownlife.entity.Member.Status).SUSPENDED ? '정지' : '비활성')}">
                                 ACTIVE
                             </span>
                         </td>
-                        <td th:text="${memberItem.loginType}">LOCAL</td>
-                        <td th:text="${memberItem.createdAt != null ? #temporals.format(memberItem.createdAt, 'yyyy.MM.dd HH:mm') : '-'}">-</td>
+                        <td>
+                            <span class="admin-provider-badge"
+                                  th:classappend="${memberItem.loginType == T(com.ownlife.entity.Member.LoginType).LOCAL ? ' is-local' : (memberItem.loginType == T(com.ownlife.entity.Member.LoginType).KAKAO ? ' is-kakao' : (memberItem.loginType == T(com.ownlife.entity.Member.LoginType).NAVER ? ' is-naver' : ' is-google'))}"
+                                  th:text="${memberItem.loginType}">LOCAL</span>
+                        </td>
+                        <td>
+                            <div class="admin-date-stack">
+                                <strong th:text="${memberItem.createdAt != null ? #temporals.format(memberItem.createdAt, 'yyyy.MM.dd') : '-'}">-</strong>
+                                <span th:text="${memberItem.createdAt != null ? #temporals.format(memberItem.createdAt, 'HH:mm') : ''}">-</span>
+                            </div>
+                        </td>
                         <td>
                             <div class="admin-action-group" th:if="${session.loginMember != null and session.loginMember.memberId != memberItem.memberId and memberItem.status != T(com.ownlife.entity.Member.Status).DELETED}">
                                 <form th:if="${memberItem.status != T(com.ownlife.entity.Member.Status).ACTIVE}" th:action="@{/admin/members/status}" method="post">
@@ -107,8 +185,8 @@
                                     <button type="submit" class="admin-action-button admin-action-button--suspended">정지</button>
                                 </form>
                             </div>
-                            <span class="admin-self-note" th:if="${session.loginMember != null and session.loginMember.memberId == memberItem.memberId}">본인 계정</span>
-                            <span class="admin-self-note" th:if="${memberItem.status == T(com.ownlife.entity.Member.Status).DELETED}">탈퇴 처리됨</span>
+                            <span class="admin-self-note" th:if="${session.loginMember != null and session.loginMember.memberId == memberItem.memberId}">현재 로그인한 관리자 계정입니다.</span>
+                            <span class="admin-self-note" th:if="${memberItem.status == T(com.ownlife.entity.Member.Status).DELETED}">탈퇴 처리된 회원은 이 화면에서 변경할 수 없습니다.</span>
                         </td>
                     </tr>
                     </tbody>

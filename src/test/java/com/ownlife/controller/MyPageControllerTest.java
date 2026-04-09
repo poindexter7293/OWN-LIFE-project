@@ -1,6 +1,7 @@
 package com.ownlife.controller;
 
 import com.ownlife.dto.GoogleUserProfile;
+import com.ownlife.dto.AiOneLineCommentDto;
 import com.ownlife.dto.LifestyleInsightDto;
 import com.ownlife.dto.LifestylePatternAnalysisDto;
 import com.ownlife.dto.MyPageForm;
@@ -9,6 +10,7 @@ import com.ownlife.dto.WithdrawalForm;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.SocialAccount;
 import com.ownlife.service.GoogleAuthService;
+import com.ownlife.service.AiOneLineCommentService;
 import com.ownlife.service.KakaoAuthService;
 import com.ownlife.service.LifestylePatternService;
 import com.ownlife.service.MemberService;
@@ -25,6 +27,7 @@ import java.util.Optional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,6 +37,7 @@ class MyPageControllerTest {
 
     private MockMvc mockMvc;
     private StubMemberService memberService;
+    private StubAiOneLineCommentService aiOneLineCommentService;
     private MockHttpSession session;
 
     @BeforeEach
@@ -43,7 +47,8 @@ class MyPageControllerTest {
         StubKakaoAuthService kakaoAuthService = new StubKakaoAuthService();
         StubNaverAuthService naverAuthService = new StubNaverAuthService();
         StubLifestylePatternService lifestylePatternService = new StubLifestylePatternService();
-        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService, naverAuthService, lifestylePatternService)).build();
+        aiOneLineCommentService = new StubAiOneLineCommentService();
+        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, googleAuthService, kakaoAuthService, naverAuthService, lifestylePatternService, aiOneLineCommentService)).build();
         session = new MockHttpSession();
         session.setAttribute(AuthController.LOGIN_MEMBER, new SessionMember(1L, "tester01", "테스터", Member.Role.USER));
     }
@@ -63,12 +68,53 @@ class MyPageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("main"))
                 .andExpect(model().attributeExists("myPageForm"))
+                .andExpect(model().attribute("aiCommentEndpoint", "/mypage/ai-comment"))
                 .andExpect(model().attributeExists("lifePatternAnalysis"))
                 .andExpect(model().attribute("pageTitle", "마이페이지"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-mypage :: centerMyPage"))
                 .andExpect(model().attribute("googleLinked", false))
                 .andExpect(model().attribute("kakaoLinked", false))
                 .andExpect(model().attribute("naverLinked", false));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, aiOneLineCommentService.generateCallCount);
+    }
+
+    @Test
+    @DisplayName("로그인하지 않은 사용자가 마이페이지 AI 코멘트 조회를 요청하면 401을 반환한다")
+    void myPageAiCommentRequiresLogin() throws Exception {
+        mockMvc.perform(get("/mypage/ai-comment"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다."));
+    }
+
+    @Test
+    @DisplayName("마이페이지 AI 코멘트는 별도 JSON 응답으로 조회한다")
+    void myPageAiCommentReturnsJson() throws Exception {
+        mockMvc.perform(get("/mypage/ai-comment").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("최근 기록 흐름이 안정적이에요. 지금 페이스를 유지해 보세요."))
+                .andExpect(jsonPath("$.detail").value("테스트용 AI 코멘트"))
+                .andExpect(jsonPath("$.badgeLabel").value("AI 코멘트"))
+                .andExpect(jsonPath("$.fallback").value(false));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, aiOneLineCommentService.generateCallCount);
+    }
+
+    @Test
+    @DisplayName("마이페이지 AI 코멘트가 fallback이면 JSON 응답에서도 구분할 수 있다")
+    void myPageAiCommentReturnsFallbackJson() throws Exception {
+        aiOneLineCommentService.response = AiOneLineCommentDto.builder()
+                .message("최근 기록을 바탕으로 먼저 준비한 코멘트예요.")
+                .detail("최근 기록 기반 코멘트")
+                .tone("muted")
+                .badgeLabel("기본 코멘트")
+                .fallback(true)
+                .build();
+
+        mockMvc.perform(get("/mypage/ai-comment").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.badgeLabel").value("기본 코멘트"))
+                .andExpect(jsonPath("$.fallback").value(true));
     }
 
     @Test
@@ -496,6 +542,24 @@ class MyPageControllerTest {
                                     .build()
                     ))
                     .build();
+        }
+    }
+
+    private static class StubAiOneLineCommentService implements AiOneLineCommentService {
+
+        private int generateCallCount;
+        private AiOneLineCommentDto response = AiOneLineCommentDto.builder()
+                .message("최근 기록 흐름이 안정적이에요. 지금 페이스를 유지해 보세요.")
+                .detail("테스트용 AI 코멘트")
+                .tone("balance")
+                .badgeLabel("AI 코멘트")
+                .fallback(false)
+                .build();
+
+        @Override
+        public AiOneLineCommentDto generateComment(Member member, LifestylePatternAnalysisDto lifestylePatternAnalysis, String weightGoalMessage) {
+            generateCallCount++;
+            return response;
         }
     }
 }
