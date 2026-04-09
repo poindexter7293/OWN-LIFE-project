@@ -40,6 +40,14 @@ class AdminControllerTest {
     }
 
     @Test
+    @DisplayName("관리자 루트 경로는 회원 관리 페이지로 이동한다")
+    void adminRootRedirectsToMembers() throws Exception {
+        mockMvc.perform(get("/admin").session(adminSession))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/members"));
+    }
+
+    @Test
     @DisplayName("관리자는 회원 관리 페이지를 조회할 수 있다")
     void memberManagementPage() throws Exception {
         mockMvc.perform(get("/admin/members").session(adminSession))
@@ -51,11 +59,27 @@ class AdminControllerTest {
     }
 
     @Test
+    @DisplayName("로그인하지 않은 사용자는 관리자 루트 접근 시 로그인 페이지로 이동한다")
+    void adminRootRequiresLogin() throws Exception {
+        mockMvc.perform(get("/admin"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
     @DisplayName("로그인하지 않은 사용자는 관리자 페이지 접근 시 로그인 페이지로 이동한다")
     void adminPageRequiresLogin() throws Exception {
         mockMvc.perform(get("/admin/members"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    @DisplayName("일반 회원은 관리자 루트 접근 시 메인 페이지로 이동한다")
+    void nonAdminCannotAccessAdminRoot() throws Exception {
+        mockMvc.perform(get("/admin").session(userSession))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/main"));
     }
 
     @Test

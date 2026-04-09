@@ -19,7 +19,12 @@
         <h3>오늘 상태</h3>
 
         <div class="dashboard-grid">
-            <div class="dashboard-item" id="goal-card">
+            <div class="dashboard-item"
+                 id="goal-card"
+                 role="button"
+                 tabindex="0"
+                 aria-label="마이페이지의 목표 섭취 칼로리 설정으로 이동"
+                 th:attr="data-mypage-url=@{/mypage}">
                 <span class="label">목표 칼로리</span>
                 <div class="kcal-value-row">
                     <strong class="kcal-goal count-up"

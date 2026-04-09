@@ -424,37 +424,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    function bindGoalCard() {
-        const goalCard = document.getElementById("goal-card");
-
-        if (!goalCard) return;
-
-        goalCard.addEventListener("click", (e) => {
-            e.stopPropagation();
-
-            const confirmMove = confirm("목표 섭취 칼로리를 수정하시겠습니까?");
-            if (confirmMove) {
-                window.location.href = "/mypage";
-            }
-        });
-    }
-
-    function bindIntakeCard() {
-        const intakeCard = document.getElementById("intake-card");
-        const inputBox = document.getElementById("diet-input-box");
-
-        if (!intakeCard || !inputBox) return;
-
-        intakeCard.addEventListener("click", (e) => {
-            e.stopPropagation();
-
-            inputBox.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-            });
-        });
-    }
-
     function filterFoodOptions() {
         if (!foodSelect || !foodSearchKeyword) return;
 
@@ -602,13 +571,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!goalCard) return;
 
-        goalCard.addEventListener("click", (e) => {
-            e.stopPropagation();
-
-            const confirmMove = confirm("마이페이지로 이동해서 목표를 설정하시겠습니까?");
-            if (confirmMove) {
-                window.location.href = "/mypage";
+        const moveToGoalSetting = function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
             }
+
+            const confirmMove = window.confirm("마이페이지로 이동해서 목표를 설정하시겠습니까?");
+            if (!confirmMove) {
+                return;
+            }
+
+            const myPageUrl = goalCard.dataset.mypageUrl || "/mypage";
+            const targetUrl = new URL(myPageUrl, window.location.origin);
+            targetUrl.searchParams.set("focus", "goalEatKcal");
+
+            window.location.href = targetUrl.toString();
+        };
+
+        goalCard.addEventListener("click", moveToGoalSetting);
+        goalCard.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter" && event.key !== " ") {
+                return;
+            }
+
+            moveToGoalSetting(event);
         });
     }
 
