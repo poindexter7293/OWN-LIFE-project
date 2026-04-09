@@ -6,6 +6,7 @@ import com.ownlife.service.BoardCommentService;
 import com.ownlife.service.BoardPostService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -23,13 +24,19 @@ public class BoardController {
     private final BoardCommentService boardCommentService;
 
     @GetMapping
-    public String list(Model model, HttpSession session) {
+    public String list(@RequestParam(value = "page", defaultValue = "0") int page,
+                       Model model,
+                       HttpSession session) {
 
         var loginMember = (com.ownlife.dto.SessionMember) session.getAttribute("loginMember");
         Long loginMemberId = (loginMember != null) ? loginMember.getMemberId() : null;
 
+        Page<BoardPostViewDto> postPage = boardPostService.findAllView(page, 10);
+
         model.addAttribute("pageTitle", "자유게시판");
-        model.addAttribute("posts", boardPostService.findAllView());
+        model.addAttribute("posts", postPage.getContent());
+        model.addAttribute("postPage", postPage);
+        model.addAttribute("currentPage", page);
         model.addAttribute("loginMemberId", loginMemberId);
         model.addAttribute("centerFragment", "fragments/center-board-list :: centerBoardList");
 
