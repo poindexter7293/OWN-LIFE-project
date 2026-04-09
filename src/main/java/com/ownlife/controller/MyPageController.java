@@ -115,6 +115,29 @@ public class MyPageController {
         return ResponseEntity.ok(aiOneLineComment);
     }
 
+    @PostMapping("/mypage/ai-comment/refresh")
+    @ResponseBody
+    public ResponseEntity<?> refreshMyPageAiComment(HttpSession session) {
+        SessionMember loginMember = getLoginMember(session);
+        if (loginMember == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "로그인이 필요합니다."));
+        }
+
+        Optional<Member> memberOptional = memberService.findById(loginMember.getMemberId());
+        if (memberOptional.isEmpty()) {
+            session.invalidate();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "회원 정보를 찾을 수 없습니다."));
+        }
+
+        Member member = memberOptional.get();
+        LifestylePatternAnalysisDto lifePatternAnalysis = lifestylePatternService.analyze(member.getMemberId());
+        String weightGoalMessage = buildWeightGoalMessage(member);
+        AiOneLineCommentDto aiOneLineComment = aiOneLineCommentService.generateComment(member, lifePatternAnalysis, weightGoalMessage, true);
+        return ResponseEntity.ok(aiOneLineComment);
+    }
+
     @PostMapping("/mypage")
     public String updateMyPage(@ModelAttribute("myPageForm") MyPageForm myPageForm,
                                BindingResult bindingResult,
@@ -365,6 +388,7 @@ public class MyPageController {
         model.addAttribute("extraCssFiles", List.of("/css/mypage.css"));
         model.addAttribute("extraJsFiles", List.of("/js/mypage.js"));
         model.addAttribute("aiCommentEndpoint", "/mypage/ai-comment");
+        model.addAttribute("aiCommentRefreshEndpoint", "/mypage/ai-comment/refresh");
         model.addAttribute("lifePatternAnalysis", lifePatternAnalysis);
         model.addAttribute("member", member);
         model.addAttribute("settingsUpdated", success);

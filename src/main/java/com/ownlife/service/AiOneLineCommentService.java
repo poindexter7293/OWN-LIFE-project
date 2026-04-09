@@ -9,5 +9,12 @@ public interface AiOneLineCommentService {
     AiOneLineCommentDto generateComment(Member member,
                                         LifestylePatternAnalysisDto lifestylePatternAnalysis,
                                         String weightGoalMessage);
+
+    default AiOneLineCommentDto generateComment(Member member,
+                                                LifestylePatternAnalysisDto lifestylePatternAnalysis,
+                                                String weightGoalMessage,
+                                                boolean forceRefresh) {
+        return generateComment(member, lifestylePatternAnalysis, weightGoalMessage);
+    }
 }
 

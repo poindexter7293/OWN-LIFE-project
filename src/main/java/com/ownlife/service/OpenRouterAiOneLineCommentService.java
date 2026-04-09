@@ -34,6 +34,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
     private static final Logger log = LoggerFactory.getLogger(OpenRouterAiOneLineCommentService.class);
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(7);
+    private static final int DAILY_REFRESH_LIMIT = 5;
 
     private final DashboardService dashboardService;
     private final ObjectMapper objectMapper;
@@ -46,6 +47,7 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
     private final String siteUrl;
     private final String appName;
     private final Map<Long, CachedAiComment> dailyCommentCache = new ConcurrentHashMap<>();
+    private final Map<Long, DailyRefreshUsage> dailyRefreshUsage = new ConcurrentHashMap<>();
 
     public OpenRouterAiOneLineCommentService(DashboardService dashboardService,
                                              ObjectMapper objectMapper,
@@ -74,15 +76,31 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
     public AiOneLineCommentDto generateComment(Member member,
                                                LifestylePatternAnalysisDto lifestylePatternAnalysis,
                                                String weightGoalMessage) {
+        return generateComment(member, lifestylePatternAnalysis, weightGoalMessage, false);
+    }
+
+    @Override
+    public AiOneLineCommentDto generateComment(Member member,
+                                               LifestylePatternAnalysisDto lifestylePatternAnalysis,
+                                               String weightGoalMessage,
+                                               boolean forceRefresh) {
         if (member == null || member.getMemberId() == null) {
-            return fallbackComment(null, lifestylePatternAnalysis, weightGoalMessage);
+            return withRefreshMetadata(null, currentDate(), fallbackComment(null, lifestylePatternAnalysis, weightGoalMessage));
         }
 
         LocalDate today = currentDate();
         boolean aiAvailable = isAiAvailable();
+
+        if (forceRefresh) {
+            AiOneLineCommentDto limitedComment = consumeRefreshQuota(member.getMemberId(), today);
+            if (limitedComment != null) {
+                return limitedComment;
+            }
+        }
+
         AiOneLineCommentDto cachedComment = getCachedComment(member.getMemberId(), today);
-        if (cachedComment != null && (!cachedComment.isFallback() || !aiAvailable)) {
-            return cachedComment;
+        if (!forceRefresh && cachedComment != null && (!cachedComment.isFallback() || !aiAvailable)) {
+            return withRefreshMetadata(member.getMemberId(), today, cachedComment);
         }
 
         DashboardSummaryDto dashboardSummary;
@@ -96,25 +114,34 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
         AiOneLineCommentPromptDto promptDto = toPromptDto(member, dashboardSummary, lifestylePatternAnalysis, weightGoalMessage);
 
         if (!aiAvailable) {
-            return cacheComment(member.getMemberId(), today, fallbackComment(promptDto, lifestylePatternAnalysis, weightGoalMessage));
+            return withRefreshMetadata(member.getMemberId(), today,
+                    cacheComment(member.getMemberId(), today, fallbackComment(promptDto, lifestylePatternAnalysis, weightGoalMessage)));
         }
 
         try {
             String aiComment = requestAiMessage(promptDto);
             String sanitized = sanitizeOneLineComment(aiComment);
             if (!StringUtils.hasText(sanitized)) {
-                return cacheComment(member.getMemberId(), today, fallbackComment(promptDto, lifestylePatternAnalysis, weightGoalMessage));
+                return withRefreshMetadata(member.getMemberId(), today,
+                        cacheComment(member.getMemberId(), today, fallbackComment(promptDto, lifestylePatternAnalysis, weightGoalMessage)));
             }
-            return cacheComment(member.getMemberId(), today, AiOneLineCommentDto.builder()
+            return withRefreshMetadata(member.getMemberId(), today,
+                    cacheComment(member.getMemberId(), today, AiOneLineCommentDto.builder()
                     .message(sanitized)
                     .detail("최근 기록과 목표 데이터를 바탕으로 AI가 한 줄로 요약했어요.")
                     .tone(resolveTone(promptDto, sanitized))
                     .badgeLabel("AI 코멘트")
                     .fallback(false)
-                    .build());
+                    .build()));
         } catch (Exception exception) {
+            if (exception instanceof IOException ioException && isAuthenticationFailure(ioException)) {
+                log.warn("OpenRouter 인증에 실패했습니다. API 키 상태를 확인해 주세요. memberId={}", member.getMemberId(), exception);
+                return withRefreshMetadata(member.getMemberId(), today,
+                        cacheComment(member.getMemberId(), today, authenticationFailureComment()));
+            }
             log.warn("OpenRouter AI 코멘트 생성에 실패해 기본 코멘트로 대체합니다. memberId={}", member.getMemberId(), exception);
-            return cacheComment(member.getMemberId(), today, fallbackComment(promptDto, lifestylePatternAnalysis, weightGoalMessage));
+            return withRefreshMetadata(member.getMemberId(), today,
+                    cacheComment(member.getMemberId(), today, fallbackComment(promptDto, lifestylePatternAnalysis, weightGoalMessage)));
         }
     }
 
@@ -139,6 +166,9 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
             try {
                 return requestAiMessageWithModel(promptDto, candidateModel);
             } catch (IOException exception) {
+                if (isAuthenticationFailure(exception)) {
+                    throw exception;
+                }
                 lastIOException = exception;
                 log.warn("OpenRouter 모델 호출에 실패했습니다. model={}", candidateModel, exception);
             } catch (InterruptedException exception) {
@@ -216,6 +246,25 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
         return null;
     }
 
+    private boolean isAuthenticationFailure(IOException exception) {
+        if (exception == null || !StringUtils.hasText(exception.getMessage())) {
+            return false;
+        }
+
+        String message = exception.getMessage();
+        return message.contains("status=401") || message.contains("User not found") || message.contains("Missing Authentication");
+    }
+
+    private AiOneLineCommentDto authenticationFailureComment() {
+        return AiOneLineCommentDto.builder()
+                .message("AI 코멘트 설정을 다시 확인해 주세요.")
+                .detail("OpenRouter API 키가 유효하지 않거나 만료되어 AI 코멘트를 불러오지 못하고 있어요.")
+                .tone("muted")
+                .badgeLabel("설정 확인 필요")
+                .fallback(true)
+                .build();
+    }
+
     private List<String> parseFallbackModels(String fallbackModelsValue) {
         if (!StringUtils.hasText(fallbackModelsValue)) {
             return List.of();
@@ -230,6 +279,89 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
 
     private boolean isAiAvailable() {
         return enabled && StringUtils.hasText(apiKey) && StringUtils.hasText(apiUrl) && StringUtils.hasText(model);
+    }
+
+    private AiOneLineCommentDto consumeRefreshQuota(Long memberId, LocalDate today) {
+        if (memberId == null || today == null) {
+            return null;
+        }
+
+        clearExpiredRefreshUsage(today);
+        DailyRefreshUsage usage = dailyRefreshUsage.compute(memberId, (key, current) -> {
+            if (current == null || current.getDate().isBefore(today)) {
+                return new DailyRefreshUsage(today, 0);
+            }
+            return current;
+        });
+
+        if (usage.getUsedCount() >= DAILY_REFRESH_LIMIT) {
+            AiOneLineCommentDto cachedComment = getCachedComment(memberId, today);
+            AiOneLineCommentDto baseComment = cachedComment != null ? cachedComment : refreshLimitComment();
+            return withRefreshMetadata(memberId, today, withRefreshLimitNotice(baseComment));
+        }
+
+        usage.increment();
+        return null;
+    }
+
+    private void clearExpiredRefreshUsage(LocalDate today) {
+        dailyRefreshUsage.entrySet().removeIf(entry -> entry.getValue() == null || entry.getValue().getDate().isBefore(today));
+    }
+
+    private int resolveRemainingRefreshCount(Long memberId, LocalDate today) {
+        if (memberId == null || today == null) {
+            return 0;
+        }
+
+        clearExpiredRefreshUsage(today);
+        DailyRefreshUsage usage = dailyRefreshUsage.get(memberId);
+        if (usage == null || usage.getDate().isBefore(today)) {
+            return DAILY_REFRESH_LIMIT;
+        }
+
+        return Math.max(0, DAILY_REFRESH_LIMIT - usage.getUsedCount());
+    }
+
+    private AiOneLineCommentDto withRefreshMetadata(Long memberId, LocalDate today, AiOneLineCommentDto comment) {
+        if (comment == null) {
+            return null;
+        }
+
+        int remainingRefreshCount = resolveRemainingRefreshCount(memberId, today);
+        return AiOneLineCommentDto.builder()
+                .message(comment.getMessage())
+                .detail(comment.getDetail())
+                .tone(comment.getTone())
+                .badgeLabel(comment.getBadgeLabel())
+                .fallback(comment.isFallback())
+                .remainingRefreshCount(remainingRefreshCount)
+                .dailyRefreshLimit(DAILY_REFRESH_LIMIT)
+                .refreshAllowed(remainingRefreshCount > 0)
+                .build();
+    }
+
+    private AiOneLineCommentDto withRefreshLimitNotice(AiOneLineCommentDto comment) {
+        if (comment == null) {
+            return refreshLimitComment();
+        }
+
+        return AiOneLineCommentDto.builder()
+                .message(comment.getMessage())
+                .detail("오늘 AI 코멘트 새로고침 5회를 모두 사용했어요. 내일 다시 시도해 주세요.")
+                .tone(comment.getTone())
+                .badgeLabel("오늘 새로고침 소진")
+                .fallback(comment.isFallback())
+                .build();
+    }
+
+    private AiOneLineCommentDto refreshLimitComment() {
+        return AiOneLineCommentDto.builder()
+                .message("오늘 새로 받을 수 있는 AI 코멘트를 모두 확인했어요.")
+                .detail("내일 다시 오시면 새 AI 코멘트를 최대 5번까지 새로고침할 수 있어요.")
+                .tone("muted")
+                .badgeLabel("오늘 새로고침 소진")
+                .fallback(true)
+                .build();
     }
 
     private AiOneLineCommentDto getCachedComment(Long memberId, LocalDate date) {
@@ -265,6 +397,9 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
                 .tone(comment.getTone())
                 .badgeLabel(comment.getBadgeLabel())
                 .fallback(comment.isFallback())
+                .remainingRefreshCount(comment.getRemainingRefreshCount())
+                .dailyRefreshLimit(comment.getDailyRefreshLimit())
+                .refreshAllowed(comment.isRefreshAllowed())
                 .build();
     }
 
@@ -443,6 +578,29 @@ public class OpenRouterAiOneLineCommentService implements AiOneLineCommentServic
 
         private AiOneLineCommentDto getComment() {
             return comment;
+        }
+    }
+
+    private static final class DailyRefreshUsage {
+
+        private final LocalDate date;
+        private int usedCount;
+
+        private DailyRefreshUsage(LocalDate date, int usedCount) {
+            this.date = date;
+            this.usedCount = usedCount;
+        }
+
+        private LocalDate getDate() {
+            return date;
+        }
+
+        private int getUsedCount() {
+            return usedCount;
+        }
+
+        private void increment() {
+            usedCount++;
         }
     }
 }

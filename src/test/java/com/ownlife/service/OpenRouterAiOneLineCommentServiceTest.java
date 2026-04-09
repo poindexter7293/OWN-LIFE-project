@@ -38,6 +38,8 @@ class OpenRouterAiOneLineCommentServiceTest {
 
         assertTrue(result.isFallback());
         assertFalse(result.getMessage().isBlank());
+        assertEquals(5, result.getRemainingRefreshCount());
+        assertTrue(result.isRefreshAllowed());
     }
 
     @Test
@@ -64,6 +66,7 @@ class OpenRouterAiOneLineCommentServiceTest {
 
         assertFalse(result.isFallback());
         assertTrue(result.getMessage().contains("최근 3일간 섭취 패턴이 안정적"));
+        assertEquals(5, result.getRemainingRefreshCount());
     }
 
     @Test
@@ -103,6 +106,48 @@ class OpenRouterAiOneLineCommentServiceTest {
         assertFalse(second.isFallback());
         assertEquals(2, requestCount.get());
         assertTrue(second.getMessage().contains("운동 리듬이 좋아요"));
+    }
+
+    @Test
+    @DisplayName("수동 새로고침은 하루 5번까지만 가능하다")
+    void limitsManualRefreshToFiveTimesPerDay() {
+        AtomicInteger requestCount = new AtomicInteger();
+
+        OpenRouterAiOneLineCommentService service = new OpenRouterAiOneLineCommentService(
+                new StubDashboardService(buildDashboardSummary(280, 1800, 88, 72, 4)),
+                new ObjectMapper(),
+                true,
+                "test-key",
+                "https://openrouter.ai/api/v1/chat/completions",
+                "primary-model",
+                "",
+                "http://localhost:8081",
+                "OWN LIFE"
+        ) {
+            @Override
+            protected String requestAiMessage(com.ownlife.dto.AiOneLineCommentPromptDto promptDto) {
+                requestCount.incrementAndGet();
+                return "새로고침으로 받은 AI 코멘트예요.";
+            }
+
+            @Override
+            protected LocalDate currentDate() {
+                return LocalDate.of(2026, 4, 9);
+            }
+        };
+
+        AiOneLineCommentDto fifth = null;
+        for (int i = 0; i < 5; i++) {
+            fifth = service.generateComment(buildMember(), buildLifestylePattern(), "목표 체중까지 -4.0kg", true);
+        }
+        AiOneLineCommentDto blocked = service.generateComment(buildMember(), buildLifestylePattern(), "목표 체중까지 -4.0kg", true);
+
+        assertEquals(5, requestCount.get());
+        assertEquals(0, fifth.getRemainingRefreshCount());
+        assertFalse(fifth.isRefreshAllowed());
+        assertEquals("오늘 새로고침 소진", blocked.getBadgeLabel());
+        assertEquals(0, blocked.getRemainingRefreshCount());
+        assertFalse(blocked.isRefreshAllowed());
     }
 
     @Test

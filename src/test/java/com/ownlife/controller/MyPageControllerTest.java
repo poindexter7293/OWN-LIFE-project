@@ -69,6 +69,7 @@ class MyPageControllerTest {
                 .andExpect(view().name("main"))
                 .andExpect(model().attributeExists("myPageForm"))
                 .andExpect(model().attribute("aiCommentEndpoint", "/mypage/ai-comment"))
+                .andExpect(model().attribute("aiCommentRefreshEndpoint", "/mypage/ai-comment/refresh"))
                 .andExpect(model().attributeExists("lifePatternAnalysis"))
                 .andExpect(model().attribute("pageTitle", "마이페이지"))
                 .andExpect(model().attribute("centerFragment", "fragments/center-mypage :: centerMyPage"))
@@ -95,9 +96,36 @@ class MyPageControllerTest {
                 .andExpect(jsonPath("$.message").value("최근 기록 흐름이 안정적이에요. 지금 페이스를 유지해 보세요."))
                 .andExpect(jsonPath("$.detail").value("테스트용 AI 코멘트"))
                 .andExpect(jsonPath("$.badgeLabel").value("AI 코멘트"))
-                .andExpect(jsonPath("$.fallback").value(false));
+                .andExpect(jsonPath("$.fallback").value(false))
+                .andExpect(jsonPath("$.remainingRefreshCount").value(5))
+                .andExpect(jsonPath("$.dailyRefreshLimit").value(5))
+                .andExpect(jsonPath("$.refreshAllowed").value(true));
 
         org.junit.jupiter.api.Assertions.assertEquals(1, aiOneLineCommentService.generateCallCount);
+    }
+
+    @Test
+    @DisplayName("마이페이지 AI 코멘트 새로고침은 POST로 별도 요청한다")
+    void myPageAiCommentRefreshReturnsJson() throws Exception {
+        aiOneLineCommentService.refreshResponse = AiOneLineCommentDto.builder()
+                .message("새로 받은 AI 코멘트예요.")
+                .detail("새로고침용 코멘트")
+                .tone("accent")
+                .badgeLabel("AI 코멘트")
+                .fallback(false)
+                .remainingRefreshCount(4)
+                .dailyRefreshLimit(5)
+                .refreshAllowed(true)
+                .build();
+
+        mockMvc.perform(post("/mypage/ai-comment/refresh").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("새로 받은 AI 코멘트예요."))
+                .andExpect(jsonPath("$.remainingRefreshCount").value(4))
+                .andExpect(jsonPath("$.dailyRefreshLimit").value(5))
+                .andExpect(jsonPath("$.refreshAllowed").value(true));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, aiOneLineCommentService.forceRefreshCallCount);
     }
 
     @Test
@@ -548,18 +576,44 @@ class MyPageControllerTest {
     private static class StubAiOneLineCommentService implements AiOneLineCommentService {
 
         private int generateCallCount;
+        private int forceRefreshCallCount;
         private AiOneLineCommentDto response = AiOneLineCommentDto.builder()
                 .message("최근 기록 흐름이 안정적이에요. 지금 페이스를 유지해 보세요.")
                 .detail("테스트용 AI 코멘트")
                 .tone("balance")
                 .badgeLabel("AI 코멘트")
                 .fallback(false)
+                .remainingRefreshCount(5)
+                .dailyRefreshLimit(5)
+                .refreshAllowed(true)
+                .build();
+        private AiOneLineCommentDto refreshResponse = AiOneLineCommentDto.builder()
+                .message("새로 받은 AI 코멘트예요.")
+                .detail("새로고침용 AI 코멘트")
+                .tone("accent")
+                .badgeLabel("AI 코멘트")
+                .fallback(false)
+                .remainingRefreshCount(4)
+                .dailyRefreshLimit(5)
+                .refreshAllowed(true)
                 .build();
 
         @Override
         public AiOneLineCommentDto generateComment(Member member, LifestylePatternAnalysisDto lifestylePatternAnalysis, String weightGoalMessage) {
             generateCallCount++;
             return response;
+        }
+
+        @Override
+        public AiOneLineCommentDto generateComment(Member member,
+                                                   LifestylePatternAnalysisDto lifestylePatternAnalysis,
+                                                   String weightGoalMessage,
+                                                   boolean forceRefresh) {
+            if (forceRefresh) {
+                forceRefreshCallCount++;
+                return refreshResponse;
+            }
+            return generateComment(member, lifestylePatternAnalysis, weightGoalMessage);
         }
     }
 }
