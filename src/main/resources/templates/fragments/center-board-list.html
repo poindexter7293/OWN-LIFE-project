@@ -5,7 +5,8 @@
     <div style="max-width:1000px; margin:0 auto; padding:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h1 style="font-size:32px; font-weight:800;">자유게시판</h1>
-            <a th:href="@{/board/write}"
+            <a th:if="${session.loginMember != null}"
+               th:href="@{/board/write}"
                style="padding:10px 16px; background:#4a90e2; color:white; border-radius:6px; text-decoration:none;">
                 글쓰기
             </a>
@@ -40,6 +41,28 @@
             </tr>
             </tbody>
         </table>
+        <div class="board-pagination" th:if="${postPage.totalPages > 1}">
+            <a th:if="${!postPage.first}"
+               th:href="@{/board(page=${currentPage - 1})}"
+               class="page-btn">
+                이전
+            </a>
+
+            <th:block th:each="i : ${#numbers.sequence(0, postPage.totalPages - 1)}">
+                <a th:href="@{/board(page=${i})}"
+                   th:text="${i + 1}"
+                   th:classappend="${i == currentPage} ? ' active' : ''"
+                   class="page-btn">
+                    1
+                </a>
+            </th:block>
+
+            <a th:if="${!postPage.last}"
+               th:href="@{/board(page=${currentPage + 1})}"
+               class="page-btn">
+                다음
+            </a>
+        </div>
     </div>
 </section>
 </body>

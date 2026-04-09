@@ -7,6 +7,10 @@ import com.ownlife.repository.BoardImageRepository;
 import com.ownlife.repository.BoardPostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,8 +39,9 @@ public class BoardPostService {
     }
 
     @Transactional(readOnly = true)
-    public List<BoardPostViewDto> findAllView() {
-        return boardPostRepository.findAllWithNickname();
+    public Page<BoardPostViewDto> findAllView(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postId"));
+        return boardPostRepository.findAllWithNickname(pageable);
     }
 
     @Transactional(readOnly = true)
@@ -160,12 +165,8 @@ public class BoardPostService {
             String storedName = UUID.randomUUID() + "_" + originalName;
             Path savePath = boardUploadPath.resolve(storedName);
 
-            System.out.println("uploadDir = " + uploadDir);
-            System.out.println("savePath = " + savePath.toAbsolutePath());
-
             try {
                 image.transferTo(savePath.toFile());
-                System.out.println("exists after save = " + Files.exists(savePath));
             } catch (IOException e) {
                 throw new RuntimeException("이미지 저장 실패", e);
             }

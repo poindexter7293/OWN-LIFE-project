@@ -2,6 +2,8 @@ package com.ownlife.repository;
 
 import com.ownlife.dto.BoardPostViewDto;
 import com.ownlife.entity.BoardPost;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -27,9 +29,8 @@ public interface BoardPostRepository extends JpaRepository<BoardPost, Long> {
         from BoardPost p
         join Member m on p.memberId = m.memberId
         where p.isDeleted = false
-        order by p.postId desc
     """)
-    List<BoardPostViewDto> findAllWithNickname();
+    Page<BoardPostViewDto> findAllWithNickname(Pageable pageable);
 
     @Query("""
         select new com.ownlife.dto.BoardPostViewDto(
