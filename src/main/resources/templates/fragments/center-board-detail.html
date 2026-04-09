@@ -18,7 +18,8 @@
                 <div th:each="img : ${post.images}" class="post-image-card">
                     <img th:src="${img.imagePath}"
                          alt="게시글 이미지"
-                         class="post-image">
+                         class="post-image"
+                         onerror="this.closest('.post-image-card').style.display='none';">
                 </div>
             </div>
 

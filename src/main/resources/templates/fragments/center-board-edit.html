@@ -21,7 +21,10 @@
 
                 <div class="post-image-list">
                     <div th:each="img : ${post.images}" class="post-image-card board-edit-image-card">
-                        <img th:src="${img.imagePath}" alt="게시글 이미지" class="post-image">
+                        <img th:src="${img.imagePath}"
+                             alt="게시글 이미지"
+                             class="post-image"
+                             onerror="this.closest('.post-image-card').style.display='none';">
 
                         <label class="board-delete-check">
                             <input type="checkbox" name="deleteImageIds" th:value="${img.imageId}">
@@ -43,6 +46,8 @@
                 <input type="file" id="newImages" name="newImages" accept="image/*" multiple class="board-file-hidden">
 
                 <p class="board-upload-guide">기존 이미지 포함 최대 3장까지 유지할 수 있습니다.</p>
+
+                <div id="editImagePreviewList" class="image-preview-list"></div>
             </div>
 
             <div class="board-form-actions">
@@ -52,24 +57,5 @@
         </form>
     </div>
 </section>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const fileInput = document.getElementById("newImages");
-        const fileName = document.getElementById("editFileName");
-
-        if (fileInput && fileName) {
-            fileInput.addEventListener("change", function () {
-                if (!fileInput.files || fileInput.files.length === 0) {
-                    fileName.textContent = "선택된 파일 없음";
-                } else if (fileInput.files.length === 1) {
-                    fileName.textContent = fileInput.files[0].name;
-                } else {
-                    fileName.textContent = fileInput.files[0].name + " 외 " + (fileInput.files.length - 1) + "개";
-                }
-            });
-        }
-    });
-</script>
 </body>
 </html>
