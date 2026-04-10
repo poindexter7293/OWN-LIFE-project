@@ -16,6 +16,7 @@ public interface MealLogRepository extends JpaRepository<MealLog, Long> {
 
     void deleteByMemberIdAndMealDateAndMealType(Long memberId, LocalDate mealDate, String mealType);
 
+
     @Query("""
             select distinct m.mealDate
             from MealLog m

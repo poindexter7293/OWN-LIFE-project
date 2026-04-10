@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const aiCoachFab = document.getElementById('aiCoachFab');
         const aiCoachPanel = document.getElementById('aiCoachPanel');
         const aiCoachClose = document.getElementById('aiCoachClose');
-        const aiCoachResult = document.getElementById('aiCoachResult');
+        const aiCoachChat = document.getElementById('aiCoachChat');
         const quickButtons = document.querySelectorAll('[data-ai-type]');
 
         if (!aiCoachWrap || !aiCoachFab || !aiCoachPanel || !aiCoachClose) {
@@ -130,44 +130,65 @@ document.addEventListener('DOMContentLoaded', function () {
         quickButtons.forEach((button) => {
             button.addEventListener('click', async function () {
                 const type = button.dataset.aiType;
+                const label = button.textContent.trim();
 
-                if (!aiCoachResult) return;
+                console.log('버튼 클릭됨:', type, label);
 
-                aiCoachResult.innerHTML = `<p class="ai-coach-loading">분석 중...</p>`;
+                if (!aiCoachChat) {
+                    console.log('aiCoachChat 없음');
+                    return;
+                }
+
+                const userBubble = document.createElement('div');
+                userBubble.className = 'ai-chat-bubble user';
+                userBubble.innerHTML = `
+                    <div class="ai-chat-name">나</div>
+                    <div class="ai-chat-text">${label}</div>
+                `;
+                aiCoachChat.appendChild(userBubble);
+
+                console.log('userBubble 추가 후 개수:', document.querySelectorAll('.ai-chat-bubble').length);
+
+                const loadingBubble = document.createElement('div');
+                loadingBubble.className = 'ai-chat-bubble ai';
+                loadingBubble.innerHTML = `
+                    <div class="ai-chat-name">OWN 트레이너</div>
+                    <div class="ai-chat-text">기록을 바탕으로 정리하고 있어요...</div>
+                `;
+                aiCoachChat.appendChild(loadingBubble);
+
+                aiCoachChat.scrollTop = aiCoachChat.scrollHeight;
 
                 try {
                     const response = await fetch(`/api/ai-coach/recommend?type=${type}`);
                     const data = await response.json();
 
-                    let html = `
-                    <div class="ai-coach-result-box">
-                        <h4>${data.title}</h4>
-                        <p class="ai-coach-result-summary">${data.summary}</p>
-                        <ul>
-                `;
-
+                    let listHtml = '';
                     if (data.messages && data.messages.length > 0) {
+                        listHtml = '<ul class="ai-chat-list">';
                         data.messages.forEach((message) => {
-                            html += `<li>${message}</li>`;
+                            listHtml += `<li>${message}</li>`;
                         });
+                        listHtml += '</ul>';
                     }
 
-                    html += `
-                        </ul>
-                    </div>
-                `;
-
-                    aiCoachResult.innerHTML = html;
-
+                    loadingBubble.innerHTML = `
+                        <div class="ai-chat-name">OWN 트레이너</div>
+                        <div class="ai-chat-text">
+                            <strong>${data.title}</strong><br>
+                            ${data.summary}
+                            ${listHtml}
+                        </div>
+                    `;
                 } catch (error) {
-                    aiCoachResult.innerHTML = `
-                    <div class="ai-coach-result-box">
-                        <h4>오류 발생</h4>
-                        <p class="ai-coach-result-summary">AI 추천을 불러오는 중 문제가 발생했습니다.</p>
-                    </div>
-                `;
-                    console.error(error);
+                    console.error('fetch 에러:', error);
+                    loadingBubble.innerHTML = `
+                        <div class="ai-chat-name">OWN 트레이너</div>
+                        <div class="ai-chat-text">추천을 불러오는 중 문제가 발생했습니다.</div>
+                    `;
                 }
+
+                aiCoachChat.scrollTop = aiCoachChat.scrollHeight;
             });
         });
     };

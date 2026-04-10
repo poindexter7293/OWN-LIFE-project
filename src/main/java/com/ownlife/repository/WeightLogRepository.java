@@ -18,4 +18,5 @@ public interface WeightLogRepository extends JpaRepository<WeightLog, Long> {
             LocalDate startDate,
             LocalDate endDate
     );
+
 }
