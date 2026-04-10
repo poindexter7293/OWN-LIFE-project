@@ -126,7 +126,7 @@ public class MealServiceImpl implements MealService {
 
             for (Map<String, Object> foodData : foods) {
                 Long foodId = Long.valueOf(String.valueOf(foodData.get("foodId")));
-                double count = Integer.parseInt(String.valueOf(foodData.get("count")));
+                double count = Double.parseDouble(String.valueOf(foodData.get("count")));
 
                 addMeal(memberId, date, mealType, foodId, count);
             }
