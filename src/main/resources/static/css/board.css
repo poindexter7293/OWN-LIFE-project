@@ -19,7 +19,7 @@
 
 .board-btn:hover {
     transform: translateY(-1px);
-    filter: brightness(0.98);
+    filter: none;
 }
 
 .board-btn:active {
@@ -28,8 +28,12 @@
 
 /* 글쓰기/등록 계열 */
 .board-btn-primary {
-    background: #5b8def;
+    background: linear-gradient(135deg, #7b5cff, #9f7aea);
     color: #fff;
+}
+
+.board-btn-primary:hover {
+    background: linear-gradient(135deg, #6845ff, #8b6be8);
 }
 
 /* 목록/취소/파일선택 같은 중립 계열 */
