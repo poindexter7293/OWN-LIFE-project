@@ -19,4 +19,8 @@ public interface WeightLogRepository extends JpaRepository<WeightLog, Long> {
             LocalDate endDate
     );
 
+    Optional<WeightLog> findFirstByMember_MemberIdAndLogDateLessThanEqualOrderByLogDateDesc(
+            Long memberId,
+            LocalDate logDate
+    );
 }

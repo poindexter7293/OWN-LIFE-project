@@ -16,7 +16,6 @@ public interface MealLogRepository extends JpaRepository<MealLog, Long> {
 
     void deleteByMemberIdAndMealDateAndMealType(Long memberId, LocalDate mealDate, String mealType);
 
-
     @Query("""
             select distinct m.mealDate
             from MealLog m
@@ -28,4 +27,39 @@ public interface MealLogRepository extends JpaRepository<MealLog, Long> {
                                                  @Param("startDate") LocalDate startDate,
                                                  @Param("endDate") LocalDate endDate);
 
+    @Query("""
+            select coalesce(sum(m.caloriesKcal), 0)
+            from MealLog m
+            where m.memberId = :memberId
+              and m.mealDate = :mealDate
+            """)
+    Double sumCaloriesByMemberAndDate(@Param("memberId") Long memberId,
+                                      @Param("mealDate") LocalDate mealDate);
+
+    @Query("""
+            select coalesce(sum(m.carbG), 0)
+            from MealLog m
+            where m.memberId = :memberId
+              and m.mealDate = :mealDate
+            """)
+    Double sumCarbByMemberAndDate(@Param("memberId") Long memberId,
+                                  @Param("mealDate") LocalDate mealDate);
+
+    @Query("""
+            select coalesce(sum(m.proteinG), 0)
+            from MealLog m
+            where m.memberId = :memberId
+              and m.mealDate = :mealDate
+            """)
+    Double sumProteinByMemberAndDate(@Param("memberId") Long memberId,
+                                     @Param("mealDate") LocalDate mealDate);
+
+    @Query("""
+            select coalesce(sum(m.fatG), 0)
+            from MealLog m
+            where m.memberId = :memberId
+              and m.mealDate = :mealDate
+            """)
+    Double sumFatByMemberAndDate(@Param("memberId") Long memberId,
+                                 @Param("mealDate") LocalDate mealDate);
 }
