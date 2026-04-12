@@ -478,6 +478,67 @@ document.addEventListener('DOMContentLoaded', function () {
             year: '연간'
         };
 
+        const mixedChartAnimation = {
+            x: {
+                type: 'number',
+                easing: 'easeOutCubic',
+                duration: 450,
+                from: NaN,
+                delay(ctx) {
+                    if (ctx.type !== 'data' || ctx.xStarted) return 0;
+                    ctx.xStarted = true;
+                    return ctx.dataIndex * 80;
+                }
+            },
+            y: {
+                type: 'number',
+                easing: 'easeOutCubic',
+                duration(ctx) {
+                    return ctx.dataset.type === 'line' ? 500 : 850;
+                },
+                from(ctx) {
+                    if (ctx.type !== 'data') {
+                        const axisId = ctx.dataset?.yAxisID || 'y';
+                        const scale = ctx.chart.scales[axisId];
+                        return scale ? scale.getPixelForValue(0) : 0;
+                    }
+
+                    const axisId = ctx.dataset.yAxisID || 'y';
+                    const scale = ctx.chart.scales[axisId];
+                    const meta = ctx.chart.getDatasetMeta(ctx.datasetIndex);
+
+                    if (ctx.dataset.type === 'line') {
+                        if (ctx.dataIndex === 0) {
+                            return meta.data[0].getProps(['y'], true).y;
+                        }
+                        return meta.data[ctx.dataIndex - 1].getProps(['y'], true).y;
+                    }
+
+                    return scale ? scale.getPixelForValue(0) : 0;
+                },
+                delay(ctx) {
+                    if (ctx.type !== 'data' || ctx.yStarted) return 0;
+                    ctx.yStarted = true;
+
+                    if (ctx.dataset.type === 'line') {
+                        return ctx.dataIndex * 80;
+                    }
+
+                    return ctx.dataIndex * 45;
+                }
+            },
+            radius: {
+                type: 'number',
+                easing: 'easeOutQuad',
+                duration: 300,
+                from: 0,
+                delay(ctx) {
+                    if (ctx.type !== 'data') return 0;
+                    return ctx.dataset.type === 'line' ? (ctx.dataIndex * 80) + 120 : 0;
+                }
+            }
+        };
+
         const datasetDefs = [
             {
                 key: 'weightKg',
@@ -548,8 +609,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 borderColor: '#f5a000',
                 backgroundColor: '#f5a000',
                 stepped: true,
-                pointRadius: 0,
-                pointHoverRadius: 3,
+                pointRadius: 2,
+                pointHoverRadius: 4,
                 borderWidth: 2,
                 fill: false,
                 tension: 0,
@@ -563,8 +624,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 borderColor: '#5b3df5',
                 backgroundColor: '#5b3df5',
                 stepped: true,
-                pointRadius: 0,
-                pointHoverRadius: 3,
+                pointRadius: 2,
+                pointHoverRadius: 4,
                 borderWidth: 2,
                 fill: false,
                 tension: 0,
@@ -578,8 +639,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 borderColor: '#ef4444',
                 backgroundColor: '#ef4444',
                 stepped: true,
-                pointRadius: 0,
-                pointHoverRadius: 3,
+                pointRadius: 2,
+                pointHoverRadius: 4,
                 borderWidth: 2,
                 fill: false,
                 tension: 0,
@@ -625,6 +686,8 @@ document.addEventListener('DOMContentLoaded', function () {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: mixedChartAnimation,
+                animations: mixedChartAnimation,
                 interaction: {
                     mode: 'index',
                     intersect: false
@@ -724,7 +787,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         render();
-    };
+    };  
 
     createLegacyWeightChart();
     setupSummaryMixedChart();
