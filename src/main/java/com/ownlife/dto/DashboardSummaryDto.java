@@ -38,4 +38,32 @@ public class DashboardSummaryDto {
 
     private List<String> weightLabels = new ArrayList<>();
     private List<Double> weightData = new ArrayList<>();
+
+    private SummaryChartDto summaryChart = new SummaryChartDto();
+
+    @Getter
+    @Setter
+    public static class SummaryChartDto {
+        private RangeChartDto week = new RangeChartDto();
+        private RangeChartDto month = new RangeChartDto();
+        private RangeChartDto year = new RangeChartDto();
+    }
+
+    @Getter
+    @Setter
+    public static class RangeChartDto {
+        private List<String> labels = new ArrayList<>();
+
+        private List<Double> weightKg = new ArrayList<>();
+
+        private List<Double> totalEatKcal = new ArrayList<>();
+        private List<Double> totalBurnedKcal = new ArrayList<>();
+        private List<Double> totalCarbG = new ArrayList<>();
+        private List<Double> totalProteinG = new ArrayList<>();
+        private List<Double> totalFatG = new ArrayList<>();
+
+        private List<Double> goalEatKcal = new ArrayList<>();
+        private List<Double> goalBurnedKcal = new ArrayList<>();
+        private List<Double> goalWeight = new ArrayList<>();
+    }
 }

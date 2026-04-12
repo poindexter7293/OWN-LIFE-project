@@ -109,33 +109,26 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // 패널 열기
         aiCoachFab.addEventListener('click', function () {
             aiCoachPanel.classList.toggle('hidden');
         });
 
-        // 닫기
         aiCoachClose.addEventListener('click', function () {
             aiCoachPanel.classList.add('hidden');
         });
 
-        // 바깥 클릭 시 닫기
         document.addEventListener('click', function (e) {
             if (!aiCoachWrap.contains(e.target)) {
                 aiCoachPanel.classList.add('hidden');
             }
         });
 
-        // ⭐ 여기부터 핵심 (API 연결)
         quickButtons.forEach((button) => {
             button.addEventListener('click', async function () {
                 const type = button.dataset.aiType;
                 const label = button.textContent.trim();
 
-                console.log('버튼 클릭됨:', type, label);
-
                 if (!aiCoachChat) {
-                    console.log('aiCoachChat 없음');
                     return;
                 }
 
@@ -146,8 +139,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="ai-chat-text">${label}</div>
                 `;
                 aiCoachChat.appendChild(userBubble);
-
-                console.log('userBubble 추가 후 개수:', document.querySelectorAll('.ai-chat-bubble').length);
 
                 const loadingBubble = document.createElement('div');
                 loadingBubble.className = 'ai-chat-bubble ai';
@@ -161,12 +152,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 try {
                     const response = await fetch(`/api/ai-coach/recommend?type=${type}`);
-                    const data = await response.json();
+                    const payload = await response.json();
 
                     let listHtml = '';
-                    if (data.messages && data.messages.length > 0) {
+                    if (payload.messages && payload.messages.length > 0) {
                         listHtml = '<ul class="ai-chat-list">';
-                        data.messages.forEach((message) => {
+                        payload.messages.forEach((message) => {
                             listHtml += `<li>${message}</li>`;
                         });
                         listHtml += '</ul>';
@@ -175,13 +166,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     loadingBubble.innerHTML = `
                         <div class="ai-chat-name">OWN 트레이너</div>
                         <div class="ai-chat-text">
-                            <strong>${data.title}</strong><br>
-                            ${data.summary}
+                            <strong>${payload.title}</strong><br>
+                            ${payload.summary}
                             ${listHtml}
                         </div>
                     `;
                 } catch (error) {
-                    console.error('fetch 에러:', error);
+                    console.error('AI coach fetch error:', error);
                     loadingBubble.innerHTML = `
                         <div class="ai-chat-name">OWN 트레이너</div>
                         <div class="ai-chat-text">추천을 불러오는 중 문제가 발생했습니다.</div>
@@ -205,11 +196,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const data = window.dashboardData || {};
 
     const weightCanvas = document.getElementById('weightChart');
+    const summaryMixedCanvas = document.getElementById('summaryMixedChart');
     const burnedCanvas = document.getElementById('burnedProgressChart');
     const intakeCanvas = document.getElementById('intakeProgressChart');
     const macroCanvas = document.getElementById('macroChart');
 
-    const hasDashboardDom = !!(weightCanvas || burnedCanvas || intakeCanvas || macroCanvas);
+    const hasDashboardDom = !!(weightCanvas || summaryMixedCanvas || burnedCanvas || intakeCanvas || macroCanvas);
 
     if (!hasDashboardDom) {
         return;
@@ -421,7 +413,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return chart;
     };
 
-    if (weightCanvas) {
+    const createLegacyWeightChart = () => {
+        if (!weightCanvas || summaryMixedCanvas) return;
+
         new Chart(weightCanvas, {
             type: 'line',
             data: {
@@ -454,7 +448,286 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
-    }
+    };
+
+    const setupSummaryMixedChart = () => {
+        if (!summaryMixedCanvas) return;
+
+        const summaryChartData = data.summaryChart || {};
+        let currentRange = 'week';
+
+        const titleEl = document.getElementById('summaryMixedChartTitle');
+        const rangeButtons = document.querySelectorAll('[data-summary-range]');
+        const toggleInputs = document.querySelectorAll('[data-series-key]');
+
+        const seriesState = {
+            weightKg: true,
+            totalEatKcal: true,
+            totalBurnedKcal: true,
+            totalCarbG: false,
+            totalProteinG: false,
+            totalFatG: false,
+            goalEatKcal: true,
+            goalBurnedKcal: true,
+            goalWeight: true
+        };
+
+        const rangeLabelMap = {
+            week: '주간',
+            month: '월간',
+            year: '연간'
+        };
+
+        const datasetDefs = [
+            {
+                key: 'weightKg',
+                label: '체중',
+                type: 'line',
+                yAxisID: 'yWeight',
+                borderColor: '#111111',
+                backgroundColor: '#111111',
+                pointBackgroundColor: '#111111',
+                pointBorderColor: '#111111',
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                borderWidth: 2,
+                fill: false,
+                tension: 0.28,
+                order: 2
+            },
+            {
+                key: 'totalEatKcal',
+                label: '섭취칼로리',
+                type: 'bar',
+                yAxisID: 'yKcal',
+                backgroundColor: 'rgba(245, 160, 0, 0.72)',
+                borderColor: '#f5a000',
+                order: 4
+            },
+            {
+                key: 'totalBurnedKcal',
+                label: '소모칼로리',
+                type: 'bar',
+                yAxisID: 'yKcal',
+                backgroundColor: 'rgba(91, 61, 245, 0.72)',
+                borderColor: '#5b3df5',
+                order: 4
+            },
+            {
+                key: 'totalCarbG',
+                label: '탄수화물',
+                type: 'bar',
+                yAxisID: 'yGram',
+                backgroundColor: 'rgba(76, 87, 232, 0.72)',
+                borderColor: '#4c57e8',
+                order: 4
+            },
+            {
+                key: 'totalProteinG',
+                label: '단백질',
+                type: 'bar',
+                yAxisID: 'yGram',
+                backgroundColor: 'rgba(34, 197, 94, 0.72)',
+                borderColor: '#22c55e',
+                order: 4
+            },
+            {
+                key: 'totalFatG',
+                label: '지방',
+                type: 'bar',
+                yAxisID: 'yGram',
+                backgroundColor: 'rgba(245, 160, 0, 0.72)',
+                borderColor: '#f5a000',
+                order: 4
+            },
+            {
+                key: 'goalEatKcal',
+                label: '목표섭취',
+                type: 'line',
+                yAxisID: 'yKcal',
+                borderColor: '#f5a000',
+                backgroundColor: '#f5a000',
+                stepped: true,
+                pointRadius: 0,
+                pointHoverRadius: 3,
+                borderWidth: 2,
+                fill: false,
+                tension: 0,
+                order: 1
+            },
+            {
+                key: 'goalBurnedKcal',
+                label: '목표소모',
+                type: 'line',
+                yAxisID: 'yKcal',
+                borderColor: '#5b3df5',
+                backgroundColor: '#5b3df5',
+                stepped: true,
+                pointRadius: 0,
+                pointHoverRadius: 3,
+                borderWidth: 2,
+                fill: false,
+                tension: 0,
+                order: 1
+            },
+            {
+                key: 'goalWeight',
+                label: '목표체중',
+                type: 'line',
+                yAxisID: 'yWeight',
+                borderColor: '#ef4444',
+                backgroundColor: '#ef4444',
+                stepped: true,
+                pointRadius: 0,
+                pointHoverRadius: 3,
+                borderWidth: 2,
+                fill: false,
+                tension: 0,
+                order: 2
+            }
+        ];
+
+        const getRangePayload = (rangeKey) => {
+            return summaryChartData[rangeKey] || {
+                labels: [],
+                weightKg: [],
+                totalEatKcal: [],
+                totalBurnedKcal: [],
+                totalCarbG: [],
+                totalProteinG: [],
+                totalFatG: [],
+                goalEatKcal: [],
+                goalBurnedKcal: [],
+                goalWeight: []
+            };
+        };
+
+        const buildDatasets = (rangeKey) => {
+            const payload = getRangePayload(rangeKey);
+
+            return datasetDefs.map((def) => ({
+                ...def,
+                data: payload[def.key] || [],
+                hidden: !seriesState[def.key],
+                borderRadius: def.type === 'bar' ? 6 : 0,
+                borderSkipped: def.type === 'bar' ? false : undefined,
+                maxBarThickness: def.type === 'bar'
+                    ? (rangeKey === 'year' ? 30 : 22)
+                    : undefined
+            }));
+        };
+
+        const chart = new Chart(summaryMixedCanvas, {
+            data: {
+                labels: getRangePayload(currentRange).labels || [],
+                datasets: buildDatasets(currentRange)
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: false,
+                        grid: {
+                            color: '#f3f4f6'
+                        },
+                        ticks: {
+                            color: '#9ca3af'
+                        }
+                    },
+                    yKcal: {
+                        type: 'linear',
+                        position: 'left',
+                        grid: {
+                            color: '#eef2f7'
+                        },
+                        ticks: {
+                            color: '#6b7280'
+                        },
+                        title: {
+                            display: true,
+                            text: 'kcal'
+                        }
+                    },
+                    yGram: {
+                        type: 'linear',
+                        position: 'right',
+                        display: false,
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
+                    yWeight: {
+                        type: 'linear',
+                        position: 'right',
+                        offset: true,
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        ticks: {
+                            color: '#6b7280'
+                        },
+                        title: {
+                            display: true,
+                            text: 'kg'
+                        }
+                    }
+                }
+            }
+        });
+
+        const render = () => {
+            const payload = getRangePayload(currentRange);
+
+            chart.data.labels = payload.labels || [];
+            chart.data.datasets = buildDatasets(currentRange);
+            chart.update();
+
+            if (titleEl) {
+                titleEl.textContent = `${rangeLabelMap[currentRange]} 통합 그래프`;
+            }
+
+            rangeButtons.forEach((btn) => {
+                btn.classList.toggle('is-active', btn.dataset.summaryRange === currentRange);
+            });
+        };
+
+        rangeButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                currentRange = btn.dataset.summaryRange;
+                render();
+            });
+        });
+
+        toggleInputs.forEach((input) => {
+            const key = input.dataset.seriesKey;
+            if (!(key in seriesState)) return;
+
+            input.checked = seriesState[key];
+
+            input.addEventListener('change', () => {
+                seriesState[key] = input.checked;
+                render();
+            });
+        });
+
+        render();
+    };
+
+    createLegacyWeightChart();
+    setupSummaryMixedChart();
 
     const burnedTargetCalories = Number(
         data.burnedTargetCalories ??
