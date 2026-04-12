@@ -225,12 +225,78 @@
                     </div>
                 </article>
             </section>
-
-            <!-- 주간 체중 -->
+            <!-- 통합그래프 -->
             <section class="summary-card chart-panel hover-card">
-                <div class="chart-panel__title">주간 체중</div>
-                <div class="chart-panel__body">
-                    <canvas id="weightChart"></canvas>
+                <div class="chart-panel__title" id="summaryMixedChartTitle">주간 통합 그래프</div>
+
+                <div class="chart-panel__toolbar">
+                    <div class="chart-range-switch">
+                        <button type="button" class="chart-range-btn is-active" data-summary-range="week">주간</button>
+                        <button type="button" class="chart-range-btn" data-summary-range="month">월간</button>
+                        <button type="button" class="chart-range-btn" data-summary-range="year">연간</button>
+                    </div>
+
+                    <div class="chart-series-toggle">
+                        <label>
+                            <input type="checkbox" data-series-key="weightKg" checked>
+                            <span class="series-color-dot series-color-dot--weight"></span>
+                            체중
+                        </label>
+
+                        <label>
+                            <input type="checkbox" data-series-key="goalWeight" checked>
+                            <span class="series-color-dot series-color-dot--goal-weight"></span>
+                            목표체중
+                        </label>
+                        
+
+                        <label>
+                            <input type="checkbox" data-series-key="totalEatKcal" checked>
+                            <span class="series-color-dot series-color-dot--eat"></span>
+                            섭취칼로리
+                        </label>
+
+                        <label>
+                            <input type="checkbox" data-series-key="goalEatKcal" checked>
+                            <span class="series-color-dot series-color-dot--goal-eat"></span>
+                            목표섭취칼로리
+                        </label>
+
+                        <label>
+                            <input type="checkbox" data-series-key="totalBurnedKcal" checked>
+                            <span class="series-color-dot series-color-dot--burn"></span>
+                            소모칼로리
+                        </label>
+
+                        <label>
+                            <input type="checkbox" data-series-key="goalBurnedKcal" checked>
+                            <span class="series-color-dot series-color-dot--goal-burn"></span>
+                            목표소모칼로리
+                        </label>
+
+
+                        <label>
+                            <input type="checkbox" data-series-key="totalCarbG">
+                            <span class="series-color-dot series-color-dot--carb"></span>
+                            탄수화물
+                        </label>
+
+                        <label>
+                            <input type="checkbox" data-series-key="totalProteinG">
+                            <span class="series-color-dot series-color-dot--protein"></span>
+                            단백질
+                        </label>
+
+                        <label>
+                            <input type="checkbox" data-series-key="totalFatG">
+                            <span class="series-color-dot series-color-dot--fat"></span>
+                            지방
+                        </label>
+                    </div>
+                </div>
+
+                <div class="chart-panel__body chart-panel__body--large">
+                    <canvas id="summaryMixedChart"></canvas>
                 </div>
             </section>
         </div>

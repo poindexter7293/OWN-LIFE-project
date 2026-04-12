@@ -257,7 +257,7 @@ class OpenRouterAiOneLineCommentServiceTest {
         private final DashboardSummaryDto summaryDto;
 
         StubDashboardService(DashboardSummaryDto summaryDto) {
-            super(null, null, null, null);
+            super(null, null, null, null, null);
             this.summaryDto = summaryDto;
         }
 

@@ -122,7 +122,11 @@
 
         weightData: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
             ? dashboard.weightData
-            : (#ctx.containsVariable('weightData') ? weightData : {})}]]*/ []
+            : (#ctx.containsVariable('weightData') ? weightData : {})}]]*/ [],
+
+        summaryChart: /*[[${#ctx.containsVariable('dashboard') and dashboard != null
+            ? dashboard.summaryChart
+            : {}}]]*/ {}
     };
 
     window.isLoginMember = /*[[${session.loginMember != null}]]*/ false;

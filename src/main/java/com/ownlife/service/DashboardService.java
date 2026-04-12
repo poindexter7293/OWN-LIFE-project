@@ -1,9 +1,11 @@
 package com.ownlife.service;
 
 import com.ownlife.dto.DashboardSummaryDto;
+import com.ownlife.entity.DailySummary;
 import com.ownlife.entity.MealLog;
 import com.ownlife.entity.Member;
 import com.ownlife.entity.WeightLog;
+import com.ownlife.repository.DailySummaryRepository;
 import com.ownlife.repository.ExerciseLogRepository;
 import com.ownlife.repository.MealLogRepository;
 import com.ownlife.repository.MemberRepository;
@@ -13,7 +15,9 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +28,7 @@ public class DashboardService {
     private final MealLogRepository mealLogRepository;
     private final ExerciseLogRepository exerciseLogRepository;
     private final WeightLogRepository weightLogRepository;
+    private final DailySummaryRepository dailySummaryRepository;
 
     public DashboardSummaryDto getDashboardSummary(Long memberId) {
         DashboardSummaryDto dto = new DashboardSummaryDto();
@@ -37,6 +42,7 @@ public class DashboardService {
         applyMealSection(dto, memberId, member, today);
         applyStreakSection(dto, memberId, today);
         applyWeeklyWeightSection(dto, memberId, today);
+        applySummaryChartSection(dto, memberId, member, today);
 
         return dto;
     }
@@ -216,6 +222,242 @@ public class DashboardService {
 
         dto.setWeightLabels(labels);
         dto.setWeightData(data);
+    }
+
+    private void applySummaryChartSection(DashboardSummaryDto dto, Long memberId, Member member, LocalDate today) {
+        DashboardSummaryDto.SummaryChartDto chartDto = new DashboardSummaryDto.SummaryChartDto();
+
+        chartDto.setWeek(buildDailyRangeChart(memberId, member, today.minusDays(6), today));
+        chartDto.setMonth(buildDailyRangeChart(memberId, member, today.minusDays(29), today));
+        chartDto.setYear(buildYearlyRangeChart(memberId, member, today));
+
+        dto.setSummaryChart(chartDto);
+    }
+
+    private DashboardSummaryDto.RangeChartDto buildDailyRangeChart(Long memberId,
+                                                                   Member member,
+                                                                   LocalDate startDate,
+                                                                   LocalDate endDate) {
+        DashboardSummaryDto.RangeChartDto dto = new DashboardSummaryDto.RangeChartDto();
+
+        List<DailySummary> summaries = dailySummaryRepository
+                .findByMember_MemberIdAndSummaryDateBetweenOrderBySummaryDateAsc(memberId, startDate, endDate);
+
+        Map<LocalDate, DailySummary> summaryMap = summaries.stream()
+                .collect(Collectors.toMap(
+                        DailySummary::getSummaryDate,
+                        Function.identity(),
+                        (a, b) -> b,
+                        LinkedHashMap::new
+                ));
+
+        Double currentWeight = resolveLatestWeightBeforeOrEqual(memberId, member, startDate.minusDays(1));
+        Integer currentGoalEat = resolveLatestGoalEatBeforeOrEqual(memberId, member, startDate.minusDays(1));
+        Integer currentGoalBurned = resolveLatestGoalBurnedBeforeOrEqual(memberId, member, startDate.minusDays(1));
+        Double currentGoalWeight = resolveLatestGoalWeightBeforeOrEqual(memberId, member, startDate.minusDays(1));
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            DailySummary summary = summaryMap.get(date);
+
+            dto.getLabels().add(date.getMonthValue() + "/" + date.getDayOfMonth());
+
+            if (summary != null && summary.getWeightKg() != null) {
+                currentWeight = summary.getWeightKg().doubleValue();
+            }
+            dto.getWeightKg().add(round2(currentWeight));
+
+            dto.getTotalEatKcal().add(summary != null ? toDouble(summary.getTotalEatKcal(), 0.0) : 0.0);
+            dto.getTotalBurnedKcal().add(summary != null ? toDouble(summary.getTotalBurnedKcal(), 0.0) : 0.0);
+            dto.getTotalCarbG().add(summary != null ? toDouble(summary.getTotalCarbG(), 0.0) : 0.0);
+            dto.getTotalProteinG().add(summary != null ? toDouble(summary.getTotalProteinG(), 0.0) : 0.0);
+            dto.getTotalFatG().add(summary != null ? toDouble(summary.getTotalFatG(), 0.0) : 0.0);
+
+            if (summary != null && summary.getGoalEatKcal() != null) {
+                currentGoalEat = summary.getGoalEatKcal();
+            }
+            if (summary != null && summary.getGoalBurnedKcal() != null) {
+                currentGoalBurned = summary.getGoalBurnedKcal();
+            }
+            if (summary != null && summary.getGoalWeight() != null) {
+                currentGoalWeight = summary.getGoalWeight().doubleValue();
+            }
+
+            dto.getGoalEatKcal().add(currentGoalEat != null ? currentGoalEat.doubleValue() : null);
+            dto.getGoalBurnedKcal().add(currentGoalBurned != null ? currentGoalBurned.doubleValue() : null);
+            dto.getGoalWeight().add(round2(currentGoalWeight));
+        }
+
+        return dto;
+    }
+
+    private DashboardSummaryDto.RangeChartDto buildYearlyRangeChart(Long memberId,
+                                                                    Member member,
+                                                                    LocalDate today) {
+        DashboardSummaryDto.RangeChartDto dto = new DashboardSummaryDto.RangeChartDto();
+
+        YearMonth startMonth = YearMonth.from(today).minusMonths(11);
+        YearMonth endMonth = YearMonth.from(today);
+
+        LocalDate rangeStart = startMonth.atDay(1);
+        LocalDate rangeEnd = endMonth.atEndOfMonth();
+
+        List<DailySummary> summaries = dailySummaryRepository
+                .findByMember_MemberIdAndSummaryDateBetweenOrderBySummaryDateAsc(memberId, rangeStart, rangeEnd);
+
+        Map<YearMonth, List<DailySummary>> byMonth = summaries.stream()
+                .collect(Collectors.groupingBy(
+                        summary -> YearMonth.from(summary.getSummaryDate()),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        Double currentWeight = resolveLatestWeightBeforeOrEqual(memberId, member, rangeStart.minusDays(1));
+        Integer currentGoalEat = resolveLatestGoalEatBeforeOrEqual(memberId, member, rangeStart.minusDays(1));
+        Integer currentGoalBurned = resolveLatestGoalBurnedBeforeOrEqual(memberId, member, rangeStart.minusDays(1));
+        Double currentGoalWeight = resolveLatestGoalWeightBeforeOrEqual(memberId, member, rangeStart.minusDays(1));
+
+        for (YearMonth month = startMonth; !month.isAfter(endMonth); month = month.plusMonths(1)) {
+            List<DailySummary> monthRows = byMonth.getOrDefault(month, Collections.emptyList());
+
+            dto.getLabels().add(month.getMonthValue() + "월");
+
+            if (!monthRows.isEmpty()) {
+                DailySummary lastWeightRow = monthRows.stream()
+                        .filter(row -> row.getWeightKg() != null)
+                        .reduce((first, second) -> second)
+                        .orElse(null);
+
+                if (lastWeightRow != null) {
+                    currentWeight = lastWeightRow.getWeightKg().doubleValue();
+                }
+
+                DailySummary lastGoalEatRow = monthRows.stream()
+                        .filter(row -> row.getGoalEatKcal() != null)
+                        .reduce((first, second) -> second)
+                        .orElse(null);
+
+                if (lastGoalEatRow != null) {
+                    currentGoalEat = lastGoalEatRow.getGoalEatKcal();
+                }
+
+                DailySummary lastGoalBurnedRow = monthRows.stream()
+                        .filter(row -> row.getGoalBurnedKcal() != null)
+                        .reduce((first, second) -> second)
+                        .orElse(null);
+
+                if (lastGoalBurnedRow != null) {
+                    currentGoalBurned = lastGoalBurnedRow.getGoalBurnedKcal();
+                }
+
+                DailySummary lastGoalWeightRow = monthRows.stream()
+                        .filter(row -> row.getGoalWeight() != null)
+                        .reduce((first, second) -> second)
+                        .orElse(null);
+
+                if (lastGoalWeightRow != null) {
+                    currentGoalWeight = lastGoalWeightRow.getGoalWeight().doubleValue();
+                }
+            }
+
+            dto.getWeightKg().add(round2(currentWeight));
+
+            dto.getTotalEatKcal().add(avgIfPresent(monthRows, DailySummary::getTotalEatKcal));
+            dto.getTotalBurnedKcal().add(avgIfPresent(monthRows, DailySummary::getTotalBurnedKcal));
+            dto.getTotalCarbG().add(avgIfPresent(monthRows, DailySummary::getTotalCarbG));
+            dto.getTotalProteinG().add(avgIfPresent(monthRows, DailySummary::getTotalProteinG));
+            dto.getTotalFatG().add(avgIfPresent(monthRows, DailySummary::getTotalFatG));
+
+            dto.getGoalEatKcal().add(currentGoalEat != null ? currentGoalEat.doubleValue() : null);
+            dto.getGoalBurnedKcal().add(currentGoalBurned != null ? currentGoalBurned.doubleValue() : null);
+            dto.getGoalWeight().add(round2(currentGoalWeight));
+        }
+
+        return dto;
+    }
+
+    private Double avgIfPresent(List<DailySummary> rows, Function<DailySummary, BigDecimal> extractor) {
+        List<Double> values = rows.stream()
+                .map(extractor)
+                .filter(Objects::nonNull)
+                .map(BigDecimal::doubleValue)
+                .toList();
+
+        if (values.isEmpty()) {
+            return null;
+        }
+
+        double avg = values.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        return round2(avg);
+    }
+
+    private Double resolveLatestWeightBeforeOrEqual(Long memberId, Member member, LocalDate date) {
+        Optional<DailySummary> latestSummary = dailySummaryRepository
+                .findFirstByMember_MemberIdAndSummaryDateLessThanEqualOrderBySummaryDateDesc(memberId, date);
+
+        if (latestSummary.isPresent() && latestSummary.get().getWeightKg() != null) {
+            return latestSummary.get().getWeightKg().doubleValue();
+        }
+
+        Optional<WeightLog> latestWeightLog = weightLogRepository
+                .findFirstByMember_MemberIdAndLogDateLessThanEqualOrderByLogDateDesc(memberId, date);
+
+        if (latestWeightLog.isPresent() && latestWeightLog.get().getWeightKg() != null) {
+            return latestWeightLog.get().getWeightKg().doubleValue();
+        }
+
+        if (member.getWeightKg() != null) {
+            return member.getWeightKg().doubleValue();
+        }
+
+        return null;
+    }
+
+    private Integer resolveLatestGoalEatBeforeOrEqual(Long memberId, Member member, LocalDate date) {
+        Optional<DailySummary> latestSummary = dailySummaryRepository
+                .findFirstByMember_MemberIdAndSummaryDateLessThanEqualOrderBySummaryDateDesc(memberId, date);
+
+        if (latestSummary.isPresent() && latestSummary.get().getGoalEatKcal() != null) {
+            return latestSummary.get().getGoalEatKcal();
+        }
+
+        return member.getGoalEatKcal();
+    }
+
+    private Integer resolveLatestGoalBurnedBeforeOrEqual(Long memberId, Member member, LocalDate date) {
+        Optional<DailySummary> latestSummary = dailySummaryRepository
+                .findFirstByMember_MemberIdAndSummaryDateLessThanEqualOrderBySummaryDateDesc(memberId, date);
+
+        if (latestSummary.isPresent() && latestSummary.get().getGoalBurnedKcal() != null) {
+            return latestSummary.get().getGoalBurnedKcal();
+        }
+
+        return member.getGoalBurnedKcal();
+    }
+
+    private Double resolveLatestGoalWeightBeforeOrEqual(Long memberId, Member member, LocalDate date) {
+        Optional<DailySummary> latestSummary = dailySummaryRepository
+                .findFirstByMember_MemberIdAndSummaryDateLessThanEqualOrderBySummaryDateDesc(memberId, date);
+
+        if (latestSummary.isPresent() && latestSummary.get().getGoalWeight() != null) {
+            return latestSummary.get().getGoalWeight().doubleValue();
+        }
+
+        if (member.getGoalWeight() != null) {
+            return member.getGoalWeight().doubleValue();
+        }
+
+        return null;
+    }
+
+    private Double toDouble(BigDecimal value, Double defaultValue) {
+        return value != null ? round2(value.doubleValue()) : defaultValue;
+    }
+
+    private Double round2(Double value) {
+        if (value == null) {
+            return null;
+        }
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private String formatKg(double value) {
