@@ -6,6 +6,7 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    color: #111827;
 }
 
 /* =========================
@@ -14,11 +15,11 @@
 .diet-header-card,
 .diet-form-card,
 .diet-list-card,
-.diet-dashboard-card,
-.diet-visual-card {
+.diet-visual-card,
+.diet-summary-card {
     background: #ffffff;
     border: 1px solid #e9eef5;
-    border-radius: 20px;
+    border-radius: 22px;
     padding: 24px;
     box-shadow: 0 10px 30px rgba(31, 79, 163, 0.06);
 }
@@ -35,18 +36,19 @@
 
 .diet-header-left h2 {
     margin: 0;
-    font-size: 30px;
+    font-size: 32px;
     font-weight: 800;
-    color: #203864;
+    letter-spacing: -0.03em;
+    color: #111827;
 }
 
 .diet-header-left p {
     margin-top: 6px;
-    color: #6f7d95;
+    color: #6b7280;
     font-size: 14px;
+    font-weight: 600;
 }
 
-/* 날짜 이동 폼 - 기본(데스크톱 포함) */
 .diet-date-form {
     display: flex;
     align-items: center;
@@ -76,9 +78,10 @@
     border-radius: 999px;
     font-size: 16px;
     font-weight: 600;
-    color: #203864;
+    color: #4b5563;
     outline: none;
     min-width: 170px;
+    font-family: inherit;
 }
 
 .diet-date-input::-webkit-calendar-picker-indicator {
@@ -105,93 +108,65 @@
     filter: brightness(1.02);
 }
 
-.diet-date-move-btn:active {
-    transform: translateY(0);
-}
-
 /* =========================
-   상단 대시보드
+   상태 카드 3장
    ========================= */
-.diet-dashboard-card {
-    padding: 24px;
-}
-
-.dashboard-grid {
+.diet-summary-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
+    gap: 16px;
 }
 
-.dashboard-item {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid #eef1f6;
-    transition: all 0.2s ease;
+.diet-summary-card {
+    min-height: 116px;
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
-    min-height: 110px;
-    text-align: center;
 }
 
-.dashboard-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-}
-
-.dashboard-item[role="button"] {
-    cursor: pointer;
-}
-
-.dashboard-item[role="button"]:focus-visible {
-    outline: 3px solid rgba(59, 130, 246, 0.28);
-    outline-offset: 3px;
-}
-
-.dashboard-item .label {
+.diet-summary-card__label {
     display: block;
     font-size: 14px;
-    color: #6f7d95;
-    margin-bottom: 10px;
+    color: #6b7280;
+    font-weight: 700;
 }
 
-.kcal-value-row {
+.diet-summary-card__value {
     display: flex;
     align-items: baseline;
-    justify-content: center;
     gap: 6px;
-    margin-top: 4px;
+    margin-top: 10px;
+    line-height: 1;
 }
 
-.dashboard-item strong {
-    font-size: 42px;
+.diet-summary-card__value strong {
+    font-size: 44px;
     font-weight: 800;
-    line-height: 1;
     letter-spacing: -1px;
 }
 
-.dashboard-item .unit {
-    font-size: 18px;
+.diet-summary-card__value small {
+    font-size: 22px;
     font-weight: 700;
-    color: #8c9bb3;
+    color: #94a3b8;
 }
 
-.dashboard-item strong.kcal-goal {
-    color: #6a5cff;
+.diet-summary-card__value--purple { color: #6a5cff; }
+.diet-summary-card__value--green { color: #22c55e; }
+.diet-summary-card__value--red { color: #ef4444; }
+
+.diet-summary-card,
+#goal-card,
+#intake-card {
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.dashboard-item strong.kcal-intake {
-    color: #22c55e;
-}
-
-.dashboard-item strong.kcal-remaining {
-    color: #22c55e;
-}
-
-.dashboard-item strong.kcal-remaining.kcal-over {
-    color: #ef4444;
+.diet-summary-card:hover,
+#goal-card:hover,
+#intake-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 /* =========================
@@ -203,6 +178,16 @@
     gap: 24px;
 }
 
+.diet-form-card h3,
+.diet-list-card h3,
+.diet-visual-card h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #111827;
+}
+
 /* =========================
    식단 추가 폼
    ========================= */
@@ -210,6 +195,7 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    margin-top: 16px;
 }
 
 .form-row {
@@ -221,14 +207,24 @@
 .form-row label {
     font-weight: 700;
     font-size: 14px;
+    color: #4b5563;
 }
 
 .form-row input,
 .form-row select {
     border: 1px solid #d7dfeb;
-    border-radius: 10px;
-    padding: 10px;
+    border-radius: 12px;
+    padding: 12px 14px;
     font-size: 14px;
+    background: #fafafa;
+}
+
+.form-row input:focus,
+.form-row select:focus {
+    border-color: #6a5cff;
+    outline: none;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(106, 92, 255, 0.08);
 }
 
 .input-mode-box {
@@ -252,10 +248,11 @@
     margin-top: 10px;
     background: linear-gradient(135deg, #6a5cff, #8b5cf6);
     border: none;
-    border-radius: 12px;
-    padding: 12px;
+    border-radius: 14px;
+    padding: 14px;
     color: white;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 800;
     cursor: pointer;
 }
 
@@ -274,7 +271,14 @@
     gap: 12px;
 }
 
-/* 기간 탭 - 기본(데스크톱 포함) */
+.diet-chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
 .chart-tabs {
     display: inline-flex;
     align-items: center;
@@ -290,9 +294,9 @@
     border: none;
     background: transparent;
     color: #6f7d95;
-    font-size: 15px;
-    font-weight: 700;
-    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 10px 16px;
     border-radius: 999px;
     cursor: pointer;
     transition: all 0.18s ease;
@@ -312,10 +316,37 @@
 .chart-sub-text {
     margin: 0;
     font-size: 14px;
-    color: #5f6f89;
+    color: #6b7280;
 }
 
-/* 그래프 */
+.chart-dot-legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 4px;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.chart-dot-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chart-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 10px;
+}
+
+.chart-dot--green { background: #22c55e; }
+.chart-dot--orange { background: #fb923c; }
+
 .chart-box {
     width: 100%;
 }
@@ -363,7 +394,7 @@
 .dot.fat { background: #f5a000; }
 
 /* =========================
-   테이블 / 리스트
+   리스트/부가 요소
    ========================= */
 .diet-table {
     width: 100%;
@@ -394,41 +425,10 @@
     cursor: pointer;
 }
 
-input:focus,
-select:focus {
-    border-color: #6a5cff;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(106, 92, 255, 0.1);
-}
-
-/* =========================
-   빈 상태
-   ========================= */
 .empty-box {
     text-align: center;
     padding: 40px;
     color: #7b8aa5;
-}
-
-.diet-card {
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.diet-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-}
-
-#goal-card,
-#intake-card {
-    cursor: pointer;
-}
-
-#goal-card:hover,
-#intake-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
 #foodSearchKeyword {
@@ -599,11 +599,8 @@ select:focus {
    반응형
    ========================= */
 @media (max-width: 1024px) {
-    .diet-content-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .dashboard-grid {
+    .diet-content-grid,
+    .diet-summary-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -635,6 +632,11 @@ select:focus {
         font-size: 15px;
     }
 
+    .diet-chart-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
     .chart-tabs {
         width: 100%;
         justify-content: space-between;
@@ -653,5 +655,9 @@ select:focus {
 
     .selected-food-item {
         grid-template-columns: 1fr;
+    }
+
+    .diet-summary-card__value strong {
+        font-size: 38px;
     }
 }
