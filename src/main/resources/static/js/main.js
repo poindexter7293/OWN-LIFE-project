@@ -211,10 +211,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         listHtml += '</ul>';
                     }
 
+                    const titleText = (payload.title || '').trim();
+                    const showTitle = titleText && titleText !== 'OWN 트레이너';
+
                     loadingBubble.innerHTML = `
                         <div class="ai-chat-name">OWN 트레이너</div>
                         <div class="ai-chat-text">
-                            <strong>${payload.title || 'OWN 트레이너'}</strong><br>
+                            ${showTitle ? `<strong>${titleText}</strong><br>` : ''}
                             ${payload.summary || '분석 결과를 불러왔어요.'}
                             ${listHtml}
                         </div>
