@@ -280,7 +280,7 @@ function renderExerciseChart(chartData) {
             },
             plugins: {
                 legend: {
-                    display: hasGoalLine
+                    display: false
                 },
                 tooltip: {
                     enabled: true,

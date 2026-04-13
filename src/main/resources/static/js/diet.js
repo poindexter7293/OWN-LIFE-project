@@ -320,7 +320,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 animations: createBarOnlyAnimations(),
                 plugins: {
                     legend: {
-                        display: true,
+                        display: false,
                         labels: {
                             usePointStyle: true,
                             boxWidth: 10,

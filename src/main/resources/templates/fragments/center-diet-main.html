@@ -3,6 +3,7 @@
 <body>
 <div th:fragment="centerDietMain" class="diet-page">
 
+    <!-- 헤더 카드 유지 -->
     <section class="diet-header-card">
         <div class="diet-header-left">
             <h2>식단 관리</h2>
@@ -20,43 +21,39 @@
         </form>
     </section>
 
-    <section class="diet-dashboard-card">
-        <h3>오늘 상태</h3>
-
-        <div class="dashboard-grid">
-            <div class="dashboard-item"
+    <!-- 감싸는 영역 없이 카드 3장만 -->
+    <section class="diet-summary-grid">
+        <article class="diet-summary-card"
                  id="goal-card"
                  role="button"
                  tabindex="0"
                  aria-label="마이페이지의 목표 섭취 칼로리 설정으로 이동"
                  th:attr="data-mypage-url=@{/mypage}">
-                <span class="label">목표 칼로리</span>
-                <div class="kcal-value-row">
-                    <strong class="kcal-goal count-up"
-                            th:attr="data-value=${dietPageData.goalSummary.goalKcal}">0.0</strong>
-                    <span class="unit">kcal</span>
-                </div>
+            <span class="diet-summary-card__label">목표 칼로리</span>
+            <div class="diet-summary-card__value diet-summary-card__value--purple">
+                <strong class="count-up"
+                        th:attr="data-value=${dietPageData.goalSummary.goalKcal}">0.0</strong>
+                <small>kcal</small>
             </div>
+        </article>
 
-            <div class="dashboard-item" id="intake-card">
-                <span class="label">현재 섭취</span>
-                <div class="kcal-value-row">
-                    <strong class="kcal-intake count-up"
-                            th:attr="data-value=${dietPageData.goalSummary.totalKcal}">0.0</strong>
-                    <span class="unit">kcal</span>
-                </div>
+        <article class="diet-summary-card" id="intake-card">
+            <span class="diet-summary-card__label">현재 섭취</span>
+            <div class="diet-summary-card__value diet-summary-card__value--green">
+                <strong class="count-up"
+                        th:attr="data-value=${dietPageData.goalSummary.totalKcal}">0.0</strong>
+                <small>kcal</small>
             </div>
+        </article>
 
-            <div class="dashboard-item">
-                <span class="label">남은 칼로리</span>
-                <div class="kcal-value-row">
-                    <strong class="kcal-remaining count-up"
-                            th:classappend="${dietPageData.goalSummary.exceededKcal > 0} ? ' kcal-over' : ''"
-                            th:attr="data-value=${dietPageData.goalSummary.remainingKcal}">0.0</strong>
-                    <span class="unit">kcal</span>
-                </div>
+        <article class="diet-summary-card">
+            <span class="diet-summary-card__label">남은 칼로리</span>
+            <div class="diet-summary-card__value [[${dietPageData.goalSummary.exceededKcal > 0} ? 'diet-summary-card__value--red' : 'diet-summary-card__value--green']]">
+                <strong class="count-up"
+                        th:attr="data-value=${dietPageData.goalSummary.remainingKcal}">0.0</strong>
+                <small>kcal</small>
             </div>
-        </div>
+        </article>
     </section>
 
     <section class="diet-content-grid" id="diet-input-box">
@@ -210,16 +207,30 @@
 
         <section class="diet-visual-card">
             <div class="visual-section">
-                <h3 id="dietChartTitle">최근 7일 섭취량</h3>
+                <div class="diet-chart-head">
+                    <h3 id="dietChartTitle">최근 7일 섭취량</h3>
 
-                <div class="chart-tabs" id="dietChartTabs">
-                    <button type="button" class="chart-tab active" data-period="day">일간</button>
-                    <button type="button" class="chart-tab" data-period="week">주간</button>
-                    <button type="button" class="chart-tab" data-period="month">월간</button>
-                    <button type="button" class="chart-tab" data-period="year">연간</button>
+                    <div class="chart-tabs" id="dietChartTabs">
+                        <button type="button" class="chart-tab active" data-period="day">일간</button>
+                        <button type="button" class="chart-tab" data-period="week">주간</button>
+                        <button type="button" class="chart-tab" data-period="month">월간</button>
+                        <button type="button" class="chart-tab" data-period="year">연간</button>
+                    </div>
                 </div>
 
                 <p class="chart-sub-text" id="dietChartSubText">선택한 기간 기준 섭취 칼로리를 보여줍니다.</p>
+
+                <!-- 도트 범례 -->
+                <div class="chart-dot-legend">
+                    <div class="chart-dot-legend__item">
+                        <span class="chart-dot chart-dot--green"></span>
+                        <span>섭취 칼로리</span>
+                    </div>
+                    <div class="chart-dot-legend__item">
+                        <span class="chart-dot chart-dot--orange"></span>
+                        <span>목표 칼로리</span>
+                    </div>
+                </div>
 
                 <div class="chart-box intake-chart-box">
                     <canvas id="dietIntakeChart"></canvas>

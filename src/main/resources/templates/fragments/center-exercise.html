@@ -4,43 +4,49 @@
 
 <div th:fragment="centerExercise" class="exercise-page">
 
-    <section class="exercise-page__hero">
-        <div>
-            <h2 class="exercise-page__title">운동 일지</h2>
-            <p class="exercise-page__date"
-               th:text="${#temporals.format(exerciseData.selectedDate, 'yyyy.MM.dd') + (exerciseData.selectedDate.equals(T(java.time.LocalDate).now()) ? ' (오늘)' : '')}">2026.04.01 (오늘)</p>
+    <!-- 헤더 카드 -->
+    <section class="exercise-header-card">
+        <div class="exercise-header-left">
+            <h2>운동 일지</h2>
+            <p th:text="${#temporals.format(exerciseData.selectedDate, 'yyyy-MM-dd') + (exerciseData.selectedDate.equals(T(java.time.LocalDate).now()) ? ' (오늘)' : '')}">
+                2026-04-13 (오늘)
+            </p>
         </div>
 
-        <div class="exercise-date-box">
-            <form th:action="@{/exercise}" method="get" class="exercise-date-form">
-                <input type="date" name="date" th:value="${exerciseData.selectedDate}" class="exercise-date-input">
+        <form th:action="@{/exercise}" method="get" class="exercise-date-form exercise-date-pill-form">
+            <div class="exercise-date-pill">
+                <input type="date"
+                       name="date"
+                       th:value="${exerciseData.selectedDate}"
+                       class="exercise-date-input">
                 <button type="submit" class="exercise-date-submit">이동</button>
-            </form>
-        </div>
+            </div>
+        </form>
     </section>
 
+    <!-- 상태 카드 3장 -->
     <section class="exercise-summary-grid">
         <article class="exercise-summary-card" id="todayBurnedCard">
             <div class="exercise-summary-card__label">일일 소모 칼로리</div>
             <div class="exercise-summary-card__value exercise-summary-card__value--green">
-        <span class="count-up-int"
-              th:attr="data-target=${exerciseData.todayBurnedKcal}"
-              th:text="${exerciseData.todayBurnedKcal}">0</span><small>kcal</small>
+                <span class="count-up-int"
+                      th:attr="data-target=${exerciseData.todayBurnedKcal}"
+                      th:text="${exerciseData.todayBurnedKcal}">0</span><small>kcal</small>
             </div>
         </article>
+
         <article class="exercise-summary-card exercise-summary-card--clickable"
                  id="goalBurnedCard"
                  tabindex="0"
                  role="button"
                  aria-label="목표 소모 칼로리 설정으로 이동">
-
             <div class="exercise-summary-card__label">목표 소모 칼로리</div>
 
             <div class="exercise-summary-card__value exercise-summary-card__value--green"
                  th:if="${exerciseData.goalBurnedKcal > 0}">
-        <span class="count-up-int"
-              th:attr="data-target=${exerciseData.goalBurnedKcal}"
-              th:text="${exerciseData.goalBurnedKcal}">0</span>
+                <span class="count-up-int"
+                      th:attr="data-target=${exerciseData.goalBurnedKcal}"
+                      th:text="${exerciseData.goalBurnedKcal}">0</span>
                 <small>kcal</small>
             </div>
 
@@ -65,7 +71,6 @@
         <article class="exercise-panel">
             <div class="exercise-panel__title">운동 추가</div>
 
-            <!-- 상단 모드 전환 -->
             <div class="exercise-mode-tabs">
                 <button type="button"
                         class="exercise-mode-tab active"
@@ -77,7 +82,6 @@
                         data-mode-target="quickAddPanel">빠른 추가</button>
             </div>
 
-            <!-- 직접 추가 영역 -->
             <div id="directAddPanel" class="exercise-mode-panel is-active">
                 <div class="exercise-panel__subtitle">직접 추가</div>
 
@@ -103,7 +107,6 @@
                 </form>
             </div>
 
-            <!-- 빠른 추가 영역 -->
             <div id="quickAddPanel" class="exercise-mode-panel">
                 <div class="exercise-panel__subtitle">빠른 추가</div>
 
@@ -115,7 +118,6 @@
 
                 <form id="timeQuickForm" class="exercise-form exercise-quick-form is-active" th:action="@{/exercise/quick/time}" method="post">
                     <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
-
                     <label class="exercise-form__label">운동 종류</label>
                     <div class="exercise-chip-list">
                         <label class="exercise-select-card" th:each="option, stat : ${timeExerciseOptions}">
@@ -129,7 +131,6 @@
 
                     <button class="exercise-submit-btn exercise-submit-btn--light" type="submit">운동 추가하기</button>
                 </form>
-
 
                 <form id="routeQuickForm" class="exercise-form exercise-quick-form" th:action="@{/exercise/quick/route}" method="post">
                     <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
@@ -190,7 +191,6 @@
 
                 <form id="countQuickForm" class="exercise-form exercise-quick-form" th:action="@{/exercise/quick/count}" method="post">
                     <input type="hidden" name="exerciseDate" th:value="${exerciseData.selectedDate}">
-
                     <label class="exercise-form__label">운동 종류</label>
                     <div class="exercise-chip-list">
                         <label class="exercise-select-card" th:each="option, stat : ${countExerciseOptions}">
@@ -214,28 +214,21 @@
                 </form>
             </div>
         </article>
+
         <article class="exercise-panel exercise-panel--chart">
             <div class="exercise-panel__head">
                 <div class="exercise-panel__title">칼로리 소모</div>
 
                 <div class="exercise-period-tabs" id="exercisePeriodTabs">
-                    <button type="button"
-                            class="exercise-period-tab active"
-                            data-period="WEEK">주간</button>
-                    <button type="button"
-                            class="exercise-period-tab"
-                            data-period="MONTH">월간</button>
-                    <button type="button"
-                            class="exercise-period-tab"
-                            data-period="YEAR">연간</button>
+                    <button type="button" class="exercise-period-tab active" data-period="WEEK">주간</button>
+                    <button type="button" class="exercise-period-tab" data-period="MONTH">월간</button>
+                    <button type="button" class="exercise-period-tab" data-period="YEAR">연간</button>
                 </div>
             </div>
 
             <div class="exercise-chart-summary">
-                <div class="exercise-chart-summary__line"
-                     th:if="${exerciseData.goalBurnedKcal > 0}">
+                <div class="exercise-chart-summary__line" th:if="${exerciseData.goalBurnedKcal > 0}">
                     <span class="exercise-chart-summary__label">오늘 목표</span>
-
                     <span>소모 칼로리</span>
                     <strong class="count-up-int"
                             th:data-target="${exerciseData.todayBurnedKcal}"
@@ -245,14 +238,12 @@
                             th:data-target="${exerciseData.goalBurnedKcal}"
                             th:text="${exerciseData.goalBurnedKcal}">0</strong>
                     <span>kcal</span>
-
                     <span class="exercise-chart-summary__divider">·</span>
-
                     <span>달성률</span>
                     <strong>
-                <span class="count-up-int"
-                      th:data-target="${exerciseData.goalAchievementRate}"
-                      th:text="${exerciseData.goalAchievementRate}">0</span><span>%</span>
+                        <span class="count-up-int"
+                              th:data-target="${exerciseData.goalAchievementRate}"
+                              th:text="${exerciseData.goalAchievementRate}">0</span><span>%</span>
                     </strong>
                 </div>
 
@@ -260,7 +251,18 @@
                      th:if="${exerciseData.goalBurnedKcal == 0}">
                     목표 소모 칼로리가 설정되지 않았습니다.
                 </div>
+            </div>
 
+            <!-- 커스텀 범례 -->
+            <div class="chart-dot-legend">
+                <div class="chart-dot-legend__item">
+                    <span class="chart-dot chart-dot--mint"></span>
+                    <span>일일 소모 칼로리</span>
+                </div>
+                <div class="chart-dot-legend__item">
+                    <span class="chart-dot chart-dot--orange"></span>
+                    <span>목표 소모 칼로리</span>
+                </div>
             </div>
 
             <div class="exercise-chart-wrap">
