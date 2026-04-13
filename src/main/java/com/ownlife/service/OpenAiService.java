@@ -38,22 +38,39 @@ public class OpenAiService {
 
     public String ask(String prompt) {
         List<String> modelsToTry = buildModelList();
+        boolean rateLimited = false;
 
         for (String model : modelsToTry) {
-            try {
-                String result = askWithModel(prompt, model);
-                if (result != null && !result.isBlank()) {
-                    return result;
+            for (int retry = 0; retry < 2; retry++) {
+                try {
+                    String result = askWithModel(prompt, model);
+                    if (result != null && !result.isBlank()) {
+                        return result;
+                    }
+                } catch (RuntimeException e) {
+                    String msg = e.getMessage();
+                    if (msg != null && msg.contains("429")) {
+                        rateLimited = true;
+                        try {
+                            Thread.sleep(700);
+                        } catch (InterruptedException ignored) {
+                            Thread.currentThread().interrupt();
+                        }
+                        continue;
+                    }
+                    break;
+                } catch (Exception e) {
+                    break;
                 }
-            } catch (Exception e) {
-                System.out.println("OpenRouter model failed: " + model);
-                e.printStackTrace();
             }
+        }
+
+        if (rateLimited) {
+            return "현재 AI 요청이 많아 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.";
         }
 
         return "AI 응답 생성 중 오류가 발생했습니다.";
     }
-
 
     private String askWithModel(String prompt, String model) throws Exception {
 
@@ -66,6 +83,8 @@ public class OpenAiService {
         conn.setRequestProperty("HTTP-Referer", siteUrl);
         conn.setRequestProperty("X-Title", appName);
         conn.setDoOutput(true);
+        conn.setConnectTimeout(3000);
+        conn.setReadTimeout(10000);
 
         String requestBody = """
             {
