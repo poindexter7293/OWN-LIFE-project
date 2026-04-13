@@ -473,9 +473,9 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const rangeLabelMap = {
-            week: '주간',
-            month: '월간',
-            year: '연간'
+            week: '',
+            month: '',
+            year: ''
         };
 
         const mixedChartAnimation = {
@@ -759,7 +759,7 @@ document.addEventListener('DOMContentLoaded', function () {
             chart.update();
 
             if (titleEl) {
-                titleEl.textContent = `${rangeLabelMap[currentRange]} 통합 그래프`;
+                titleEl.textContent = `${rangeLabelMap[currentRange]} 한눈에 보기`;
             }
 
             rangeButtons.forEach((btn) => {
