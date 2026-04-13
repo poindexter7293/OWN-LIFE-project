@@ -9,9 +9,14 @@
             <p th:text="${dietPageData.selectedDate}">2026-04-01</p>
         </div>
 
-        <form th:action="@{/diet}" method="get" class="diet-date-form">
-            <input type="date" name="date" th:value="${dietPageData.selectedDate}">
-            <button type="submit">조회</button>
+        <form th:action="@{/diet}" method="get" class="diet-date-form diet-date-pill-form">
+            <div class="diet-date-pill">
+                <input type="date"
+                       name="date"
+                       th:value="${dietPageData.selectedDate}"
+                       class="diet-date-input">
+                <button type="submit" class="diet-date-move-btn">이동</button>
+            </div>
         </form>
     </section>
 
@@ -208,10 +213,10 @@
                 <h3 id="dietChartTitle">최근 7일 섭취량</h3>
 
                 <div class="chart-tabs" id="dietChartTabs">
-                    <button type="button" class="chart-tab active" data-period="day">일</button>
-                    <button type="button" class="chart-tab" data-period="week">주</button>
-                    <button type="button" class="chart-tab" data-period="month">월</button>
-                    <button type="button" class="chart-tab" data-period="year">년</button>
+                    <button type="button" class="chart-tab active" data-period="day">일간</button>
+                    <button type="button" class="chart-tab" data-period="week">주간</button>
+                    <button type="button" class="chart-tab" data-period="month">월간</button>
+                    <button type="button" class="chart-tab" data-period="year">연간</button>
                 </div>
 
                 <p class="chart-sub-text" id="dietChartSubText">선택한 기간 기준 섭취 칼로리를 보여줍니다.</p>
@@ -253,22 +258,26 @@
             day: {
                 labels: /*[[${dietPageData.charts.day.labels}]]*/ [],
                 calories: /*[[${dietPageData.charts.day.calories}]]*/ [],
-                goalKcal: /*[[${dietPageData.charts.day.goalKcal}]]*/ 0
+                goalKcal: /*[[${dietPageData.charts.day.goalKcal}]]*/ 0,
+                goalKcalSeries: /*[[${dietPageData.charts.day.goalKcalSeries}]]*/ []
             },
             week: {
                 labels: /*[[${dietPageData.charts.week.labels}]]*/ [],
                 calories: /*[[${dietPageData.charts.week.calories}]]*/ [],
-                goalKcal: /*[[${dietPageData.charts.week.goalKcal}]]*/ 0
+                goalKcal: /*[[${dietPageData.charts.week.goalKcal}]]*/ 0,
+                goalKcalSeries: /*[[${dietPageData.charts.week.goalKcalSeries}]]*/ []
             },
             month: {
                 labels: /*[[${dietPageData.charts.month.labels}]]*/ [],
                 calories: /*[[${dietPageData.charts.month.calories}]]*/ [],
-                goalKcal: /*[[${dietPageData.charts.month.goalKcal}]]*/ 0
+                goalKcal: /*[[${dietPageData.charts.month.goalKcal}]]*/ 0,
+                goalKcalSeries: /*[[${dietPageData.charts.month.goalKcalSeries}]]*/ []
             },
             year: {
                 labels: /*[[${dietPageData.charts.year.labels}]]*/ [],
                 calories: /*[[${dietPageData.charts.year.calories}]]*/ [],
-                goalKcal: /*[[${dietPageData.charts.year.goalKcal}]]*/ 0
+                goalKcal: /*[[${dietPageData.charts.year.goalKcal}]]*/ 0,
+                goalKcalSeries: /*[[${dietPageData.charts.year.goalKcalSeries}]]*/ []
             }
         };
 

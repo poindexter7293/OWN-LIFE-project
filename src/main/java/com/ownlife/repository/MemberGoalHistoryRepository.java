@@ -18,4 +18,6 @@ public interface MemberGoalHistoryRepository extends JpaRepository<MemberGoalHis
             Long memberId,
             LocalDateTime changedAt
     );
+
+
 }

@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedFoods = [];
     let dietIntakeChart = null;
     let macroRatioChart = null;
+    let lineBlinkFrameId = null;
 
     if (!modeRadios.length || !selectModeFields || !customModeFields || !form) {
         return;
@@ -87,14 +88,23 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    function getBarColors(calories, goalKcal) {
-        return calories.map(value => Number(value) > Number(goalKcal) ? "#ef4444" : "#22c55e");
+    function getBarColors(calories, goalSeries) {
+        return calories.map((value, index) => {
+            const goal = Number(goalSeries[index] || 0);
+            return goal > 0 && Number(value) > goal ? "#ef4444" : "#22c55e";
+        });
     }
 
-    function getBarHoverColors(calories, goalKcal) {
-        return calories.map(value => Number(value) > Number(goalKcal) ? "#dc2626" : "#16a34a");
+    function getBarHoverColors(calories, goalSeries) {
+        return calories.map((value, index) => {
+            const goal = Number(goalSeries[index] || 0);
+            return goal > 0 && Number(value) > goal ? "#dc2626" : "#16a34a";
+        });
     }
 
+    /**
+     * 막대만 올라오게 하고, 선형은 생성 시 애니메이션을 완전히 제거
+     */
     function createBarOnlyAnimations() {
         return {
             y: {
@@ -104,10 +114,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (ctx.type !== "data") return;
 
                     const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
-                    const isLineDataset = dataset.type === "line";
-
-                    if (isLineDataset) {
-                        return undefined;
+                    if (dataset.type === "line") {
+                        return ctx.chart.scales.y.getPixelForValue(ctx.parsed.y);
                     }
 
                     return ctx.chart.scales.y.getPixelForValue(0);
@@ -116,24 +124,37 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (ctx.type !== "data") return 0;
 
                     const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
-                    const isLineDataset = dataset.type === "line";
+                    if (dataset.type === "line") {
+                        return 0;
+                    }
 
-                    if (isLineDataset || ctx.yStarted) return 0;
+                    if (ctx.yStarted) return 0;
                     ctx.yStarted = true;
                     return ctx.dataIndex * 90;
+                },
+                duration(ctx) {
+                    if (ctx.type !== "data") return 0;
+
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    return dataset.type === "line" ? 0 : 850;
+                }
+            },
+            x: {
+                duration(ctx) {
+                    if (ctx.type !== "data") return 0;
+
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    return dataset.type === "line" ? 0 : 0;
                 }
             },
             base: {
                 easing: "easeOutCubic",
-                duration: 850,
                 from(ctx) {
                     if (ctx.type !== "data") return;
 
                     const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
-                    const isLineDataset = dataset.type === "line";
-
-                    if (isLineDataset) {
-                        return undefined;
+                    if (dataset.type === "line") {
+                        return ctx.chart.scales.y.getPixelForValue(ctx.parsed.y);
                     }
 
                     return ctx.chart.scales.y.getPixelForValue(0);
@@ -142,15 +163,91 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (ctx.type !== "data") return 0;
 
                     const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
-                    const isLineDataset = dataset.type === "line";
+                    if (dataset.type === "line") {
+                        return 0;
+                    }
 
-                    if (isLineDataset || ctx.baseStarted) return 0;
+                    if (ctx.baseStarted) return 0;
                     ctx.baseStarted = true;
                     return ctx.dataIndex * 90;
+                },
+                duration(ctx) {
+                    if (ctx.type !== "data") return 0;
+
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    return dataset.type === "line" ? 0 : 850;
                 }
             }
         };
     }
+    function createLineRevealBlinkPlugin() {
+        return {
+            id: "lineRevealBlinkPlugin",
+            afterDatasetsDraw(chart, args, pluginOptions) {
+                if (!pluginOptions || !pluginOptions.enabled) return;
+
+                const datasetIndex = chart.data.datasets.findIndex(dataset => dataset.type === "line");
+                if (datasetIndex === -1) return;
+
+                const meta = chart.getDatasetMeta(datasetIndex);
+                if (!meta || meta.hidden || !meta.dataset) return;
+
+                const ctx = chart.ctx;
+                const area = chart.chartArea;
+                const now = performance.now();
+
+                if (!chart.$lineRevealBlinkState) {
+                    chart.$lineRevealBlinkState = {
+                        start: now
+                    };
+                }
+
+                const state = chart.$lineRevealBlinkState;
+                const duration = pluginOptions.duration || 1200;
+                const elapsed = now - state.start;
+                const progress = Math.min(elapsed / duration, 1);
+
+                const eased = 1 - Math.pow(1 - progress, 3);
+
+                const revealX = area.left + (area.right - area.left) * eased;
+
+                // 1~2번만 약하게 반짝이도록 조정
+                const blinkCycles = pluginOptions.blinkCycles || 2;
+                const blinkStrength = pluginOptions.blinkStrength || 0.22;
+
+                let alpha = 1;
+                if (progress < 1) {
+                    alpha = 1 - (Math.sin(progress * Math.PI * blinkCycles) ** 2) * blinkStrength;
+                }
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(area.left, area.top, revealX - area.left, area.bottom - area.top);
+                ctx.clip();
+
+                ctx.globalAlpha = alpha;
+
+                meta.dataset.draw(ctx);
+
+                if (Array.isArray(meta.data)) {
+                    meta.data.forEach(point => {
+                        if (point.x <= revealX) {
+                            point.draw(ctx);
+                        }
+                    });
+                }
+
+                ctx.restore();
+
+                if (progress < 1) {
+                    requestAnimationFrame(() => chart.draw());
+                }
+            }
+        };
+    }
+
+
+
 
     function renderDietIntakeChart(period = "day") {
         const chartCanvas = document.getElementById("dietIntakeChart");
@@ -159,16 +256,23 @@ document.addEventListener("DOMContentLoaded", function () {
         const chartData = window.dietChartDataMap[period];
         if (!chartData) return;
 
-        const { labels, calories, goalKcal } = chartData;
+        const { labels, calories, goalKcal, goalKcalSeries } = chartData;
+
+        const resolvedGoalSeries = Array.isArray(goalKcalSeries) && goalKcalSeries.length === labels.length
+            ? goalKcalSeries
+            : labels.map(() => goalKcal);
+
         const ctx = chartCanvas.getContext("2d");
 
-        const barColors = getBarColors(calories, goalKcal);
-        const barHoverColors = getBarHoverColors(calories, goalKcal);
+        const barColors = getBarColors(calories, resolvedGoalSeries);
+        const barHoverColors = getBarHoverColors(calories, resolvedGoalSeries);
 
         if (dietIntakeChart) {
             dietIntakeChart.destroy();
             dietIntakeChart = null;
         }
+
+        const lineRevealBlinkPlugin = createLineRevealBlinkPlugin();
 
         dietIntakeChart = new Chart(ctx, {
             type: "bar",
@@ -188,14 +292,25 @@ document.addEventListener("DOMContentLoaded", function () {
                     {
                         type: "line",
                         label: "목표 칼로리",
-                        data: labels.map(() => goalKcal),
-                        borderColor: "#ffb347",
-                        borderWidth: 2,
+                        data: resolvedGoalSeries,
+                        borderColor: "#f59e0b",
+                        borderWidth: 3,
+                        borderDash: [8, 6],
+                        borderCapStyle: "butt",
+                        borderJoinStyle: "miter",
                         pointRadius: 0,
                         pointHoverRadius: 0,
+                        pointHitRadius: 8,
+                        pointBackgroundColor: "#f59e0b",
+                        pointBorderColor: "#f59e0b",
                         fill: false,
                         tension: 0,
-                        order: 1
+                        stepped: "after",
+                        order: 1,
+                        animations: {
+                            x: { duration: 0 },
+                            y: { duration: 0 }
+                        }
                     }
                 ]
             },
@@ -221,7 +336,17 @@ document.addEventListener("DOMContentLoaded", function () {
                                 return `${context.dataset.label}: ${context.parsed.y} kcal`;
                             }
                         }
+                    },
+                    lineRevealBlinkPlugin: {
+                        enabled: true,
+                        duration: 1250,
+                        blinkCycles: 2,
+                        blinkStrength: 0.18
                     }
+                },
+                interaction: {
+                    mode: "index",
+                    intersect: false
                 },
                 scales: {
                     x: {
@@ -246,7 +371,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     }
                 }
-            }
+            },
+            plugins: [lineRevealBlinkPlugin]
         });
     }
 
@@ -306,20 +432,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function renderMacroRatioChart(data = window.macroRatioData) {
         const chartCanvas = document.getElementById("macroRatioChart");
-        if (!chartCanvas || !data) return;
+        if (!chartCanvas) return;
 
-        const carb = Number(data.carb || 0);
-        const protein = Number(data.protein || 0);
-        const fat = Number(data.fat || 0);
+        const safeData = data || { carb: 0, protein: 0, fat: 0 };
+
+        const carb = Number(safeData.carb || 0);
+        const protein = Number(safeData.protein || 0);
+        const fat = Number(safeData.fat || 0);
         const total = carb + protein + fat;
         const ctx = chartCanvas.getContext("2d");
 
         const centerTextPlugin = {
             id: "centerTextPlugin",
             afterDraw(chart) {
-                const { ctx } = chart;
                 const meta = chart.getDatasetMeta(0);
-
                 if (!meta || !meta.data || !meta.data.length) return;
 
                 const x = meta.data[0].x;
@@ -391,38 +517,6 @@ document.addEventListener("DOMContentLoaded", function () {
             plugins: [centerTextPlugin]
         });
     }
-
-    modeRadios.forEach((radio) => {
-        radio.addEventListener("change", toggleDietInputMode);
-    });
-
-    if (foodSelect) {
-        foodSelect.addEventListener("change", fillSelectedFoodInfo);
-    }
-
-    if (foodSearchKeyword) {
-        foodSearchKeyword.addEventListener("input", filterFoodOptions);
-    }
-
-    form.addEventListener("submit", function (e) {
-        const mode = document.querySelector('input[name="inputMode"]:checked')?.value;
-
-        if (mode === "custom") {
-            const name = document.getElementById("customFoodName").value.trim();
-            const base = document.getElementById("customBaseAmountG").value;
-
-            if (!name) {
-                alert("음식명을 입력해 주세요.");
-                e.preventDefault();
-                return;
-            }
-
-            if (!base || base <= 0) {
-                alert("기준량을 올바르게 입력해 주세요.");
-                e.preventDefault();
-            }
-        }
-    });
 
     function filterFoodOptions() {
         if (!foodSelect || !foodSearchKeyword) return;
@@ -568,7 +662,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function bindGoalCard() {
         const goalCard = document.getElementById("goal-card");
-
         if (!goalCard) return;
 
         const moveToGoalSetting = function (event) {
@@ -591,10 +684,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         goalCard.addEventListener("click", moveToGoalSetting);
         goalCard.addEventListener("keydown", function (event) {
-            if (event.key !== "Enter" && event.key !== " ") {
-                return;
-            }
-
+            if (event.key !== "Enter" && event.key !== " ") return;
             moveToGoalSetting(event);
         });
     }
@@ -607,7 +697,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         intakeCard.addEventListener("click", (e) => {
             e.stopPropagation();
-
             inputBox.scrollIntoView({
                 behavior: "smooth",
                 block: "start"
@@ -687,7 +776,11 @@ document.addEventListener("DOMContentLoaded", function () {
     function renderMealGroups(mealGroups, selectedDate) {
         const mealSummaryList = document.getElementById("mealSummaryList");
         const mealSummaryEmpty = document.getElementById("mealSummaryEmpty");
-        const listContainer = mealSummaryList ? mealSummaryList.parentElement : mealSummaryEmpty ? mealSummaryEmpty.parentElement : null;
+        const listContainer = mealSummaryList
+            ? mealSummaryList.parentElement
+            : mealSummaryEmpty
+                ? mealSummaryEmpty.parentElement
+                : null;
 
         if (!listContainer) return;
 
@@ -724,15 +817,12 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="meal-summary-item">
                 <div class="meal-summary-line">
                     <span class="meal-summary-type">${group.mealTypeLabel}:</span>
-
                     <span class="meal-summary-foods">${foodNames}</span>
-
                     <span class="meal-summary-total">
                         소계:
                         <span>${subtotalKcal}</span>
                         kcal
                     </span>
-
                     <button type="button"
                             class="meal-group-delete-btn"
                             data-meal-type="${group.mealType}"
@@ -750,10 +840,10 @@ document.addEventListener("DOMContentLoaded", function () {
     function refreshChartData(charts, dailySummary) {
         if (charts) {
             window.dietChartDataMap = {
-                day: charts.day || { labels: [], calories: [], goalKcal: 0 },
-                week: charts.week || { labels: [], calories: [], goalKcal: 0 },
-                month: charts.month || { labels: [], calories: [], goalKcal: 0 },
-                year: charts.year || { labels: [], calories: [], goalKcal: 0 }
+                day: charts.day || { labels: [], calories: [], goalKcal: 0, goalKcalSeries: [] },
+                week: charts.week || { labels: [], calories: [], goalKcal: 0, goalKcalSeries: [] },
+                month: charts.month || { labels: [], calories: [], goalKcal: 0, goalKcalSeries: [] },
+                year: charts.year || { labels: [], calories: [], goalKcal: 0, goalKcalSeries: [] }
             };
         }
 
@@ -834,7 +924,7 @@ document.addEventListener("DOMContentLoaded", function () {
     bindSelectedFoodEvents();
     animateCountUp();
     renderDietIntakeChart("day");
-    renderMacroRatioChart();
+    renderMacroRatioChart(window.macroRatioData);
     bindDietChartTabs();
     bindGoalCard();
     bindIntakeCard();

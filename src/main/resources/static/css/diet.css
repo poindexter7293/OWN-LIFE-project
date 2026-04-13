@@ -30,6 +30,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
 }
 
 .diet-header-left h2 {
@@ -45,35 +46,80 @@
     font-size: 14px;
 }
 
+/* 날짜 이동 폼 - 기본(데스크톱 포함) */
 .diet-date-form {
     display: flex;
-    gap: 10px;
+    align-items: center;
 }
 
-.diet-date-form input {
-    border: 1px solid #d7dfeb;
-    border-radius: 10px;
-    padding: 10px;
+.diet-date-pill-form {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
 }
 
-.diet-date-form button {
+.diet-date-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    background: #f3f4f8;
+    border: 1px solid #e3e6ef;
+    border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.diet-date-input {
     border: none;
-    border-radius: 10px;
+    background: transparent;
     padding: 10px 14px;
-    background: linear-gradient(135deg, #6a5cff, #8b5cf6);
-    color: white;
-    font-weight: 700;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #203864;
+    outline: none;
+    min-width: 170px;
+}
+
+.diet-date-input::-webkit-calendar-picker-indicator {
     cursor: pointer;
+    opacity: 0.85;
+}
+
+.diet-date-move-btn {
+    border: none;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d3df0 100%);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 12px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(109, 61, 240, 0.22);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.diet-date-move-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(109, 61, 240, 0.28);
+    filter: brightness(1.02);
+}
+
+.diet-date-move-btn:active {
+    transform: translateY(0);
 }
 
 /* =========================
    상단 대시보드
    ========================= */
+.diet-dashboard-card {
+    padding: 24px;
+}
 
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
+    gap: 24px;
 }
 
 .dashboard-item {
@@ -82,7 +128,6 @@
     padding: 20px;
     border: 1px solid #eef1f6;
     transition: all 0.2s ease;
-
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -93,7 +138,7 @@
 
 .dashboard-item:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
 .dashboard-item[role="button"] {
@@ -117,6 +162,7 @@
     align-items: baseline;
     justify-content: center;
     gap: 6px;
+    margin-top: 4px;
 }
 
 .dashboard-item strong {
@@ -132,7 +178,6 @@
     color: #8c9bb3;
 }
 
-/* 카드별 숫자 색 */
 .dashboard-item strong.kcal-goal {
     color: #6a5cff;
 }
@@ -148,21 +193,6 @@
 .dashboard-item strong.kcal-remaining.kcal-over {
     color: #ef4444;
 }
-
-.dashboard-item .unit {
-    font-size: 18px;
-    font-weight: 700;
-    color: #8c9bb3;
-}
-
-.diet-dashboard-card {
-    padding: 24px;
-}
-
-.dashboard-grid {
-    gap: 24px;  /* 기존 20 → 24 */
-}
-
 
 /* =========================
    메인 좌우 레이아웃
@@ -238,26 +268,51 @@
     gap: 24px;
 }
 
-/* 탭 */
-.chart-tabs {
+.visual-section {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 기간 탭 - 기본(데스크톱 포함) */
+.chart-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    background: #f1f2f6;
+    border: 1px solid #e3e6ef;
+    border-radius: 999px;
+    width: fit-content;
 }
 
 .chart-tab {
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: #f1f3f5;
-    font-size: 13px;
-    font-weight: 700;
-    color: #555;
     border: none;
+    background: transparent;
+    color: #6f7d95;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 11px 18px;
+    border-radius: 999px;
     cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.chart-tab:hover {
+    background: rgba(109, 61, 240, 0.08);
+    color: #5d3fd3;
 }
 
 .chart-tab.active {
-    background: linear-gradient(135deg, #6a5cff, #8b5cf6);
-    color: white;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d3df0 100%);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(109, 61, 240, 0.22);
+}
+
+.chart-sub-text {
+    margin: 0;
+    font-size: 14px;
+    color: #5f6f89;
 }
 
 /* 그래프 */
@@ -307,19 +362,8 @@
 .dot.protein { background: #22c55e; }
 .dot.fat { background: #f5a000; }
 
-.macro-item.carb strong {
-    color: #4c57e8;
-}
-
-.macro-item.protein strong {
-    color: #22c55e;
-}
-
-.macro-item.fat strong {
-    color: #f5a000;
-}
 /* =========================
-   테이블
+   테이블 / 리스트
    ========================= */
 .diet-table {
     width: 100%;
@@ -354,7 +398,7 @@ input:focus,
 select:focus {
     border-color: #6a5cff;
     outline: none;
-    box-shadow: 0 0 0 2px rgba(106,92,255,0.1);
+    box-shadow: 0 0 0 2px rgba(106, 92, 255, 0.1);
 }
 
 /* =========================
@@ -366,24 +410,6 @@ select:focus {
     color: #7b8aa5;
 }
 
-.dashboard-item {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid #eef1f6;
-    transition: all 0.2s ease;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.dashboard-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-}
-
 .diet-card {
     cursor: pointer;
     transition: all 0.2s ease;
@@ -391,7 +417,7 @@ select:focus {
 
 .diet-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 #goal-card,
@@ -531,9 +557,9 @@ select:focus {
 
 .meal-summary-line {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    flex-wrap: wrap;
     line-height: 1.6;
 }
 
@@ -541,42 +567,6 @@ select:focus {
     font-weight: 800;
     color: #203864;
     min-width: 42px;
-}
-
-.meal-summary-foods {
-    color: #334155;
-    flex: 1;
-}
-
-.meal-summary-total {
-    font-weight: 700;
-    color: #6a5cff;
-    white-space: nowrap;
-}
-
-.meal-summary-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.meal-summary-item {
-    padding: 14px 16px;
-    border: 1px solid #e7ebf3;
-    border-radius: 14px;
-    background: #fafbff;
-}
-
-.meal-summary-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.meal-summary-type {
-    font-weight: 800;
-    color: #203864;
 }
 
 .meal-summary-foods {
@@ -605,13 +595,6 @@ select:focus {
     background: #ffd7d7;
 }
 
-.kcal-value-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 4px;
-}
 /* =========================
    반응형
    ========================= */
@@ -619,8 +602,56 @@ select:focus {
     .diet-content-grid {
         grid-template-columns: 1fr;
     }
+
     .dashboard-grid {
         grid-template-columns: 1fr;
     }
+}
 
+@media (max-width: 768px) {
+    .diet-header-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .diet-date-pill-form {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .diet-date-pill {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .diet-date-input {
+        min-width: 0;
+        flex: 1;
+        font-size: 15px;
+    }
+
+    .diet-date-move-btn {
+        padding: 11px 18px;
+        font-size: 15px;
+    }
+
+    .chart-tabs {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .chart-tab {
+        flex: 1;
+        text-align: center;
+        padding: 11px 0;
+        font-size: 14px;
+    }
+
+    .select-food-preview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .selected-food-item {
+        grid-template-columns: 1fr;
+    }
 }
