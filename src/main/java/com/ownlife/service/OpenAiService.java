@@ -54,7 +54,9 @@ public class OpenAiService {
         return "AI 응답 생성 중 오류가 발생했습니다.";
     }
 
+
     private String askWithModel(String prompt, String model) throws Exception {
+
         URL url = new URL(apiUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
