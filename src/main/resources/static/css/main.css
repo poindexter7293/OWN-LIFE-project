@@ -983,6 +983,16 @@ button.auth-pill {
     line-height: var(--ai-coach-text-line-height);
 }
 
+.is-loading-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.ai-chat-bubble.loading .ai-chat-text {
+    opacity: 0.8;
+}
+
 /* responsive */
 @media (max-width: 1100px) {
     .dashboard-top-grid {

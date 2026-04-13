@@ -105,9 +105,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const aiCoachChat = document.getElementById('aiCoachChat');
         const quickButtons = document.querySelectorAll('[data-ai-type]');
 
-        if (!aiCoachWrap || !aiCoachFab || !aiCoachPanel || !aiCoachClose) {
+        if (!aiCoachWrap || !aiCoachFab || !aiCoachPanel || !aiCoachClose || !aiCoachChat) {
             return;
         }
+
+        let isLoading = false;
 
         aiCoachFab.addEventListener('click', function () {
             aiCoachPanel.classList.toggle('hidden');
@@ -123,36 +125,82 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        const setButtonsDisabled = (disabled) => {
+            quickButtons.forEach((btn) => {
+                btn.disabled = disabled;
+                btn.classList.toggle('is-loading-disabled', disabled);
+            });
+        };
+
+        const appendUserBubble = (text) => {
+            const userBubble = document.createElement('div');
+            userBubble.className = 'ai-chat-bubble user';
+            userBubble.innerHTML = `
+                <div class="ai-chat-name">나</div>
+                <div class="ai-chat-text">${text}</div>
+            `;
+            aiCoachChat.appendChild(userBubble);
+        };
+
+        const appendLoadingBubble = () => {
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'ai-chat-bubble ai loading';
+            loadingBubble.innerHTML = `
+                <div class="ai-chat-name">OWN 트레이너</div>
+                <div class="ai-chat-text">기록을 바탕으로 정리하고 있어요...</div>
+            `;
+            aiCoachChat.appendChild(loadingBubble);
+            return loadingBubble;
+        };
+
+        const requestAiCoach = async (type) => {
+            const response = await fetch(`/api/ai-coach/recommend?type=${encodeURIComponent(type)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (e) {
+                payload = {};
+            }
+
+            if (!response.ok) {
+                throw new Error(payload.summary || payload.message || '현재 AI 요청이 많아요. 잠시 후 다시 시도해 주세요.');
+            }
+
+            return payload;
+        };
+
         quickButtons.forEach((button) => {
             button.addEventListener('click', async function () {
-                const type = button.dataset.aiType;
-                const label = button.textContent.trim();
-
-                if (!aiCoachChat) {
+                if (isLoading) {
                     return;
                 }
 
-                const userBubble = document.createElement('div');
-                userBubble.className = 'ai-chat-bubble user';
-                userBubble.innerHTML = `
-                    <div class="ai-chat-name">나</div>
-                    <div class="ai-chat-text">${label}</div>
-                `;
-                aiCoachChat.appendChild(userBubble);
+                const type = button.dataset.aiType;
+                const label = button.textContent.trim();
 
-                const loadingBubble = document.createElement('div');
-                loadingBubble.className = 'ai-chat-bubble ai';
-                loadingBubble.innerHTML = `
-                    <div class="ai-chat-name">OWN 트레이너</div>
-                    <div class="ai-chat-text">기록을 바탕으로 정리하고 있어요...</div>
-                `;
-                aiCoachChat.appendChild(loadingBubble);
+                isLoading = true;
+                setButtonsDisabled(true);
+
+                appendUserBubble(label);
+                const loadingBubble = appendLoadingBubble();
 
                 aiCoachChat.scrollTop = aiCoachChat.scrollHeight;
 
                 try {
-                    const response = await fetch(`/api/ai-coach/recommend?type=${type}`);
-                    const payload = await response.json();
+                    let payload;
+
+                    try {
+                        payload = await requestAiCoach(type);
+                    } catch (firstError) {
+                        await new Promise(resolve => setTimeout(resolve, 900));
+                        payload = await requestAiCoach(type);
+                    }
 
                     let listHtml = '';
                     if (payload.messages && payload.messages.length > 0) {
@@ -166,20 +214,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     loadingBubble.innerHTML = `
                         <div class="ai-chat-name">OWN 트레이너</div>
                         <div class="ai-chat-text">
-                            <strong>${payload.title}</strong><br>
-                            ${payload.summary}
+                            <strong>${payload.title || 'OWN 트레이너'}</strong><br>
+                            ${payload.summary || '분석 결과를 불러왔어요.'}
                             ${listHtml}
                         </div>
                     `;
                 } catch (error) {
                     console.error('AI coach fetch error:', error);
+
                     loadingBubble.innerHTML = `
                         <div class="ai-chat-name">OWN 트레이너</div>
-                        <div class="ai-chat-text">추천을 불러오는 중 문제가 발생했습니다.</div>
+                        <div class="ai-chat-text">
+                            ${error.message || '현재 AI 요청이 많거나 응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.'}
+                        </div>
                     `;
+                } finally {
+                    isLoading = false;
+                    setButtonsDisabled(false);
+                    aiCoachChat.scrollTop = aiCoachChat.scrollHeight;
                 }
-
-                aiCoachChat.scrollTop = aiCoachChat.scrollHeight;
             });
         });
     };
