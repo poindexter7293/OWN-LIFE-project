@@ -8,5 +8,6 @@ public class DietChartDto {
     private List<String> labels;
     private List<Double> calories;
     private List<Double> goalKcalSeries;
+    //
     private double goalKcal;
 }
