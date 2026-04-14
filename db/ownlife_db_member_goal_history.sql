@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.44, for Win64 (x86_64)
 --
--- Host: ls-48ebe287859564129511134a6d11233300c07bca.czgiqoag813n.ap-northeast-2.rds.amazonaws.com    Database: ownlife_db
+-- Host: ls-4968413b922797c9b85ff5fb698072c071b6a562.czgiqoag813n.ap-northeast-2.rds.amazonaws.com    Database: ownlife_db
 -- ------------------------------------------------------
 -- Server version	8.4.8
 
@@ -40,7 +40,7 @@ CREATE TABLE `member_goal_history` (
   PRIMARY KEY (`goal_history_id`),
   KEY `idx_goal_history_member_date` (`member_id`,`changed_at`),
   CONSTRAINT `fk_goal_history_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -49,6 +49,7 @@ CREATE TABLE `member_goal_history` (
 
 LOCK TABLES `member_goal_history` WRITE;
 /*!40000 ALTER TABLE `member_goal_history` DISABLE KEYS */;
+INSERT INTO `member_goal_history` VALUES (4,3,NULL,NULL,NULL,'2026-04-02 12:05:26'),(15,10,NULL,NULL,300,'2026-03-26 06:09:35'),(16,10,NULL,NULL,320,'2026-03-29 09:00:00'),(17,10,NULL,NULL,360,'2026-03-29 13:00:00'),(18,10,NULL,NULL,390,'2026-03-29 21:00:00'),(19,10,NULL,NULL,410,'2026-04-01 08:00:00'),(20,10,NULL,NULL,430,'2026-04-01 19:00:00'),(21,10,NULL,NULL,440,'2026-04-03 08:00:00'),(22,10,NULL,NULL,450,'2026-04-03 12:00:00'),(24,10,60.00,2000,1500,'2026-04-03 15:26:10'),(25,10,60.00,2000,600,'2026-04-03 15:27:15'),(26,10,60.00,2000,300,'2026-04-03 15:29:56'),(27,10,60.00,2000,100,'2026-04-03 15:41:15'),(28,9,NULL,NULL,NULL,'2026-04-07 12:11:41'),(29,14,NULL,NULL,NULL,'2026-04-07 15:02:07'),(30,11,NULL,NULL,NULL,'2026-04-08 11:20:40'),(31,11,NULL,NULL,1000,'2026-04-08 11:20:43'),(32,11,NULL,1000,1000,'2026-04-08 11:23:55'),(33,11,90.00,1000,1000,'2026-04-08 11:25:56'),(34,15,NULL,NULL,NULL,'2026-04-08 11:45:31'),(35,15,NULL,800,NULL,'2026-04-08 11:48:11'),(36,15,NULL,1,NULL,'2026-04-08 12:20:22'),(37,10,60.00,2000,1000,'2026-04-08 14:25:19'),(38,9,62.00,1800,500,'2026-04-08 14:43:55'),(39,10,65.00,2000,1000,'2026-04-13 03:15:47');
 /*!40000 ALTER TABLE `member_goal_history` ENABLE KEYS */;
 UNLOCK TABLES;
 SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
@@ -62,4 +63,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-31 14:32:20
+-- Dump completed on 2026-04-14 11:56:34

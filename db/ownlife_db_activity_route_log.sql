@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.44, for Win64 (x86_64)
 --
--- Host: ls-48ebe287859564129511134a6d11233300c07bca.czgiqoag813n.ap-northeast-2.rds.amazonaws.com    Database: ownlife_db
+-- Host: ls-4968413b922797c9b85ff5fb698072c071b6a562.czgiqoag813n.ap-northeast-2.rds.amazonaws.com    Database: ownlife_db
 -- ------------------------------------------------------
 -- Server version	8.4.8
 
@@ -40,12 +40,12 @@ CREATE TABLE `activity_route_log` (
   `end_lat` decimal(10,7) DEFAULT NULL,
   `end_lng` decimal(10,7) DEFAULT NULL,
   `route_distance_km` decimal(8,2) NOT NULL,
-  `route_duration_min` int NOT NULL,
+  `route_duration_min` int DEFAULT NULL,
   `map_provider` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`route_log_id`),
   UNIQUE KEY `uk_route_exercise_log` (`exercise_log_id`),
   CONSTRAINT `fk_route_log_exercise` FOREIGN KEY (`exercise_log_id`) REFERENCES `exercise_log` (`exercise_log_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -54,6 +54,7 @@ CREATE TABLE `activity_route_log` (
 
 LOCK TABLES `activity_route_log` WRITE;
 /*!40000 ALTER TABLE `activity_route_log` DISABLE KEYS */;
+INSERT INTO `activity_route_log` VALUES (1,140,'시작 지점','종료 지점',35.1803116,129.1199522,35.1751159,129.1222976,3.88,30,'kakao'),(2,141,NULL,NULL,NULL,NULL,NULL,NULL,3.00,NULL,'manual'),(5,144,NULL,NULL,35.2019601,129.1177262,35.1689941,129.1363064,5.02,NULL,'kakao'),(7,146,NULL,NULL,35.2020962,129.1180564,35.1688093,129.1361836,5.25,NULL,'kakao'),(9,150,NULL,NULL,37.3222616,127.0223163,37.3213517,127.0215489,0.12,NULL,'kakao'),(11,153,NULL,NULL,35.1486403,129.0562018,35.1047431,129.0282125,5.50,NULL,'kakao'),(12,154,NULL,NULL,35.1471962,129.0592539,35.1939326,129.1805626,12.21,NULL,'kakao'),(13,156,NULL,NULL,35.2047236,129.1256042,35.1632008,129.1621402,5.69,NULL,'kakao'),(15,159,NULL,NULL,37.5695354,126.9745086,37.3221431,127.0289051,27.88,NULL,'kakao');
 /*!40000 ALTER TABLE `activity_route_log` ENABLE KEYS */;
 UNLOCK TABLES;
 SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
@@ -67,4 +68,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-31 14:32:23
+-- Dump completed on 2026-04-14 11:56:37

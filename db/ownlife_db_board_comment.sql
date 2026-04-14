@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.44, for Win64 (x86_64)
 --
--- Host: ls-48ebe287859564129511134a6d11233300c07bca.czgiqoag813n.ap-northeast-2.rds.amazonaws.com    Database: ownlife_db
+-- Host: ls-4968413b922797c9b85ff5fb698072c071b6a562.czgiqoag813n.ap-northeast-2.rds.amazonaws.com    Database: ownlife_db
 -- ------------------------------------------------------
 -- Server version	8.4.8
 
@@ -46,7 +46,7 @@ CREATE TABLE `board_comment` (
   CONSTRAINT `fk_board_comment_member` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_board_comment_parent` FOREIGN KEY (`parent_comment_id`) REFERENCES `board_comment` (`comment_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_board_comment_post` FOREIGN KEY (`post_id`) REFERENCES `board_post` (`post_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -55,6 +55,7 @@ CREATE TABLE `board_comment` (
 
 LOCK TABLES `board_comment` WRITE;
 /*!40000 ALTER TABLE `board_comment` DISABLE KEYS */;
+INSERT INTO `board_comment` VALUES (6,8,3,NULL,'오옷 20000이라니 자네는 센스가 정말 남다르군!',0,'2026-04-01 03:16:45','2026-04-01 03:16:45'),(10,10,3,NULL,'땃쥐 ㄱ?',0,'2026-04-01 03:38:21','2026-04-01 03:38:21'),(14,10,3,NULL,'앗 설마 메뉴가 마음에 안들어서? ㅜㅜ',1,'2026-04-01 03:47:13','2026-04-01 03:47:24'),(15,10,3,NULL,'설마 메뉴가 마음에 안들어서? 다른것도 ㄱㄴㄱㄴ',0,'2026-04-01 03:47:34','2026-04-01 03:47:34'),(17,12,3,NULL,'시공의 폭풍',0,'2026-04-07 11:07:06','2026-04-07 11:07:06'),(18,12,14,NULL,'테스트',0,'2026-04-07 15:01:25','2026-04-07 15:01:25'),(19,17,3,NULL,'댓글댓를',0,'2026-04-08 16:06:50','2026-04-08 16:06:50'),(20,17,3,NULL,'이상하다 여기...\r\n',0,'2026-04-08 16:38:47','2026-04-08 16:38:47'),(21,13,3,NULL,'댓글을 단다 단ㄷ테',0,'2026-04-08 16:41:45','2026-04-08 16:41:45'),(22,18,3,NULL,'난 살안빼도 있는데 ㅎㅎ',0,'2026-04-08 17:28:09','2026-04-08 17:28:09'),(23,18,3,NULL,'헤이헤이헤이',0,'2026-04-08 17:41:40','2026-04-08 17:41:40');
 /*!40000 ALTER TABLE `board_comment` ENABLE KEYS */;
 UNLOCK TABLES;
 SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
@@ -68,4 +69,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-31 14:32:24
+-- Dump completed on 2026-04-14 11:56:34
