@@ -275,7 +275,14 @@
     display: none;
 }
 
-.exercise-quick-form.is-active,
+.exercise-quick-form.is-active {
+    display: block;
+}
+
+.exercise-mode-panel {
+    display: none;
+}
+
 .exercise-mode-panel.is-active {
     display: block;
 }

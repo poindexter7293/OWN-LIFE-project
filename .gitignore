@@ -32,4 +32,4 @@ build/
 ### VS Code ###
 .vscode/
 
-/config/application-local.properties
+/config/application-local.propertiesmvnw.cmd clean package -DskipTests
